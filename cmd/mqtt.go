@@ -89,7 +89,7 @@ func audioClient() {
 			FramesPerBuffer: viper.GetInt("audio.buffersize"),
 			Samplingrate:    viper.GetFloat64("audio.samplingrate"),
 			Latency:         viper.GetDuration("audio.output_latency"),
-			Channels:        audio.STEREO,
+			Channels:        audio.GetChannel(viper.GetString("audio.output_channels")),
 		},
 	}
 
@@ -103,7 +103,7 @@ func audioClient() {
 			FramesPerBuffer: viper.GetInt("audio.buffersize"),
 			Samplingrate:    viper.GetFloat64("audio.samplingrate"),
 			Latency:         viper.GetDuration("audio.output_latency"),
-			Channels:        audio.STEREO,
+			Channels:        audio.GetChannel(viper.GetString("audio.input_channels")),
 		},
 	}
 
