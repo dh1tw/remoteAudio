@@ -1,0 +1,8 @@
+package icd;
+
+message AudioData{
+    optional int32 channels = 1;
+    optional int32 frame_length = 2;
+    optional int32 sampling_rate = 3;
+    optional bytes audio = 4;
+}
