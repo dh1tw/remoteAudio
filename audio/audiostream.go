@@ -2,7 +2,6 @@ package audio
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -58,14 +57,10 @@ func (as *AudioDevice) IdentifyDevice() error {
 }
 
 func GetChannel(ch string) int {
-	fmt.Println("ch")
 	if strings.ToUpper(ch) == "MONO" {
-		fmt.Println("ch")
 		return MONO
 	} else if strings.ToUpper(ch) == "STEREO" {
-		fmt.Println("ch")
 		return STEREO
 	}
-
 	return 0
 }
