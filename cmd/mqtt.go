@@ -99,10 +99,10 @@ func audioClient() {
 		AudioLoopbackCh: audioLoopbackCh,
 		EventCh:         evPS.Sub(events.EVENTS),
 		AudioStream: audio.AudioStream{
-			DeviceName:      viper.GetString("audio.output_device"),
+			DeviceName:      viper.GetString("audio.input_device"),
 			FramesPerBuffer: viper.GetInt("audio.buffersize"),
 			Samplingrate:    viper.GetFloat64("audio.samplingrate"),
-			Latency:         viper.GetDuration("audio.output_latency"),
+			Latency:         viper.GetDuration("audio.input_latency"),
 			Channels:        audio.GetChannel(viper.GetString("audio.input_channels")),
 		},
 	}
