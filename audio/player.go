@@ -27,7 +27,10 @@ func PlayerSync(ad AudioDevice) {
 	portaudio.Initialize()
 	defer portaudio.Terminate()
 
-	out := make([]int32, ad.FramesPerBuffer)
+	//out doesn't need to be initialized with a fixed buffer size
+	//since the slice will be copied from the incoming data
+	//and will therefore replay any buffer size
+	var out []int32
 
 	var deviceInfo *portaudio.DeviceInfo
 	var err error

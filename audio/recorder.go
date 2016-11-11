@@ -37,7 +37,7 @@ func RecorderSync(ad AudioDevice) {
 	streamDeviceParam := portaudio.StreamDeviceParameters{
 		Device:   deviceInfo,
 		Channels: ad.Channels,
-		Latency:  time.Millisecond * 5,
+		Latency:  ad.Latency,
 	}
 
 	streamParm := portaudio.StreamParameters{
@@ -100,7 +100,7 @@ func RecorderSync(ad AudioDevice) {
 			enableLoopback = ev.(events.Event).EnableLoopback
 			fmt.Println("Loopback (Recorder):", enableLoopback)
 		default:
-			time.Sleep(time.Millisecond * 1)
+			time.Sleep(time.Microsecond * 200)
 		}
 	}
 }
