@@ -7,25 +7,47 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func (ad *AudioDevice) serializeAudioMsg(samples []int32) ([]byte, error) {
+func (ad *AudioDevice) serializeAudioMsg() ([]byte, error) {
 
 	f := int32(ad.FramesPerBuffer)
 	s := int32(ad.Samplingrate)
 	c := int32(ad.Channels)
-	d := make([]byte, 0, 4*len(samples))
+	b := int32(ad.Bitrate)
 
-	temp := make([]byte, 4)
+	d16 := make([]byte, 0, 2*len(ad.in.Data16))
+	d8 := make([]byte, 0, len(ad.in.Data8))
 
-	for _, sample := range samples {
-		binary.LittleEndian.PutUint32(temp, uint32(sample))
-		d = append(d, temp...)
+	// 8 bit
+	data := make([]byte, 1)
+
+	// 16 bit
+	if b == 16 {
+		data = make([]byte, 2)
 	}
 
-	msg := icd.AudioData{
-		Channels:     &c,
-		FrameLength:  &f,
-		SamplingRate: &s,
-		Audio:        d,
+	if b == 8 {
+		for _, sample := range ad.in.Data8 {
+			data[0] = uint8(sample)
+			d8 = append(d8, data...)
+		}
+	} else if b == 16 {
+		for _, sample := range ad.in.Data16 {
+			binary.LittleEndian.PutUint16(data, uint16(sample))
+			d16 = append(d16, data...)
+		}
+	}
+
+	msg := icd.AudioData{}
+
+	msg.Channels = &c
+	msg.FrameLength = &f
+	msg.SamplingRate = &s
+	msg.Bitrate = &b
+
+	if b == 16 {
+		msg.Audio = d16
+	} else if b == 8 {
+		msg.Audio = d8
 	}
 
 	data, err := proto.Marshal(&msg)

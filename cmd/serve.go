@@ -48,6 +48,7 @@ func init() {
 	serveCmd.PersistentFlags().DurationP("output_latency", "w", time.Millisecond*5, "Output latency")
 	serveCmd.PersistentFlags().StringP("input_channels", "m", "mono", "Input Channels")
 	serveCmd.PersistentFlags().StringP("output_channels", "n", "stereo", "Output Channels")
+	serveCmd.PersistentFlags().IntP("bitrate", "B", 16, "Bitrate")
 	viper.BindPFlag("audio.input_device", serveCmd.PersistentFlags().Lookup("input_device"))
 	viper.BindPFlag("audio.output_device", serveCmd.PersistentFlags().Lookup("output_device"))
 	viper.BindPFlag("audio.samplingrate", serveCmd.PersistentFlags().Lookup("samplingrate"))
@@ -56,4 +57,5 @@ func init() {
 	viper.BindPFlag("audio.output_latency", serveCmd.PersistentFlags().Lookup("output_latency"))
 	viper.BindPFlag("audio.input_channels", serveCmd.PersistentFlags().Lookup("input_channels"))
 	viper.BindPFlag("audio.output_channels", serveCmd.PersistentFlags().Lookup("output_channels"))
+	viper.BindPFlag("audio.bitrate", serveCmd.PersistentFlags().Lookup("bitrate"))
 }

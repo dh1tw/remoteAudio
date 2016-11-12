@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/dh1tw/remoteAudio/events"
 	"github.com/gordonklaus/portaudio"
 	"github.com/spf13/viper"
 )
@@ -15,7 +14,8 @@ func RecorderSync(ad AudioDevice) {
 	portaudio.Initialize()
 	defer portaudio.Terminate()
 
-	in := make([]int32, ad.FramesPerBuffer)
+	ad.in.Data16 = make([]int16, ad.FramesPerBuffer*ad.Channels)
+	ad.in.Data8 = make([]int8, ad.FramesPerBuffer*ad.Channels)
 
 	var deviceInfo *portaudio.DeviceInfo
 	var err error
@@ -46,9 +46,14 @@ func RecorderSync(ad AudioDevice) {
 		SampleRate:      ad.Samplingrate,
 	}
 
-	stream, err := portaudio.OpenStream(
-		streamParm,
-		&in)
+	var stream *portaudio.Stream
+
+	if ad.Bitrate == 16 {
+		stream, err = portaudio.OpenStream(streamParm, &ad.in.Data16)
+
+	} else if ad.Bitrate == 8 {
+		stream, err = portaudio.OpenStream(streamParm, &ad.in.Data8)
+	}
 
 	if err != nil {
 		fmt.Println(err)
@@ -59,8 +64,6 @@ func RecorderSync(ad AudioDevice) {
 	defer stream.Stop()
 
 	stream.Start()
-
-	enableLoopback := false
 
 	for {
 		num, err := stream.AvailableToRead()
@@ -74,8 +77,7 @@ func RecorderSync(ad AudioDevice) {
 			if err != nil {
 				fmt.Println(err)
 			}
-
-			data, err := ad.serializeAudioMsg(in)
+			data, err := ad.serializeAudioMsg()
 			if err != nil {
 				fmt.Println(err)
 			} else {
@@ -84,21 +86,11 @@ func RecorderSync(ad AudioDevice) {
 				msg.Data = data
 				ad.AudioOutCh <- msg
 			}
-
-			if enableLoopback {
-				buf := make([]int32, 0, len(in))
-				for _, sample := range in {
-					buf = append(buf, sample)
-				}
-				msg := AudioMsg{}
-				msg.Raw = buf
-				ad.AudioLoopbackCh <- msg
-			}
 		}
 		select {
-		case ev := <-ad.EventCh:
-			enableLoopback = ev.(events.Event).EnableLoopback
-			fmt.Println("Loopback (Recorder):", enableLoopback)
+		// case ev := <-ad.EventCh:
+		// 	enableLoopback = ev.(events.Event).EnableLoopback
+		// 	fmt.Println("Loopback (Recorder):", enableLoopback)
 		default:
 			time.Sleep(time.Microsecond * 200)
 		}

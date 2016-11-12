@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dh1tw/remoteAudio/events"
 	"github.com/gordonklaus/portaudio"
 )
 
 type AudioMsg struct {
 	Data  []byte
-	Raw   []int32
+	Raw   []int16
 	Topic string
 }
 
@@ -30,7 +29,10 @@ func PlayerSync(ad AudioDevice) {
 	//out doesn't need to be initialized with a fixed buffer size
 	//since the slice will be copied from the incoming data
 	//and will therefore replay any buffer size
-	var out []int32
+	// var out []int16
+
+	ad.out.Data16 = make([]int16, ad.FramesPerBuffer*ad.Channels)
+	ad.out.Data8 = make([]int8, ad.FramesPerBuffer*ad.Channels)
 
 	var deviceInfo *portaudio.DeviceInfo
 	var err error
@@ -61,9 +63,13 @@ func PlayerSync(ad AudioDevice) {
 		SampleRate:      ad.Samplingrate,
 	}
 
-	stream, err := portaudio.OpenStream(
-		streamParm,
-		&out)
+	var stream *portaudio.Stream
+
+	if ad.Bitrate == 8 {
+		stream, err = portaudio.OpenStream(streamParm, ad.out.Data8)
+	} else if ad.Bitrate == 16 {
+		stream, err = portaudio.OpenStream(streamParm, ad.out.Data16)
+	}
 
 	if err != nil {
 		fmt.Println(err)
@@ -74,28 +80,27 @@ func PlayerSync(ad AudioDevice) {
 
 	stream.Start()
 
-	enableLoopback := false
+	// enableLoopback := false
 
 	for {
 		select {
 		case msg := <-ad.AudioInCh:
-			if !enableLoopback {
-				// fmt.Println(stream.Info())
-				data, err := deserializeAudioMsg(msg.Data)
-				if err != nil {
-					fmt.Println(err)
-				} else {
-					out = data.Data
-					stream.Write()
-				}
-			}
-		case echo := <-ad.AudioLoopbackCh:
+			// if !enableLoopback {
 			// fmt.Println(stream.Info())
-			out = echo.Raw
-			stream.Write()
+			err := ad.deserializeAudioMsg(msg.Data)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				stream.Write()
+			}
+			// }
+			// case echo := <-ad.AudioLoopbackCh:
+			// 	// fmt.Println(stream.Info())
+			// 	out = echo.Raw
+			// 	stream.Write()
 
-		case ev := <-ad.EventCh:
-			enableLoopback = ev.(events.Event).EnableLoopback
+			// case ev := <-ad.EventCh:
+			// 	enableLoopback = ev.(events.Event).EnableLoopback
 		}
 	}
 }

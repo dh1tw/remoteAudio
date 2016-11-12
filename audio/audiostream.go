@@ -23,6 +23,7 @@ type AudioStream struct {
 	Direction       int
 	Channels        int
 	Samplingrate    float64
+	Bitrate         int
 	Latency         time.Duration
 	FramesPerBuffer int
 	Device          *portaudio.DeviceInfo
@@ -32,16 +33,17 @@ type AudioStream struct {
 }
 
 type AudioSamples struct {
-	Channels     int32
-	Samplingrate int32
-	Frames       int32
-	Data         []int32
+	Channels     uint32
+	Samplingrate uint32
+	Frames       uint32
+	Bitrate      uint32
+	Data8        []int8
+	Data16       []int16
 }
 
-// Audiodata is an Interface to handle either incoming or outgoing audio data
-type AudioData interface {
-	// Process(StereoSamples)
-	Process([]int32)
+type AudioData struct {
+	Data8  []int8
+	Data16 []int16
 }
 
 // IdentifyDevice checks if the Audio Devices actually exist
