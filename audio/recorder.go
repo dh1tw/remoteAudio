@@ -53,6 +53,9 @@ func RecorderSync(ad AudioDevice) {
 
 	} else if ad.Bitrate == 8 {
 		stream, err = portaudio.OpenStream(streamParm, &ad.in.Data8)
+
+	} else if ad.Bitrate == 32 {
+		stream, err = portaudio.OpenStream(streamParm, &ad.in.Data32)
 	}
 
 	if err != nil {

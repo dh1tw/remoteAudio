@@ -5,5 +5,5 @@ message AudioData{
     optional int32 frame_length = 2;
     optional int32 sampling_rate = 3;
     optional int32 bitrate = 4;
-    optional bytes audio = 5;
+    repeated sint32 audio = 5;
 }
