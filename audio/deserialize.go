@@ -41,14 +41,18 @@ func (ad *AudioDevice) deserializeAudioMsg(data []byte) error {
 	// only accept 8 or 16 bit streams
 	if msg.Bitrate != nil {
 		bitrate = int(msg.GetBitrate())
-		if bitrate != 8 && bitrate != 16 {
+		if bitrate != 8 && bitrate != 16 && bitrate != 32 {
 			return errors.New("incompatible bitrate")
 		}
 	} else {
 		return errors.New("unknown bitrate")
 	}
 
-	ad.out.Data32 = msg.Audio
+	if len(msg.Audio) > 0 {
+		ad.out.Data32 = msg.Audio
+	} else {
+		return errors.New("Audio stream empty")
+	}
 
 	// if bitrate == 8 {
 	// 	if len(msg.Audio) != int(frames*channels) {
