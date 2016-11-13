@@ -14,6 +14,7 @@ func RecorderSync(ad AudioDevice) {
 	portaudio.Initialize()
 	defer portaudio.Terminate()
 
+	ad.in.Data32 = make([]int32, ad.FramesPerBuffer*ad.Channels)
 	ad.in.Data16 = make([]int16, ad.FramesPerBuffer*ad.Channels)
 	ad.in.Data8 = make([]int8, ad.FramesPerBuffer*ad.Channels)
 
