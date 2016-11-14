@@ -51,11 +51,11 @@ func (ad *AudioDevice) deserializeAudioMsg(data []byte) error {
 			fmt.Println("msg length: ", len(msg.Audio), int(frames*channels), frames*channels)
 			return errors.New("audio data does not match frame buffer * channels")
 		}
-	} else if bitrate == 32 {
-		if len(msg.Audio) != int(frames*channels)*4 {
-			fmt.Println("msg length: ", len(msg.Audio), int(frames*channels), frames*channels)
-			return errors.New("audio data does not match frame buffer * channels")
-		}
+		// } else if bitrate == 32 {
+		// 	if len(msg.Audio) != int(frames*channels)*4 {
+		// 		fmt.Println("msg length: ", len(msg.Audio), int(frames*channels), frames*channels)
+		// 		return errors.New("audio data does not match frame buffer * channels")
+		// 	}
 	}
 
 	if float64(samplingrate) != ad.Samplingrate {
