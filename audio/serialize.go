@@ -57,9 +57,20 @@ func (ad *AudioDevice) serializeAudioMsg() ([]byte, error) {
 	msg.Bitrate = &b
 
 	if b == 16 {
-		msg.Audio = d16
+		// msg.Audio = d16
+		buf32 := make([]int32, len(ad.in.Data16))
+		for i, sample := range ad.in.Data16 {
+			buf32[i] = int32(sample)
+		}
+		msg.Audio2 = buf32
+
 	} else if b == 8 {
 		msg.Audio = d8
+		// buf32 := make([]int32, len(ad.in.Data8))
+		// for i, sample := range ad.in.Data8 {
+		// 	buf32[i] = int32(sample)
+		// }
+		// msg.Audio2 = buf32
 	} else if b == 32 {
 		// msg.Audio = d32
 		msg.Audio2 = ad.in.Data32
