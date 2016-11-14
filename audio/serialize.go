@@ -2,6 +2,7 @@ package audio
 
 import (
 	"encoding/binary"
+	"fmt"
 
 	"github.com/dh1tw/remoteAudio/icd"
 	"github.com/golang/protobuf/proto"
@@ -68,6 +69,8 @@ func (ad *AudioDevice) serializeAudioMsg() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println(len(data))
 
 	return data, nil
 }

@@ -62,7 +62,7 @@ func (ad *AudioDevice) deserializeAudioMsg(data []byte) error {
 		return errors.New("unequal sampling rate")
 	}
 
-	if msg.Audio != nil {
+	if msg.Audio != nil || msg.Audio2 != nil {
 		if bitrate == 16 {
 			for i := 0; i < len(msg.Audio)/2; i++ {
 				sample := binary.LittleEndian.Uint16(msg.Audio[i*2 : i*2+2])
@@ -77,8 +77,12 @@ func (ad *AudioDevice) deserializeAudioMsg(data []byte) error {
 			// 	sample := binary.LittleEndian.Uint32(msg.Audio[i*4 : i*4+4])
 			// 	ad.out.Data32[i] = int32(sample)
 			// }
-			ad.out.Data32 = msg.Audio2
+			for i, sample := range msg.Audio2 {
+				ad.out.Data32[i] = sample
+			}
+
 		}
 	}
+
 	return nil
 }
