@@ -14,6 +14,7 @@ func (ad *AudioDevice) serializeAudioMsg() ([]byte, error) {
 	c := int32(ad.Channels)
 	b := int32(ad.Bitrate)
 
+	d32 := make([]byte, 0, 4*len(ad.in.Data32))
 	d16 := make([]byte, 0, 2*len(ad.in.Data16))
 	d8 := make([]byte, 0, len(ad.in.Data8))
 
@@ -25,6 +26,11 @@ func (ad *AudioDevice) serializeAudioMsg() ([]byte, error) {
 		data = make([]byte, 2)
 	}
 
+	// 32 bit
+	if b == 32 {
+		data = make([]byte, 4)
+	}
+
 	if b == 8 {
 		for _, sample := range ad.in.Data8 {
 			data[0] = uint8(sample)
@@ -34,6 +40,11 @@ func (ad *AudioDevice) serializeAudioMsg() ([]byte, error) {
 		for _, sample := range ad.in.Data16 {
 			binary.LittleEndian.PutUint16(data, uint16(sample))
 			d16 = append(d16, data...)
+		}
+	} else if b == 32 {
+		for _, sample := range ad.in.Data32 {
+			binary.LittleEndian.PutUint32(data, uint32(sample))
+			d32 = append(d32, data...)
 		}
 	}
 
@@ -48,6 +59,8 @@ func (ad *AudioDevice) serializeAudioMsg() ([]byte, error) {
 		msg.Audio = d16
 	} else if b == 8 {
 		msg.Audio = d8
+	} else if b == 32 {
+		msg.Audio = d32
 	}
 
 	data, err := proto.Marshal(&msg)

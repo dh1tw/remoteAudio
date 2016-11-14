@@ -34,7 +34,7 @@ func (ad *AudioDevice) deserializeAudioMsg(data []byte) error {
 	// only accept 8 or 16 bit streams
 	if msg.Bitrate != nil {
 		bitrate = int(msg.GetBitrate())
-		if bitrate != 8 && bitrate != 16 {
+		if bitrate != 8 && bitrate != 16 && bitrate != 32 {
 			return errors.New("incompatible bitrate")
 		}
 	} else {
@@ -48,6 +48,11 @@ func (ad *AudioDevice) deserializeAudioMsg(data []byte) error {
 		}
 	} else if bitrate == 16 {
 		if len(msg.Audio) != int(frames*channels)*2 {
+			fmt.Println("msg length: ", len(msg.Audio), int(frames*channels), frames*channels)
+			return errors.New("audio data does not match frame buffer * channels")
+		}
+	} else if bitrate == 32 {
+		if len(msg.Audio) != int(frames*channels)*4 {
 			fmt.Println("msg length: ", len(msg.Audio), int(frames*channels), frames*channels)
 			return errors.New("audio data does not match frame buffer * channels")
 		}
@@ -66,6 +71,11 @@ func (ad *AudioDevice) deserializeAudioMsg(data []byte) error {
 		} else if bitrate == 8 {
 			for i := 0; i < len(msg.Audio); i++ {
 				ad.out.Data8[i] = int8(msg.Audio[i])
+			}
+		} else if bitrate == 32 {
+			for i := 0; i < len(msg.Audio)/4; i++ {
+				sample := binary.LittleEndian.Uint16(msg.Audio[i*4 : i*4+4])
+				ad.out.Data32[i] = int32(sample)
 			}
 		}
 	}
