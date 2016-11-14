@@ -73,10 +73,11 @@ func (ad *AudioDevice) deserializeAudioMsg(data []byte) error {
 				ad.out.Data8[i] = int8(msg.Audio[i])
 			}
 		} else if bitrate == 32 {
-			for i := 0; i < len(msg.Audio)/4; i++ {
-				sample := binary.LittleEndian.Uint32(msg.Audio[i*4 : i*4+4])
-				ad.out.Data32[i] = int32(sample)
-			}
+			// for i := 0; i < len(msg.Audio)/4; i++ {
+			// 	sample := binary.LittleEndian.Uint32(msg.Audio[i*4 : i*4+4])
+			// 	ad.out.Data32[i] = int32(sample)
+			// }
+			ad.out.Data32 = msg.Audio2
 		}
 	}
 	return nil

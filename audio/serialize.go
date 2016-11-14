@@ -60,7 +60,8 @@ func (ad *AudioDevice) serializeAudioMsg() ([]byte, error) {
 	} else if b == 8 {
 		msg.Audio = d8
 	} else if b == 32 {
-		msg.Audio = d32
+		// msg.Audio = d32
+		msg.Audio2 = ad.in.Data32
 	}
 
 	data, err := proto.Marshal(&msg)
