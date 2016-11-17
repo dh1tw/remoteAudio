@@ -14,9 +14,7 @@ func RecorderSync(ad AudioDevice) {
 	portaudio.Initialize()
 	defer portaudio.Terminate()
 
-	ad.in.Data32 = make([]int32, ad.FramesPerBuffer*ad.Channels)
-	ad.in.Data16 = make([]int16, ad.FramesPerBuffer*ad.Channels)
-	ad.in.Data8 = make([]int8, ad.FramesPerBuffer*ad.Channels)
+	ad.in.Data32 = make([]float32, ad.FramesPerBuffer*ad.Channels)
 
 	var deviceInfo *portaudio.DeviceInfo
 	var err error
@@ -49,14 +47,7 @@ func RecorderSync(ad AudioDevice) {
 
 	var stream *portaudio.Stream
 
-	if ad.Bitrate == 16 {
-		stream, err = portaudio.OpenStream(streamParm, &ad.in.Data16)
-
-	} else if ad.Bitrate == 8 {
-		stream, err = portaudio.OpenStream(streamParm, &ad.in.Data8)
-	} else if ad.Bitrate == 32 {
-		stream, err = portaudio.OpenStream(streamParm, &ad.in.Data32)
-	}
+	stream, err = portaudio.OpenStream(streamParm, &ad.in.Data32)
 
 	if err != nil {
 		fmt.Println(err)

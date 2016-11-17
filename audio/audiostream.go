@@ -42,9 +42,7 @@ type AudioSamples struct {
 }
 
 type AudioData struct {
-	Data8  []int8
-	Data16 []int16
-	Data32 []int32
+	Data32 []float32
 }
 
 // IdentifyDevice checks if the Audio Devices actually exist

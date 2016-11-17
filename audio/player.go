@@ -31,9 +31,7 @@ func PlayerSync(ad AudioDevice) {
 	//and will therefore replay any buffer size
 	// var out []int16
 
-	ad.out.Data32 = make([]int32, ad.FramesPerBuffer*ad.Channels)
-	ad.out.Data16 = make([]int16, ad.FramesPerBuffer*ad.Channels)
-	ad.out.Data8 = make([]int8, ad.FramesPerBuffer*ad.Channels)
+	ad.out.Data32 = make([]float32, ad.FramesPerBuffer*ad.Channels)
 
 	var deviceInfo *portaudio.DeviceInfo
 	var err error
@@ -66,13 +64,7 @@ func PlayerSync(ad AudioDevice) {
 
 	var stream *portaudio.Stream
 
-	if ad.Bitrate == 8 {
-		stream, err = portaudio.OpenStream(streamParm, ad.out.Data8)
-	} else if ad.Bitrate == 16 {
-		stream, err = portaudio.OpenStream(streamParm, ad.out.Data16)
-	} else if ad.Bitrate == 32 {
-		stream, err = portaudio.OpenStream(streamParm, ad.out.Data32)
-	}
+	stream, err = portaudio.OpenStream(streamParm, ad.out.Data32)
 
 	if err != nil {
 		fmt.Println(err)

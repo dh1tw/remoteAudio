@@ -67,24 +67,24 @@ func (ad *AudioDevice) deserializeAudioMsg(data []byte) error {
 			// 	sample := binary.LittleEndian.Uint16(msg.Audio[i*2 : i*2+2])
 			// 	ad.out.Data16[i] = int16(sample)
 			// }
-			for i, sample := range msg.Audio2 {
-				ad.out.Data16[i] = int16(sample)
-			}
+			// for i, sample := range msg.Audio2 {
+			// 	ad.out.Data16[i] = int16(sample)
+			// }
 		} else if bitrate == 8 {
 			// for i, sample := range msg.Audio2 {
 			// 	ad.out.Data8[i] = int8(sample)
 			// }
 
-			for i := 0; i < len(msg.Audio); i++ {
-				ad.out.Data8[i] = int8(msg.Audio[i])
-			}
+			// for i := 0; i < len(msg.Audio); i++ {
+			// 	ad.out.Data8[i] = int8(msg.Audio[i])
+			// }
 		} else if bitrate == 32 {
 			// for i := 0; i < len(msg.Audio)/4; i++ {
 			// 	sample := binary.LittleEndian.Uint32(msg.Audio[i*4 : i*4+4])
 			// 	ad.out.Data32[i] = int32(sample)
 			// }
 			for i, sample := range msg.Audio2 {
-				ad.out.Data32[i] = sample
+				ad.out.Data32[i] = float32(sample)/32768
 			}
 
 		}

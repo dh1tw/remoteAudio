@@ -62,8 +62,8 @@ func audioClient() {
 
 	connStatus := pubsub.New(1)
 
-	audioInCh := make(chan audio.AudioMsg)
-	audioOutCh := make(chan audio.AudioMsg)
+	audioInCh := make(chan audio.AudioMsg, 100)
+	audioOutCh := make(chan audio.AudioMsg, 100)
 	audioLoopbackCh := make(chan audio.AudioMsg)
 
 	evPS := pubsub.New(1)
