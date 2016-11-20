@@ -4,22 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	samplerate "github.com/dh1tw/samplerate"
 	"github.com/gordonklaus/portaudio"
 )
-
-type AudioMsg struct {
-	Data  []byte
-	Raw   []int16
-	Topic string
-}
-
-type AudioDevice struct {
-	AudioStream
-	AudioInCh       chan AudioMsg
-	AudioOutCh      chan AudioMsg
-	AudioLoopbackCh chan AudioMsg
-	EventCh         chan interface{}
-}
 
 func PlayerSync(ad AudioDevice) {
 
@@ -29,9 +16,6 @@ func PlayerSync(ad AudioDevice) {
 	//out doesn't need to be initialized with a fixed buffer size
 	//since the slice will be copied from the incoming data
 	//and will therefore replay any buffer size
-	// var out []int16
-
-	ad.out.Data32 = make([]float32, ad.FramesPerBuffer*ad.Channels)
 
 	var deviceInfo *portaudio.DeviceInfo
 	var err error
@@ -64,13 +48,19 @@ func PlayerSync(ad AudioDevice) {
 
 	var stream *portaudio.Stream
 
-	stream, err = portaudio.OpenStream(streamParm, ad.out.Data32)
-
+	stream, err = portaudio.OpenStream(streamParm, &ad.out)
 	if err != nil {
 		fmt.Println(err)
 	}
-
 	defer stream.Close()
+
+	ad.Converter, err = samplerate.New(samplerate.SRC_LINEAR, ad.Channels)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+	defer samplerate.Delete(ad.Converter)
+
 	defer stream.Stop()
 
 	stream.Start()
@@ -82,7 +72,7 @@ func PlayerSync(ad AudioDevice) {
 		case msg := <-ad.AudioInCh:
 			// if !enableLoopback {
 			// fmt.Println(stream.Info())
-			err := ad.deserializeAudioMsg(msg.Data)
+			err := ad.DeserializeAudioMsg(msg.Data)
 			if err != nil {
 				fmt.Println(err)
 			} else {

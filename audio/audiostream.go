@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	samplerate "github.com/dh1tw/samplerate"
 	"github.com/gordonklaus/portaudio"
 )
 
@@ -18,31 +19,44 @@ const (
 	STEREO = 2
 )
 
+var bitMapToInt32 = map[int32]float32{
+	8:  255,
+	16: 32767,
+	32: 2147483647,
+}
+
+var bitMapToFloat32 = map[int]float32{
+	8:  256,
+	16: 32768,
+	32: 2147483648,
+}
+
 type AudioStream struct {
 	DeviceName      string
 	Direction       int
 	Channels        int
 	Samplingrate    float64
-	Bitrate         int
 	Latency         time.Duration
 	FramesPerBuffer int
 	Device          *portaudio.DeviceInfo
 	Stream          *portaudio.Stream
-	out             AudioData
-	in              AudioData
+	Converter       samplerate.Src
+	out             []float32
+	in              []float32
 }
 
-type AudioSamples struct {
-	Channels     uint32
-	Samplingrate uint32
-	Frames       uint32
-	Bitrate      uint32
-	Data8        []int8
-	Data16       []int16
+type AudioMsg struct {
+	Data  []byte
+	Raw   []int16
+	Topic string
 }
 
-type AudioData struct {
-	Data32 []float32
+type AudioDevice struct {
+	AudioStream
+	AudioInCh       chan AudioMsg
+	AudioOutCh      chan AudioMsg
+	AudioLoopbackCh chan AudioMsg
+	EventCh         chan interface{}
 }
 
 // IdentifyDevice checks if the Audio Devices actually exist

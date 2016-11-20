@@ -85,12 +85,11 @@ func audioClient() {
 		AudioLoopbackCh: audioLoopbackCh,
 		EventCh:         evPS.Sub(events.EVENTS),
 		AudioStream: audio.AudioStream{
-			DeviceName:      viper.GetString("audio.output_device"),
-			FramesPerBuffer: viper.GetInt("audio.buffersize"),
-			Samplingrate:    viper.GetFloat64("audio.samplingrate"),
-			Latency:         viper.GetDuration("audio.output_latency"),
-			Bitrate:         viper.GetInt("audio.bitrate"),
-			Channels:        audio.GetChannel(viper.GetString("audio.output_channels")),
+			DeviceName:      viper.GetString("output_device.device_name"),
+			FramesPerBuffer: viper.GetInt("wire.buffersize"),
+			Samplingrate:    viper.GetFloat64("output_device.samplingrate"),
+			Latency:         viper.GetDuration("output_device.latency"),
+			Channels:        audio.GetChannel(viper.GetString("output_device.channels")),
 		},
 	}
 
@@ -100,12 +99,11 @@ func audioClient() {
 		AudioLoopbackCh: audioLoopbackCh,
 		EventCh:         evPS.Sub(events.EVENTS),
 		AudioStream: audio.AudioStream{
-			DeviceName:      viper.GetString("audio.input_device"),
-			FramesPerBuffer: viper.GetInt("audio.buffersize"),
-			Samplingrate:    viper.GetFloat64("audio.samplingrate"),
-			Latency:         viper.GetDuration("audio.input_latency"),
-			Bitrate:         viper.GetInt("audio.bitrate"),
-			Channels:        audio.GetChannel(viper.GetString("audio.input_channels")),
+			DeviceName:      viper.GetString("input_device.device_name"),
+			FramesPerBuffer: viper.GetInt("wire.buffersize"),
+			Samplingrate:    viper.GetFloat64("input_device.samplingrate"),
+			Latency:         viper.GetDuration("input_device.latency"),
+			Channels:        audio.GetChannel(viper.GetString("input_device.channels")),
 		},
 	}
 

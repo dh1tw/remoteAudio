@@ -7,7 +7,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func (ad *AudioDevice) deserializeAudioMsg(data []byte) error {
+func (ad *AudioDevice) DeserializeAudioMsg(data []byte) error {
 
 	msg := icd.AudioData{}
 	err := proto.Unmarshal(data, &msg)
@@ -15,22 +15,24 @@ func (ad *AudioDevice) deserializeAudioMsg(data []byte) error {
 		return err
 	}
 
-	// var channels, samplingrate, bitrate, frames int
-	var samplingrate, bitrate int
+	var samplingrate float64
+	// var channels, bitrate, frames int
+	var channels, bitrate int
 
-	// if msg.Channels != nil {
-	// 	channels = int(msg.GetChannels())
-	// }
+	if msg.Channels != nil {
+		channels = int(msg.GetChannels())
+		channels = channels
+	}
 
 	// if msg.FrameLength != nil {
 	// 	frames = int(msg.GetFrameLength())
 	// }
 
-	if msg.String != nil {
-		samplingrate = int(msg.GetSamplingRate())
+	if msg.SamplingRate != nil {
+		samplingrate = float64(msg.GetSamplingRate())
 	}
 
-	// only accept 8 or 16 bit streams
+	// only accept 8, 16 or 32 bit streams
 	if msg.Bitrate != nil {
 		bitrate = int(msg.GetBitrate())
 		if bitrate != 8 && bitrate != 16 && bitrate != 32 {
@@ -40,54 +42,54 @@ func (ad *AudioDevice) deserializeAudioMsg(data []byte) error {
 		return errors.New("unknown bitrate")
 	}
 
-	if bitrate == 8 {
-		// if len(msg.Audio) != int(frames*channels) {
-		// 	fmt.Println("msg length: ", len(msg.Audio), int(frames*channels), frames*channels)
-		// 	return errors.New("audio data does not match frame buffer * channels")
-		// }
-		// } else if bitrate == 16 {
-		// 	if len(msg.Audio) != int(frames*channels)*2 {
-		// 		fmt.Println("msg length: ", len(msg.Audio), int(frames*channels), frames*channels)
-		// 		return errors.New("audio data does not match frame buffer * channels")
-		// 	}
-		// } else if bitrate == 32 {
-		// 	if len(msg.Audio) != int(frames*channels)*4 {
-		// 		fmt.Println("msg length: ", len(msg.Audio), int(frames*channels), frames*channels)
-		// 		return errors.New("audio data does not match frame buffer * channels")
-		// 	}
+	if len(msg.Audio) == 0 {
+		return errors.New("empty audio buffer")
 	}
 
-	if float64(samplingrate) != ad.Samplingrate {
-		return errors.New("unequal sampling rate")
+	var resampledAudio []float32
+
+	// convert the data to float32 (8bit, 16bit, 32bit)
+	convertedAudio := make([]float32, 0, len(msg.Audio))
+	for _, sample := range msg.Audio {
+		convertedAudio = append(convertedAudio, float32(sample)/bitMapToFloat32[bitrate])
 	}
 
-	if msg.Audio != nil || msg.Audio2 != nil {
-		if bitrate == 16 {
-			// for i := 0; i < len(msg.Audio)/2; i++ {
-			// 	sample := binary.LittleEndian.Uint16(msg.Audio[i*2 : i*2+2])
-			// 	ad.out.Data16[i] = int16(sample)
-			// }
-			// for i, sample := range msg.Audio2 {
-			// 	ad.out.Data16[i] = int16(sample)
-			// }
-		} else if bitrate == 8 {
-			// for i, sample := range msg.Audio2 {
-			// 	ad.out.Data8[i] = int8(sample)
-			// }
+	// if necessary, adjust the channels
+	if channels != ad.Channels {
 
-			// for i := 0; i < len(msg.Audio); i++ {
-			// 	ad.out.Data8[i] = int8(msg.Audio[i])
-			// }
-		} else if bitrate == 32 {
-			// for i := 0; i < len(msg.Audio)/4; i++ {
-			// 	sample := binary.LittleEndian.Uint32(msg.Audio[i*4 : i*4+4])
-			// 	ad.out.Data32[i] = int32(sample)
-			// }
-			for i, sample := range msg.Audio2 {
-				ad.out.Data32[i] = float32(sample)/32768
+		// audio device is STEREO but we received MONO
+		if channels == MONO && ad.Channels == STEREO {
+			expanded := make([]float32, 0, len(convertedAudio)*2)
+			// left channel = right channel
+			for _, sample := range convertedAudio {
+				expanded = append(expanded, sample)
+				expanded = append(expanded, sample)
 			}
+			convertedAudio = expanded
 
+		} else if channels == STEREO && ad.Channels == MONO {
+			// audio device is MONO but we received STEREO
+			reduced := make([]float32, 0, len(convertedAudio)/2)
+			// chop of the right channel
+			for i := 0; i < len(convertedAudio); i += 2 {
+				reduced = append(reduced, convertedAudio[i])
+			}
+			convertedAudio = reduced
 		}
+	}
+
+	// if necessary, resample the audio
+	if samplingrate != ad.Samplingrate {
+
+		ratio := ad.Samplingrate / samplingrate // output samplerate / input samplerate
+
+		resampledAudio, err = ad.Converter.Process(convertedAudio, ratio, false)
+		if err != nil {
+			return err
+		}
+		ad.out = resampledAudio
+	} else {
+		ad.out = convertedAudio
 	}
 
 	return nil

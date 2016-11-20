@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	samplerate "github.com/dh1tw/samplerate"
 	"github.com/gordonklaus/portaudio"
 	"github.com/spf13/viper"
 )
@@ -14,10 +15,10 @@ func RecorderSync(ad AudioDevice) {
 	portaudio.Initialize()
 	defer portaudio.Terminate()
 
-	ad.in.Data32 = make([]float32, ad.FramesPerBuffer*ad.Channels)
-
 	var deviceInfo *portaudio.DeviceInfo
 	var err error
+
+	ad.in = make([]float32, ad.FramesPerBuffer*ad.Channels)
 
 	if ad.DeviceName == "default" {
 		deviceInfo, err = portaudio.DefaultInputDevice()
@@ -47,17 +48,24 @@ func RecorderSync(ad AudioDevice) {
 
 	var stream *portaudio.Stream
 
-	stream, err = portaudio.OpenStream(streamParm, &ad.in.Data32)
+	stream, err = portaudio.OpenStream(streamParm, &ad.in)
 
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
 	}
 
-	defer stream.Close()
 	defer stream.Stop()
 
+	ad.Converter, err = samplerate.New(samplerate.SRC_LINEAR, ad.Channels)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+	defer samplerate.Delete(ad.Converter)
+
 	stream.Start()
+	defer stream.Close()
 
 	for {
 		num, err := stream.AvailableToRead()
@@ -71,7 +79,7 @@ func RecorderSync(ad AudioDevice) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			data, err := ad.serializeAudioMsg()
+			data, err := ad.SerializeAudioMsg()
 			if err != nil {
 				fmt.Println(err)
 			} else {
