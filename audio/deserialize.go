@@ -7,6 +7,9 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// DeserializeAudioMsg deserializes protocol buffers containing audio frames with
+// the corresponding meta data. In case the Audio channels and / or Samplerate
+// doesn't match with the hosts values, both will be converted to match.
 func (ad *AudioDevice) DeserializeAudioMsg(data []byte) error {
 
 	msg := icd.AudioData{}
@@ -16,17 +19,11 @@ func (ad *AudioDevice) DeserializeAudioMsg(data []byte) error {
 	}
 
 	var samplingrate float64
-	// var channels, bitrate, frames int
 	var channels, bitrate int
 
 	if msg.Channels != nil {
 		channels = int(msg.GetChannels())
-		channels = channels
 	}
-
-	// if msg.FrameLength != nil {
-	// 	frames = int(msg.GetFrameLength())
-	// }
 
 	if msg.SamplingRate != nil {
 		samplingrate = float64(msg.GetSamplingRate())
@@ -45,8 +42,6 @@ func (ad *AudioDevice) DeserializeAudioMsg(data []byte) error {
 	if len(msg.Audio) == 0 {
 		return errors.New("empty audio buffer")
 	}
-
-	var resampledAudio []float32
 
 	// convert the data to float32 (8bit, 16bit, 32bit)
 	convertedAudio := make([]float32, 0, len(msg.Audio))
@@ -78,11 +73,11 @@ func (ad *AudioDevice) DeserializeAudioMsg(data []byte) error {
 		}
 	}
 
+	var resampledAudio []float32
+
 	// if necessary, resample the audio
 	if samplingrate != ad.Samplingrate {
-
 		ratio := ad.Samplingrate / samplingrate // output samplerate / input samplerate
-
 		resampledAudio, err = ad.Converter.Process(convertedAudio, ratio, false)
 		if err != nil {
 			return err

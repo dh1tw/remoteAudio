@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	samplerate "github.com/dh1tw/samplerate"
+	"github.com/dh1tw/samplerate"
 	"github.com/gordonklaus/portaudio"
 	"github.com/spf13/viper"
 )
@@ -57,7 +57,7 @@ func RecorderSync(ad AudioDevice) {
 
 	defer stream.Stop()
 
-	ad.Converter, err = samplerate.New(samplerate.SRC_LINEAR, ad.Channels)
+	ad.Converter, err = samplerate.New(samplerate.SRC_LINEAR, ad.Channels, 65536)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(-1)

@@ -54,7 +54,7 @@ func PlayerSync(ad AudioDevice) {
 	}
 	defer stream.Close()
 
-	ad.Converter, err = samplerate.New(samplerate.SRC_LINEAR, ad.Channels)
+	ad.Converter, err = samplerate.New(samplerate.SRC_LINEAR, ad.Channels, 65536)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(-1)

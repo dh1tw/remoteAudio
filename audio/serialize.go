@@ -1,13 +1,14 @@
 package audio
 
 import (
-	"fmt"
-
 	"github.com/dh1tw/remoteAudio/icd"
 	"github.com/golang/protobuf/proto"
 	"github.com/spf13/viper"
 )
 
+// SerializeAudioMsg serializes audio frames in a protocol buffers with the
+// corresponding meta data. The amount of audio channels and sampingrate can
+// be specified.
 func (ad *AudioDevice) SerializeAudioMsg() ([]byte, error) {
 
 	wireSamplingrate := viper.GetFloat64("wire.samplingrate")
@@ -78,7 +79,7 @@ func (ad *AudioDevice) SerializeAudioMsg() ([]byte, error) {
 		return nil, err
 	}
 
-	fmt.Println(len(data))
+	// fmt.Println(len(data))
 
 	return data, nil
 }

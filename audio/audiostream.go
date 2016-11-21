@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	samplerate "github.com/dh1tw/samplerate"
+	"github.com/dh1tw/samplerate"
 	"github.com/gordonklaus/portaudio"
 )
 
@@ -71,6 +71,7 @@ func (as *AudioDevice) IdentifyDevice() error {
 	return errors.New("unknown audio device")
 }
 
+// GetChannel returns the integer representation of channels
 func GetChannel(ch string) int {
 	if strings.ToUpper(ch) == "MONO" {
 		return MONO
