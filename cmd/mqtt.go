@@ -108,7 +108,7 @@ func audioClient() {
 	}
 
 	go audio.PlayerSync(player)
-	go audio.RecorderSync(recorder)
+	go audio.RecorderAsync(recorder)
 
 	go comms.MqttClient(settings)
 

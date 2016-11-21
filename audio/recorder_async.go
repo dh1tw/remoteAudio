@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func RecorderSync(ad AudioDevice) {
+func RecorderAsync(ad AudioDevice) {
 
 	portaudio.Initialize()
 	defer portaudio.Terminate()
@@ -48,7 +48,7 @@ func RecorderSync(ad AudioDevice) {
 
 	var stream *portaudio.Stream
 
-	stream, err = portaudio.OpenStream(streamParm, &ad.in)
+	stream, err = portaudio.OpenStream(streamParm, ad.recordCb)
 
 	if err != nil {
 		fmt.Println(err)
@@ -68,33 +68,18 @@ func RecorderSync(ad AudioDevice) {
 	defer stream.Close()
 
 	for {
-		num, err := stream.AvailableToRead()
+		time.Sleep(time.Second)
+	}
+}
 
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		if num > 0 {
-			err := stream.Read()
-			if err != nil {
-				fmt.Println(err)
-			}
-			data, err := ad.SerializeAudioMsg(ad.in)
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				msg := AudioMsg{}
-				msg.Topic = viper.GetString("mqtt.topic_audio_out")
-				msg.Data = data
-				ad.AudioOutCh <- msg
-			}
-		}
-		select {
-		// case ev := <-ad.EventCh:
-		// 	enableLoopback = ev.(events.Event).EnableLoopback
-		// 	fmt.Println("Loopback (Recorder):", enableLoopback)
-		default:
-			time.Sleep(time.Microsecond * 200)
-		}
+func (ad *AudioDevice) recordCb(in []float32) {
+	data, err := ad.SerializeAudioMsg(in)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		msg := AudioMsg{}
+		msg.Topic = viper.GetString("mqtt.topic_audio_out")
+		msg.Data = data
+		ad.AudioOutCh <- msg
 	}
 }

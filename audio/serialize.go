@@ -9,7 +9,7 @@ import (
 // SerializeAudioMsg serializes audio frames in a protocol buffers with the
 // corresponding meta data. The amount of audio channels and sampingrate can
 // be specified.
-func (ad *AudioDevice) SerializeAudioMsg() ([]byte, error) {
+func (ad *AudioDevice) SerializeAudioMsg(in []float32) ([]byte, error) {
 
 	wireSamplingrate := viper.GetFloat64("wire.samplingrate")
 	wireOutputChannels := GetChannel(viper.GetString("wire.output_channels"))
@@ -27,7 +27,7 @@ func (ad *AudioDevice) SerializeAudioMsg() ([]byte, error) {
 		ratio := wireSamplingrate / ad.Samplingrate // output samplerate / input samplerate
 		var err error
 		// cases: device MONO & output MONO  and device STEREO & output STEREO
-		resampledAudio, err = ad.Converter.Process(ad.in, ratio, false)
+		resampledAudio, err = ad.Converter.Process(in, ratio, false)
 		if err != nil {
 			return nil, err
 		}
@@ -60,8 +60,8 @@ func (ad *AudioDevice) SerializeAudioMsg() ([]byte, error) {
 			audioToWire = append(audioToWire, int32(sample*bitMapToInt32[b]))
 		}
 	} else { // otherwise just take the data from the sound card buffer
-		audioToWire = make([]int32, 0, len(ad.in))
-		for _, sample := range ad.in {
+		audioToWire = make([]int32, 0, len(in))
+		for _, sample := range in {
 			audioToWire = append(audioToWire, int32(sample*bitMapToInt32[b]))
 		}
 	}
