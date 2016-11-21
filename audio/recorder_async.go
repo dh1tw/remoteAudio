@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// RecorderAsync grabs audio asynchronously from an AudioDevice
 func RecorderAsync(ad AudioDevice) {
 
 	portaudio.Initialize()
@@ -72,7 +73,13 @@ func RecorderAsync(ad AudioDevice) {
 	}
 }
 
-func (ad *AudioDevice) recordCb(in []float32) {
+func (ad *AudioDevice) recordCb(in []float32, iTime portaudio.StreamCallbackTimeInfo, iFlags portaudio.StreamCallbackFlags) {
+	switch iFlags {
+	case portaudio.InputUnderflow:
+		fmt.Println("InputUnderflow")
+	case portaudio.InputOverflow:
+		fmt.Println("InputOverflow")
+	}
 	data, err := ad.SerializeAudioMsg(in)
 	if err != nil {
 		fmt.Println(err)

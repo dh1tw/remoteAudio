@@ -38,7 +38,6 @@ var mqttCmd = &cobra.Command{
 	Short: "Stream Audio via MQTT",
 	Long:  `Stream Audio via MQTT`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// TODO: Work your own magic here
 		audioClient()
 	},
 }

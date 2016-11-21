@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// RecorderSync records synchronously Audio from a AudioDevice
 func RecorderSync(ad AudioDevice) {
 
 	portaudio.Initialize()

@@ -31,6 +31,7 @@ var bitMapToFloat32 = map[int]float32{
 	32: 2147483648,
 }
 
+// AudioStream contains the configuration for a portaudio Audiostream
 type AudioStream struct {
 	DeviceName      string
 	Direction       int
@@ -45,12 +46,14 @@ type AudioStream struct {
 	in              []float32
 }
 
+// AudioMsg is a struct for internal communication
 type AudioMsg struct {
 	Data  []byte
-	Raw   []int16
+	Raw   []float32
 	Topic string
 }
 
+// AudioDevice contains the configuration for an Audio Device
 type AudioDevice struct {
 	AudioStream
 	AudioInCh       chan AudioMsg
