@@ -3,7 +3,6 @@ package audio
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/dh1tw/samplerate"
 	"github.com/gordonklaus/portaudio"
@@ -69,7 +68,20 @@ func RecorderAsync(ad AudioDevice) {
 	defer stream.Close()
 
 	for {
-		time.Sleep(time.Second)
+		select {
+		case msg := <-ad.ToSerialize:
+			// serialize the Audio data and send to for
+			// transmission to the comms coroutine
+			data, err := ad.SerializeAudioMsg(msg.Raw)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				msg := AudioMsg{}
+				msg.Topic = viper.GetString("mqtt.topic_audio_out")
+				msg.Data = data
+				ad.ToWire <- msg
+			}
+		}
 	}
 }
 
@@ -80,13 +92,9 @@ func (ad *AudioDevice) recordCb(in []float32, iTime portaudio.StreamCallbackTime
 	case portaudio.InputOverflow:
 		fmt.Println("InputOverflow")
 	}
-	data, err := ad.SerializeAudioMsg(in)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		msg := AudioMsg{}
-		msg.Topic = viper.GetString("mqtt.topic_audio_out")
-		msg.Data = data
-		ad.AudioOutCh <- msg
-	}
+	// keep the callback as short as possible
+	// sent to raw data to another coroutine for serialization
+	msg := AudioMsg{}
+	msg.Raw = in
+	ad.ToSerialize <- msg
 }

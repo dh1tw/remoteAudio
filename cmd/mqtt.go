@@ -61,8 +61,9 @@ func audioClient() {
 
 	connStatus := pubsub.New(1)
 
-	audioInCh := make(chan audio.AudioMsg, 100)
-	audioOutCh := make(chan audio.AudioMsg, 100)
+	toWireCh := make(chan audio.AudioMsg, 10)
+	toSerializeCh := make(chan audio.AudioMsg, 10)
+	toDeserializeCh := make(chan audio.AudioMsg, 10)
 	audioLoopbackCh := make(chan audio.AudioMsg)
 
 	evPS := pubsub.New(1)
@@ -73,14 +74,15 @@ func audioClient() {
 		BrokerPort: viper.GetInt("mqtt.broker_port"),
 		ClientID:   viper.GetString("mqtt.client_id"),
 		Topics:     []string{viper.GetString("mqtt.topic_audio_in")},
-		AudioInCh:  audioInCh,
-		AudioOutCh: audioOutCh,
+		FromWire:   toDeserializeCh,
+		ToWire:     toWireCh,
 		ConnStatus: *connStatus,
 	}
 
 	player := audio.AudioDevice{
-		AudioInCh:       audioInCh,
-		AudioOutCh:      nil,
+		ToWire:          nil,
+		ToSerialize:     nil,
+		ToDeserialize:   toDeserializeCh,
 		AudioLoopbackCh: audioLoopbackCh,
 		EventCh:         evPS.Sub(events.EVENTS),
 		AudioStream: audio.AudioStream{
@@ -93,8 +95,9 @@ func audioClient() {
 	}
 
 	recorder := audio.AudioDevice{
-		AudioInCh:       nil,
-		AudioOutCh:      audioOutCh,
+		ToWire:          toWireCh,
+		ToSerialize:     toSerializeCh,
+		ToDeserialize:   nil,
 		AudioLoopbackCh: audioLoopbackCh,
 		EventCh:         evPS.Sub(events.EVENTS),
 		AudioStream: audio.AudioStream{

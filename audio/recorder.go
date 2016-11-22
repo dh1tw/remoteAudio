@@ -87,7 +87,7 @@ func RecorderSync(ad AudioDevice) {
 				msg := AudioMsg{}
 				msg.Topic = viper.GetString("mqtt.topic_audio_out")
 				msg.Data = data
-				ad.AudioOutCh <- msg
+				ad.ToWire <- msg
 			}
 		}
 		select {

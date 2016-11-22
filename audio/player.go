@@ -69,7 +69,7 @@ func PlayerSync(ad AudioDevice) {
 
 	for {
 		select {
-		case msg := <-ad.AudioInCh:
+		case msg := <-ad.ToDeserialize:
 			// if !enableLoopback {
 			// fmt.Println(stream.Info())
 			err := ad.DeserializeAudioMsg(msg.Data)

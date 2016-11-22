@@ -56,8 +56,9 @@ type AudioMsg struct {
 // AudioDevice contains the configuration for an Audio Device
 type AudioDevice struct {
 	AudioStream
-	AudioInCh       chan AudioMsg
-	AudioOutCh      chan AudioMsg
+	ToSerialize     chan AudioMsg
+	ToWire          chan AudioMsg
+	ToDeserialize   chan AudioMsg
 	AudioLoopbackCh chan AudioMsg
 	EventCh         chan interface{}
 }

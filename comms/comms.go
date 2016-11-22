@@ -16,8 +16,8 @@ type MqttSettings struct {
 	BrokerPort int
 	ClientID   string
 	Topics     []string
-	AudioInCh  chan audio.AudioMsg
-	AudioOutCh chan audio.AudioMsg
+	FromWire   chan audio.AudioMsg
+	ToWire     chan audio.AudioMsg
 	ConnStatus pubsub.PubSub
 }
 
@@ -48,7 +48,7 @@ func MqttClient(s MqttSettings) {
 			Data:  msg.Payload()[:len(msg.Payload())],
 		}
 
-		s.AudioInCh <- audioMsg
+		s.FromWire <- audioMsg
 	}
 
 	var connectionLostHandler = func(client mqtt.Client, err error) {
@@ -91,7 +91,7 @@ func MqttClient(s MqttSettings) {
 
 	for {
 		select {
-		case msg := <-s.AudioOutCh:
+		case msg := <-s.ToWire:
 			token := client.Publish(msg.Topic, 0, false, msg.Data)
 			token.Wait()
 		}
