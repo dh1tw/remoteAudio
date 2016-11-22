@@ -92,9 +92,14 @@ func (ad *AudioDevice) recordCb(in []float32, iTime portaudio.StreamCallbackTime
 	case portaudio.InputOverflow:
 		fmt.Println("InputOverflow")
 	}
+	// a deep copy is necessary, since portaudio reuses the slice "in"
+	buf := make([]float32, len(in))
+	for i, v := range in {
+		buf[i] = v
+	}
 	// keep the callback as short as possible
 	// sent to raw data to another coroutine for serialization
 	msg := AudioMsg{}
-	msg.Raw = in
+	msg.Raw = buf
 	ad.ToSerialize <- msg
 }
