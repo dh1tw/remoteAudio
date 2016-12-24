@@ -30,7 +30,6 @@ import (
 	"github.com/dh1tw/remoteAudio/comms"
 	"github.com/dh1tw/remoteAudio/events"
 	"github.com/gordonklaus/portaudio"
-	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -64,7 +63,7 @@ func init() {
 func audioClient() {
 
 	// defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
-	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+	// defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 	// defer profile.Start(profile.BlockProfile, profile.ProfilePath(".")).Stop()
 
 	go func() {
