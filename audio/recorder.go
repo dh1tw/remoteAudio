@@ -5,21 +5,21 @@ import (
 	"os"
 	"time"
 
+	"github.com/dh1tw/samplerate"
 	"github.com/gordonklaus/portaudio"
 	"github.com/spf13/viper"
 )
 
+// RecorderSync records synchronously Audio from a AudioDevice
 func RecorderSync(ad AudioDevice) {
 
 	portaudio.Initialize()
 	defer portaudio.Terminate()
 
-	ad.in.Data32 = make([]int32, ad.FramesPerBuffer*ad.Channels)
-	ad.in.Data16 = make([]int16, ad.FramesPerBuffer*ad.Channels)
-	ad.in.Data8 = make([]int8, ad.FramesPerBuffer*ad.Channels)
-
 	var deviceInfo *portaudio.DeviceInfo
 	var err error
+
+	ad.in = make([]float32, ad.FramesPerBuffer*ad.Channels)
 
 	if ad.DeviceName == "default" {
 		deviceInfo, err = portaudio.DefaultInputDevice()
@@ -49,25 +49,34 @@ func RecorderSync(ad AudioDevice) {
 
 	var stream *portaudio.Stream
 
-	if ad.Bitrate == 16 {
-		stream, err = portaudio.OpenStream(streamParm, &ad.in.Data16)
-
-	} else if ad.Bitrate == 8 {
-		stream, err = portaudio.OpenStream(streamParm, &ad.in.Data8)
-
-	} else if ad.Bitrate == 32 {
-		stream, err = portaudio.OpenStream(streamParm, &ad.in.Data32)
-	}
+	stream, err = portaudio.OpenStream(streamParm, &ad.in)
 
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
 	}
 
-	defer stream.Close()
 	defer stream.Stop()
 
+	ad.Converter, err = samplerate.New(samplerate.SRC_SINC_BEST_QUALITY, ad.Channels, 65536)
+	//	ad.Converter, err = samplerate.New(samplerate.SRC_SINC_MEDIUM_QUALITY, ad.Channels, 65536)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+	defer samplerate.Delete(ad.Converter)
+
 	stream.Start()
+	defer stream.Close()
+
+	var s serializer
+	s.AudioDevice = &ad
+	s.wireSamplingrate = viper.GetFloat64("wire.samplingrate")
+	s.wireOutputChannels = GetChannel(viper.GetString("wire.output_channels"))
+	s.framesPerBufferI = int32(ad.FramesPerBuffer)
+	s.samplingRateI = int32(s.wireSamplingrate)
+	s.channelsI = int32(s.wireOutputChannels)
+	s.bitrateI = int32(viper.GetInt("wire.bitrate"))
 
 	for {
 		num, err := stream.AvailableToRead()
@@ -81,14 +90,14 @@ func RecorderSync(ad AudioDevice) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			data, err := ad.serializeAudioMsg()
+			data, err := s.SerializeAudioMsg(s.in)
 			if err != nil {
 				fmt.Println(err)
 			} else {
 				msg := AudioMsg{}
 				msg.Topic = viper.GetString("mqtt.topic_audio_out")
 				msg.Data = data
-				ad.AudioOutCh <- msg
+				ad.ToWire <- msg
 			}
 		}
 		select {

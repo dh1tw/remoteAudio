@@ -5,54 +5,84 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func (ad *AudioDevice) serializeAudioMsg() ([]byte, error) {
+// struct will all repetitive variables for serialization of
+// audio packets
+type serializer struct {
+	*AudioDevice
+	wireSamplingrate   float64
+	wireOutputChannels int
+	framesPerBufferI   int32 // framesPerBuffer
+	samplingRateI      int32 // samplingRate
+	channelsI          int32 // output channels
+	bitrateI           int32 // bitrate
+}
 
-	f := int32(ad.FramesPerBuffer)
-	s := int32(ad.Samplingrate)
-	c := int32(ad.Channels)
-	b := int32(ad.Bitrate)
+// SerializeAudioMsg serializes audio frames in a protocol buffers with the
+// corresponding meta data. The amount of audio channels and sampingrate can
+// be specified.
+func (s *serializer) SerializeAudioMsg(in []float32) ([]byte, error) {
 
-	// d := make([]byte, 0, 2*len(ad.in.Data16))
-	// d8 := make([]byte, 0, len(ad.in.Data8))
+	var resampledAudio []float32
+	var audioToWire []int32
 
-	// // 8 bit
-	// data := make([]byte, 1)
+	// if necessary resample the audio and / or adjust the channels
+	if (s.wireSamplingrate != s.Samplingrate) || (s.wireOutputChannels != s.Channels) {
+		ratio := s.wireSamplingrate / s.Samplingrate // output samplerate / input samplerate
+		var err error
+		// cases: device MONO & output MONO  and device STEREO & output STEREO
+		resampledAudio, err = s.Converter.Process(in, ratio, false)
+		if err != nil {
+			return nil, err
+		}
 
-	// // 16 bit
-	// if b == 16 {
-	// 	data = make([]byte, 2)
-	// }
+		// audio device is STEREO but over the wire we want MONO
+		if s.channelsI == MONO && s.Channels == STEREO {
+			reduced := make([]float32, 0, len(resampledAudio)/2)
+			// chop of the right channel
+			for i := 0; i < len(resampledAudio); i += 2 {
+				reduced = append(reduced, resampledAudio[i])
+			}
+			resampledAudio = reduced
+		} else if s.channelsI == STEREO && s.Channels == MONO {
+			// audio device is MONO but over the wire we want STEREO
+			// doesn't make much sense
+			expanded := make([]float32, 0, len(resampledAudio)*2)
+			// left channel = right channel
+			for _, sample := range resampledAudio {
+				expanded = append(expanded, sample)
+				expanded = append(expanded, sample)
+			}
+			resampledAudio = expanded
+		}
+	}
 
-	// if b == 8 {
-	// 	for _, sample := range ad.in.Data8 {
-	// 		data[0] = uint8(sample)
-	// 		d8 = append(d8, data...)
-	// 	}
-	// } else if b == 16 {
-	// 	for _, sample := range ad.in.Data16 {
-	// 		binary.LittleEndian.PutUint16(data, uint16(sample))
-	// 		d16 = append(d16, data...)
-	// 	}
-	// }
+	// convert the data to int32
+	if len(resampledAudio) > 0 { // in case we had to resample
+		audioToWire = make([]int32, 0, len(resampledAudio))
+		for _, sample := range resampledAudio {
+			audioToWire = append(audioToWire, int32(sample*bitMapToInt32[s.bitrateI]))
+		}
+	} else { // otherwise just take the data from the sound card buffer
+		audioToWire = make([]int32, 0, len(in))
+		for _, sample := range in {
+			audioToWire = append(audioToWire, int32(sample*bitMapToInt32[s.bitrateI]))
+		}
+	}
 
 	msg := icd.AudioData{}
 
-	msg.Channels = &c
-	msg.FrameLength = &f
-	msg.SamplingRate = &s
-	msg.Bitrate = &b
-	msg.Audio = ad.in.Data32
-
-	// if b == 16 {
-	// 	msg.Audio = d16
-	// } else if b == 8 {
-	// 	msg.Audio = d8
-	// }
+	msg.Channels = &s.channelsI
+	msg.FrameLength = &s.framesPerBufferI
+	msg.SamplingRate = &s.samplingRateI
+	msg.Bitrate = &s.bitrateI
+	msg.Audio = audioToWire
 
 	data, err := proto.Marshal(&msg)
 	if err != nil {
 		return nil, err
 	}
+
+	// fmt.Println(len(data))
 
 	return data, nil
 }
