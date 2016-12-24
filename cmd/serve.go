@@ -46,11 +46,13 @@ func init() {
 	serveCmd.PersistentFlags().Float64("input_device_sampling_rate", 48000, "Input device sampling rate")
 	serveCmd.PersistentFlags().Duration("input_device_latency", time.Millisecond*5, "Input latency")
 	serveCmd.PersistentFlags().String("input_device_channels", "mono", "Input Channels")
+	serveCmd.PersistentFlags().Int("input_device_quality", 1, "Resampling quality")
 
 	serveCmd.PersistentFlags().StringP("output_device_name", "o", "default", "Output device")
 	serveCmd.PersistentFlags().Float64("output_device_sampling_rate", 48000, "Output device sampling rate")
 	serveCmd.PersistentFlags().Duration("output_device_latency", time.Millisecond*5, "Output latency")
 	serveCmd.PersistentFlags().String("output_device_channels", "stereo", "Output Channels")
+	serveCmd.PersistentFlags().Int("output_device_quality", 1, "Resampling quality")
 
 	serveCmd.PersistentFlags().IntP("buffersize", "b", 1024, "Frames per Buffer")
 	serveCmd.PersistentFlags().Float64P("samplingrate", "s", 16000, "sampling rate on the wire")
@@ -61,11 +63,13 @@ func init() {
 	viper.BindPFlag("input_device.samplingrate", serveCmd.PersistentFlags().Lookup("input_device_sampling_rate"))
 	viper.BindPFlag("input_device.latency", serveCmd.PersistentFlags().Lookup("input_device_latency"))
 	viper.BindPFlag("input_device.channels", serveCmd.PersistentFlags().Lookup("input_device_channels"))
+	viper.BindPFlag("input_device.quality", serveCmd.PersistentFlags().Lookup("input_device_quality"))
 
 	viper.BindPFlag("output_device.device_name", serveCmd.PersistentFlags().Lookup("output_device_name"))
 	viper.BindPFlag("output_device.samplingrate", serveCmd.PersistentFlags().Lookup("output_device_sampling_rate"))
 	viper.BindPFlag("output_device.latency", serveCmd.PersistentFlags().Lookup("output_device_latency"))
 	viper.BindPFlag("output_device.channels", serveCmd.PersistentFlags().Lookup("output_device_channels"))
+	viper.BindPFlag("output_device.quality", serveCmd.PersistentFlags().Lookup("output_device_quality"))
 
 	viper.BindPFlag("wire.samplingrate", serveCmd.PersistentFlags().Lookup("samplingrate"))
 	viper.BindPFlag("wire.bitrate", serveCmd.PersistentFlags().Lookup("bitrate"))

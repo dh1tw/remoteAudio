@@ -61,7 +61,7 @@ func RecorderSync(ad AudioDevice) {
 
 	defer stream.Stop()
 
-	ad.Converter, err = samplerate.New(samplerate.SRC_SINC_BEST_QUALITY, ad.Channels, 65536)
+	ad.Converter, err = samplerate.New(viper.GetInt("input_device.quality"), ad.Channels, 65536)
 	//	ad.Converter, err = samplerate.New(samplerate.SRC_SINC_MEDIUM_QUALITY, ad.Channels, 65536)
 	if err != nil {
 		fmt.Println("unable to create resampler")

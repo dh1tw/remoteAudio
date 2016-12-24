@@ -5,6 +5,7 @@ import (
 
 	samplerate "github.com/dh1tw/samplerate"
 	"github.com/gordonklaus/portaudio"
+	"github.com/spf13/viper"
 )
 
 //PlayerSync plays received audio on a local audio device
@@ -59,7 +60,7 @@ func PlayerSync(ad AudioDevice) {
 	}
 	defer stream.Close()
 
-	ad.Converter, err = samplerate.New(samplerate.SRC_LINEAR, ad.Channels, 65536)
+	ad.Converter, err = samplerate.New(viper.GetInt("output_device.quality"), ad.Channels, 65536)
 	if err != nil {
 		fmt.Println("unable to create resampler")
 		fmt.Println(err)
