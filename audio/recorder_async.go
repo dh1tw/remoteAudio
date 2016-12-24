@@ -2,7 +2,6 @@ package audio
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/dh1tw/samplerate"
 	"github.com/gordonklaus/portaudio"
@@ -23,12 +22,15 @@ func RecorderAsync(ad AudioDevice) {
 	if ad.DeviceName == "default" {
 		deviceInfo, err = portaudio.DefaultInputDevice()
 		if err != nil {
+			fmt.Println("unable to find default recording sound device")
 			fmt.Println(err)
+			return // exit go routine
 		}
 	} else {
 		if err := ad.IdentifyDevice(); err != nil {
+			fmt.Printf("unable to find recording sound device %s\n", ad.DeviceName)
 			fmt.Println(err)
-			os.Exit(-1)
+			return //exit go routine
 		}
 	}
 
@@ -60,20 +62,27 @@ func RecorderAsync(ad AudioDevice) {
 	stream, err = portaudio.OpenStream(streamParm, s.recordCb)
 
 	if err != nil {
+		fmt.Printf("unable to open recording audio stream on device %s\n", ad.DeviceName)
 		fmt.Println(err)
-		os.Exit(-1)
+		return // exit go routine
 	}
 
 	defer stream.Stop()
 
 	ad.Converter, err = samplerate.New(samplerate.SRC_SINC_MEDIUM_QUALITY, ad.Channels, 65536)
 	if err != nil {
+		fmt.Println("unable to create resampler")
 		fmt.Println(err)
-		os.Exit(-1)
+		return // exit go routine
 	}
 	defer samplerate.Delete(ad.Converter)
 
-	stream.Start()
+	if err = stream.Start(); err != nil {
+		fmt.Printf("unable to start recording audio stream on device %s\n", ad.DeviceName)
+		fmt.Println(err)
+		return // exit go routine
+	}
+
 	defer stream.Close()
 
 	mqttTopicAudioOut := viper.GetString("mqtt.topic_audio_out")

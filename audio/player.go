@@ -2,12 +2,12 @@ package audio
 
 import (
 	"fmt"
-	"os"
 
 	samplerate "github.com/dh1tw/samplerate"
 	"github.com/gordonklaus/portaudio"
 )
 
+//PlayerSync plays received audio on a local audio device
 func PlayerSync(ad AudioDevice) {
 
 	portaudio.Initialize()
@@ -23,12 +23,15 @@ func PlayerSync(ad AudioDevice) {
 	if ad.DeviceName == "default" {
 		deviceInfo, err = portaudio.DefaultOutputDevice()
 		if err != nil {
+			fmt.Println("unable to find default playback sound device")
 			fmt.Println(err)
+			return // exit go routine
 		}
 	} else {
 		if err := ad.IdentifyDevice(); err != nil {
+			fmt.Printf("unable to find recording sound device %s\n", ad.DeviceName)
 			fmt.Println(err)
-			os.Exit(-1)
+			return
 		}
 	}
 
@@ -50,21 +53,27 @@ func PlayerSync(ad AudioDevice) {
 
 	stream, err = portaudio.OpenStream(streamParm, &ad.out)
 	if err != nil {
+		fmt.Printf("unable to open playback audio stream on device %s\n", ad.DeviceName)
 		fmt.Println(err)
+		return // exit go routine
 	}
 	defer stream.Close()
 
 	ad.Converter, err = samplerate.New(samplerate.SRC_LINEAR, ad.Channels, 65536)
 	if err != nil {
+		fmt.Println("unable to create resampler")
 		fmt.Println(err)
-		os.Exit(-1)
+		return // exit go routine
 	}
 	defer samplerate.Delete(ad.Converter)
 
+	if err = stream.Start(); err != nil {
+		fmt.Printf("unable to start playback audio stream on device %s\n", ad.DeviceName)
+		fmt.Println(err)
+		return // exit go routine
+	}
+
 	defer stream.Stop()
-
-	stream.Start()
-
 	// enableLoopback := false
 
 	for {
