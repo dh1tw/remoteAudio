@@ -15,6 +15,7 @@ type serializer struct {
 	samplingRateI      int32 // samplingRate
 	channelsI          int32 // output channels
 	bitrateI           int32 // bitrate
+	userID             string
 }
 
 // SerializeAudioMsg serializes audio frames in a protocol buffers with the
@@ -76,6 +77,7 @@ func (s *serializer) SerializeAudioMsg(in []float32) ([]byte, error) {
 	msg.SamplingRate = &s.samplingRateI
 	msg.Bitrate = &s.bitrateI
 	msg.Audio = audioToWire
+	msg.UserId = &s.userID
 
 	data, err := proto.Marshal(&msg)
 	if err != nil {

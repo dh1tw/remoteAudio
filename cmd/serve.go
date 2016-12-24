@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dh1tw/remoteAudio/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -40,6 +41,7 @@ var serveCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(serveCmd)
+
 	serveCmd.PersistentFlags().StringP("input_device_name", "i", "default", "Input device")
 	serveCmd.PersistentFlags().Float64("input_device_sampling_rate", 48000, "Input device sampling rate")
 	serveCmd.PersistentFlags().Duration("input_device_latency", time.Millisecond*5, "Input latency")
@@ -70,4 +72,7 @@ func init() {
 	viper.BindPFlag("wire.buffersize", serveCmd.PersistentFlags().Lookup("buffersize"))
 	viper.BindPFlag("wire.output_channels", serveCmd.PersistentFlags().Lookup("wire_output_channels"))
 
+	if !viper.IsSet("user.user_id") {
+		viper.Set("user.user_id", utils.RandStringRunes(10))
+	}
 }

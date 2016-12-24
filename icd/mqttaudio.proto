@@ -6,4 +6,46 @@ message AudioData{
     optional int32 sampling_rate = 3;
     optional int32 bitrate = 4;
     repeated sint32 audio = 6 [packed=true];
+    optional string user_id = 7;
+}
+
+// message AudioRequest{
+//     optional bool on = 1;
+//     optional string user_id = 2;
+//     optional int32 play_msg = 3;
+//     optional bool cancel_play_msg = 4;
+// }
+
+// message AudioResponse{
+//     optional bool on = 1;
+//     optional STATUS status = 2;
+//     optional string tx_user = 3;
+//     repeated string connected_users = 4;
+//     optional int32 playing_msg = 5;
+//     optional bool cancel_playing_msg = 6;
+// }
+
+// message AudioRecording{
+//     optional string user_id = 1;
+//     optional bytes recording = 2;
+// }
+
+message Error{
+    optional string msg = 1;
+    optional ERROR_LEVEL level = 2;
+    optional string description = 3;
+}
+
+enum STATUS{
+    FAILURE = 1;
+    LIMITED_OPERATIONAL = 2;
+    OPERATIONAL = 3;
+}
+
+enum ERROR_LEVEL{
+    TRACE = 1;
+    DEBUG = 2;
+    INFO = 3;
+    WARNING = 4;
+    ERROR = 5;
 }

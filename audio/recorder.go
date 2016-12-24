@@ -85,6 +85,7 @@ func RecorderSync(ad AudioDevice) {
 	s.samplingRateI = int32(s.wireSamplingrate)
 	s.channelsI = int32(s.wireOutputChannels)
 	s.bitrateI = int32(viper.GetInt("wire.bitrate"))
+	s.userID = string(viper.GetString("user.user_id"))
 
 	for {
 		num, err := stream.AvailableToRead()
