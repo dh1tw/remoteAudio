@@ -48,7 +48,16 @@ func RecorderAsync(ad AudioDevice) {
 
 	var stream *portaudio.Stream
 
-	stream, err = portaudio.OpenStream(streamParm, ad.recordCb)
+	var s serializer
+	s.AudioDevice = &ad
+	s.wireSamplingrate = viper.GetFloat64("wire.samplingrate")
+	s.wireOutputChannels = GetChannel(viper.GetString("wire.output_channels"))
+	s.framesPerBufferI = int32(ad.FramesPerBuffer)
+	s.samplingRateI = int32(s.wireSamplingrate)
+	s.channelsI = int32(s.wireOutputChannels)
+	s.bitrateI = int32(viper.GetInt("wire.bitrate"))
+
+	stream, err = portaudio.OpenStream(streamParm, s.recordCb)
 
 	if err != nil {
 		fmt.Println(err)
@@ -57,7 +66,7 @@ func RecorderAsync(ad AudioDevice) {
 
 	defer stream.Stop()
 
-	ad.Converter, err = samplerate.New(samplerate.SRC_LINEAR, ad.Channels, 65536)
+	ad.Converter, err = samplerate.New(samplerate.SRC_SINC_MEDIUM_QUALITY, ad.Channels, 65536)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
@@ -67,17 +76,19 @@ func RecorderAsync(ad AudioDevice) {
 	stream.Start()
 	defer stream.Close()
 
+	mqttTopicAudioOut := viper.GetString("mqtt.topic_audio_out")
+
 	for {
 		select {
 		case msg := <-ad.ToSerialize:
 			// serialize the Audio data and send to for
 			// transmission to the comms coroutine
-			data, err := ad.SerializeAudioMsg(msg.Raw)
+			data, err := s.SerializeAudioMsg(msg.Raw)
 			if err != nil {
 				fmt.Println(err)
 			} else {
 				msg := AudioMsg{}
-				msg.Topic = viper.GetString("mqtt.topic_audio_out")
+				msg.Topic = mqttTopicAudioOut
 				msg.Data = data
 				ad.ToWire <- msg
 			}

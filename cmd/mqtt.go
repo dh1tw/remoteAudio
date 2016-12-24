@@ -22,14 +22,19 @@ package cmd
 
 import (
 	"fmt"
+	"log"
+	"net/http"
 
 	"github.com/cskr/pubsub"
 	"github.com/dh1tw/remoteAudio/audio"
 	"github.com/dh1tw/remoteAudio/comms"
 	"github.com/dh1tw/remoteAudio/events"
 	"github.com/gordonklaus/portaudio"
+	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	_ "net/http/pprof"
 )
 
 // mqttCmd represents the mqtt command
@@ -57,23 +62,53 @@ func init() {
 }
 
 func audioClient() {
+
+	// defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
+	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+	defer profile.Start(profile.BlockProfile, profile.ProfilePath(".")).Stop()
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	portaudio.Initialize()
 
 	connStatus := pubsub.New(1)
 
-	toWireCh := make(chan audio.AudioMsg, 10)
-	toSerializeCh := make(chan audio.AudioMsg, 10)
+	toWireCh := make(chan audio.AudioMsg, 5)
+	toSerializeCh := make(chan audio.AudioMsg, 5)
 	toDeserializeCh := make(chan audio.AudioMsg, 10)
 	audioLoopbackCh := make(chan audio.AudioMsg)
 
 	evPS := pubsub.New(1)
 
+	// viper settings need to be copied in local variables
+	// since viper lookups allocate of each lookup a copy
+	// and are quite inperformant
+
+	mqttBrokerURL := viper.GetString("mqtt.broker_url")
+	mqttBrokerPort := viper.GetInt("mqtt.broker_port")
+	mqttClientID := viper.GetString("mqtt.client_id")
+	mqttTopics := []string{viper.GetString("mqtt.topic_audio_in")}
+
+	wireBuffersize := viper.GetInt("wire.buffersize")
+
+	outputDeviceDeviceName := viper.GetString("output_device.device_name")
+	outputDeviceSamplingrate := viper.GetFloat64("output_device.samplingrate")
+	outputDeviceLatency := viper.GetDuration("output_device.latency")
+	outputDeviceChannels := viper.GetString("output_device.channels")
+
+	inputDeviceDeviceName := viper.GetString("input_device.device_name")
+	inputDeviceSamplingrate := viper.GetFloat64("input_device.samplingrate")
+	inputDeviceLatency := viper.GetDuration("input_device.latency")
+	inputDeviceChannels := viper.GetString("input_device.channels")
+
 	settings := comms.MqttSettings{
 		Transport:  "tcp",
-		BrokerURL:  viper.GetString("mqtt.broker_url"),
-		BrokerPort: viper.GetInt("mqtt.broker_port"),
-		ClientID:   viper.GetString("mqtt.client_id"),
-		Topics:     []string{viper.GetString("mqtt.topic_audio_in")},
+		BrokerURL:  mqttBrokerURL,
+		BrokerPort: mqttBrokerPort,
+		ClientID:   mqttClientID,
+		Topics:     mqttTopics,
 		FromWire:   toDeserializeCh,
 		ToWire:     toWireCh,
 		ConnStatus: *connStatus,
@@ -86,11 +121,11 @@ func audioClient() {
 		AudioLoopbackCh: audioLoopbackCh,
 		EventCh:         evPS.Sub(events.EVENTS),
 		AudioStream: audio.AudioStream{
-			DeviceName:      viper.GetString("output_device.device_name"),
-			FramesPerBuffer: viper.GetInt("wire.buffersize"),
-			Samplingrate:    viper.GetFloat64("output_device.samplingrate"),
-			Latency:         viper.GetDuration("output_device.latency"),
-			Channels:        audio.GetChannel(viper.GetString("output_device.channels")),
+			DeviceName:      outputDeviceDeviceName,
+			FramesPerBuffer: wireBuffersize,
+			Samplingrate:    outputDeviceSamplingrate,
+			Latency:         outputDeviceLatency,
+			Channels:        audio.GetChannel(outputDeviceChannels),
 		},
 	}
 
@@ -101,11 +136,11 @@ func audioClient() {
 		AudioLoopbackCh: audioLoopbackCh,
 		EventCh:         evPS.Sub(events.EVENTS),
 		AudioStream: audio.AudioStream{
-			DeviceName:      viper.GetString("input_device.device_name"),
-			FramesPerBuffer: viper.GetInt("wire.buffersize"),
-			Samplingrate:    viper.GetFloat64("input_device.samplingrate"),
-			Latency:         viper.GetDuration("input_device.latency"),
-			Channels:        audio.GetChannel(viper.GetString("input_device.channels")),
+			DeviceName:      inputDeviceDeviceName,
+			FramesPerBuffer: wireBuffersize,
+			Samplingrate:    inputDeviceSamplingrate,
+			Latency:         inputDeviceLatency,
+			Channels:        audio.GetChannel(inputDeviceChannels),
 		},
 	}
 

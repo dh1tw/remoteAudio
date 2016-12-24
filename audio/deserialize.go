@@ -29,10 +29,10 @@ func (ad *AudioDevice) DeserializeAudioMsg(data []byte) error {
 		samplingrate = float64(msg.GetSamplingRate())
 	}
 
-	// only accept 8, 16 or 32 bit streams
+	// only accept 8, 12, 16 or 32 bit streams
 	if msg.Bitrate != nil {
 		bitrate = int(msg.GetBitrate())
-		if bitrate != 8 && bitrate != 16 && bitrate != 32 {
+		if bitrate != 8 && bitrate != 12 && bitrate != 16 && bitrate != 32 {
 			return errors.New("incompatible bitrate")
 		}
 	} else {
@@ -43,7 +43,7 @@ func (ad *AudioDevice) DeserializeAudioMsg(data []byte) error {
 		return errors.New("empty audio buffer")
 	}
 
-	// convert the data to float32 (8bit, 16bit, 32bit)
+	// convert the data to float32 (8bit, 12bit, 16bit, 32bit)
 	convertedAudio := make([]float32, 0, len(msg.Audio))
 	for _, sample := range msg.Audio {
 		convertedAudio = append(convertedAudio, float32(sample)/bitMapToFloat32[bitrate])

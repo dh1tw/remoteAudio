@@ -21,12 +21,14 @@ const (
 
 var bitMapToInt32 = map[int32]float32{
 	8:  255,
+	12: 4095,
 	16: 32767,
 	32: 2147483647,
 }
 
 var bitMapToFloat32 = map[int]float32{
 	8:  256,
+	12: 4096,
 	16: 32768,
 	32: 2147483648,
 }

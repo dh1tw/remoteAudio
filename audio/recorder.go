@@ -58,7 +58,8 @@ func RecorderSync(ad AudioDevice) {
 
 	defer stream.Stop()
 
-	ad.Converter, err = samplerate.New(samplerate.SRC_LINEAR, ad.Channels, 65536)
+	ad.Converter, err = samplerate.New(samplerate.SRC_SINC_BEST_QUALITY, ad.Channels, 65536)
+	//	ad.Converter, err = samplerate.New(samplerate.SRC_SINC_MEDIUM_QUALITY, ad.Channels, 65536)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
@@ -67,6 +68,15 @@ func RecorderSync(ad AudioDevice) {
 
 	stream.Start()
 	defer stream.Close()
+
+	var s serializer
+	s.AudioDevice = &ad
+	s.wireSamplingrate = viper.GetFloat64("wire.samplingrate")
+	s.wireOutputChannels = GetChannel(viper.GetString("wire.output_channels"))
+	s.framesPerBufferI = int32(ad.FramesPerBuffer)
+	s.samplingRateI = int32(s.wireSamplingrate)
+	s.channelsI = int32(s.wireOutputChannels)
+	s.bitrateI = int32(viper.GetInt("wire.bitrate"))
 
 	for {
 		num, err := stream.AvailableToRead()
@@ -80,7 +90,7 @@ func RecorderSync(ad AudioDevice) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			data, err := ad.SerializeAudioMsg(ad.in)
+			data, err := s.SerializeAudioMsg(s.in)
 			if err != nil {
 				fmt.Println(err)
 			} else {
