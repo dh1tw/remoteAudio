@@ -1,6 +1,7 @@
 package comms
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -48,7 +49,10 @@ func MqttClient(s MqttSettings) {
 			Data:  msg.Payload()[:len(msg.Payload())],
 		}
 
-		s.FromWire <- audioMsg
+		if len(s.FromWire) < 10 {
+			s.FromWire <- audioMsg
+		}
+		fmt.Println("Input Buffer:", len(s.FromWire))
 	}
 
 	var connectionLostHandler = func(client mqtt.Client, err error) {

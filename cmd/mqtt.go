@@ -74,9 +74,9 @@ func audioClient() {
 
 	connStatus := pubsub.New(1)
 
-	toWireCh := make(chan audio.AudioMsg)
-	toSerializeCh := make(chan audio.AudioMsg)
-	toDeserializeCh := make(chan audio.AudioMsg)
+	toWireCh := make(chan audio.AudioMsg, 10)
+	toSerializeCh := make(chan audio.AudioMsg, 10)
+	toDeserializeCh := make(chan audio.AudioMsg, 10)
 	audioLoopbackCh := make(chan audio.AudioMsg)
 
 	evPS := pubsub.New(1)
