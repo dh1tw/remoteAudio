@@ -70,7 +70,8 @@ func (s *serializer) SerializeAudioMsg(in []float32) ([]byte, error) {
 		}
 	}
 
-	msg := icd.AudioData{}
+	msg := icdAudioDataPool.Get().(*icd.AudioData)
+	defer icdAudioDataPool.Put(msg)
 
 	msg.Channels = &s.channelsI
 	msg.FrameLength = &s.framesPerBufferI
@@ -79,7 +80,7 @@ func (s *serializer) SerializeAudioMsg(in []float32) ([]byte, error) {
 	msg.Audio = audioToWire
 	msg.UserId = &s.userID
 
-	data, err := proto.Marshal(&msg)
+	data, err := proto.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}

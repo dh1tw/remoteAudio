@@ -3,8 +3,10 @@ package audio
 import (
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/dh1tw/remoteAudio/icd"
 	"github.com/dh1tw/samplerate"
 	"github.com/gordonklaus/portaudio"
 )
@@ -85,4 +87,11 @@ func GetChannel(ch string) int {
 		return STEREO
 	}
 	return 0
+}
+
+// Sync Pool for Protocol Buffers Audio objects (to reduce memory allocation / garbage collection for short lived objects)
+var icdAudioDataPool = sync.Pool{
+	New: func() interface{} {
+		return &icd.AudioData{}
+	},
 }

@@ -12,8 +12,10 @@ import (
 // doesn't match with the hosts values, both will be converted to match.
 func (ad *AudioDevice) DeserializeAudioMsg(data []byte) error {
 
-	msg := icd.AudioData{}
-	err := proto.Unmarshal(data, &msg)
+	msg := icdAudioDataPool.Get().(*icd.AudioData)
+	defer icdAudioDataPool.Put(msg)
+
+	err := proto.Unmarshal(data, msg)
 	if err != nil {
 		return err
 	}
