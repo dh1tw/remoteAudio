@@ -51,6 +51,7 @@ func MqttClient(s MqttSettings) {
 
 		if len(s.FromWire) < s.InputBufferLength {
 			s.FromWire <- audioMsg
+		} else {
 			log.Println("mqtt buffer overflow")
 		}
 	}
