@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/dh1tw/remoteAudio/icd"
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 // DeserializeAudioMsg deserializes protocol buffers containing audio frames with

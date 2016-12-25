@@ -2,7 +2,7 @@ package audio
 
 import (
 	"github.com/dh1tw/remoteAudio/icd"
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 // struct will all repetitive variables for serialization of

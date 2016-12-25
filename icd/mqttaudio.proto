@@ -1,3 +1,5 @@
+syntax = "proto2";
+
 package icd;
 
 message AudioData{
@@ -30,22 +32,22 @@ message AudioData{
 //     optional bytes recording = 2;
 // }
 
-message Error{
-    optional string msg = 1;
-    optional ERROR_LEVEL level = 2;
-    optional string description = 3;
-}
+// message Error{
+//     optional string msg = 1;
+//     optional ERROR_LEVEL level = 2;
+//     optional string description = 3;
+// }
 
-enum STATUS{
-    FAILURE = 1;
-    LIMITED_OPERATIONAL = 2;
-    OPERATIONAL = 3;
-}
+// enum STATUS{
+//     FAILURE = 1;
+//     LIMITED_OPERATIONAL = 2;
+//     OPERATIONAL = 3;
+// }
 
-enum ERROR_LEVEL{
-    TRACE = 1;
-    DEBUG = 2;
-    INFO = 3;
-    WARNING = 4;
-    ERROR = 5;
-}
+// enum ERROR_LEVEL{
+//     TRACE = 1;
+//     DEBUG = 2;
+//     INFO = 3;
+//     WARNING = 4;
+//     ERROR = 5;
+// }
