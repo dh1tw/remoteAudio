@@ -70,17 +70,6 @@ func audioClient() {
 		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
 	}()
 
-	portaudio.Initialize()
-
-	connStatus := pubsub.New(1)
-
-	toWireCh := make(chan audio.AudioMsg, 10)
-	toSerializeCh := make(chan audio.AudioMsg, 10)
-	toDeserializeCh := make(chan audio.AudioMsg, 10)
-	audioLoopbackCh := make(chan audio.AudioMsg)
-
-	evPS := pubsub.New(1)
-
 	// viper settings need to be copied in local variables
 	// since viper lookups allocate of each lookup a copy
 	// and are quite inperformant
@@ -91,6 +80,7 @@ func audioClient() {
 	mqttTopics := []string{viper.GetString("mqtt.topic_audio_in")}
 
 	wireBuffersize := viper.GetInt("wire.buffersize")
+	wireInputBufferLength := viper.GetInt("wire.buffer_length")
 
 	outputDeviceDeviceName := viper.GetString("output_device.device_name")
 	outputDeviceSamplingrate := viper.GetFloat64("output_device.samplingrate")
@@ -102,15 +92,27 @@ func audioClient() {
 	inputDeviceLatency := viper.GetDuration("input_device.latency")
 	inputDeviceChannels := viper.GetString("input_device.channels")
 
+	portaudio.Initialize()
+
+	connStatus := pubsub.New(1)
+
+	toWireCh := make(chan audio.AudioMsg, 20)
+	toSerializeCh := make(chan audio.AudioMsg, 20)
+	toDeserializeCh := make(chan audio.AudioMsg, wireInputBufferLength)
+	audioLoopbackCh := make(chan audio.AudioMsg)
+
+	evPS := pubsub.New(1)
+
 	settings := comms.MqttSettings{
-		Transport:  "tcp",
-		BrokerURL:  mqttBrokerURL,
-		BrokerPort: mqttBrokerPort,
-		ClientID:   mqttClientID,
-		Topics:     mqttTopics,
-		FromWire:   toDeserializeCh,
-		ToWire:     toWireCh,
-		ConnStatus: *connStatus,
+		Transport:         "tcp",
+		BrokerURL:         mqttBrokerURL,
+		BrokerPort:        mqttBrokerPort,
+		ClientID:          mqttClientID,
+		Topics:            mqttTopics,
+		FromWire:          toDeserializeCh,
+		ToWire:            toWireCh,
+		ConnStatus:        *connStatus,
+		InputBufferLength: wireInputBufferLength,
 	}
 
 	player := audio.AudioDevice{

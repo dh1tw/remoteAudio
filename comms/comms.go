@@ -1,7 +1,6 @@
 package comms
 
 import (
-	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -12,14 +11,15 @@ import (
 )
 
 type MqttSettings struct {
-	Transport  string
-	BrokerURL  string
-	BrokerPort int
-	ClientID   string
-	Topics     []string
-	FromWire   chan audio.AudioMsg
-	ToWire     chan audio.AudioMsg
-	ConnStatus pubsub.PubSub
+	Transport         string
+	BrokerURL         string
+	BrokerPort        int
+	ClientID          string
+	Topics            []string
+	FromWire          chan audio.AudioMsg
+	ToWire            chan audio.AudioMsg
+	ConnStatus        pubsub.PubSub
+	InputBufferLength int
 }
 
 const (
@@ -49,10 +49,10 @@ func MqttClient(s MqttSettings) {
 			Data:  msg.Payload()[:len(msg.Payload())],
 		}
 
-		if len(s.FromWire) < 10 {
+		if len(s.FromWire) < s.InputBufferLength {
 			s.FromWire <- audioMsg
+			log.Println("mqtt buffer overflow")
 		}
-		fmt.Println("Input Buffer:", len(s.FromWire))
 	}
 
 	var connectionLostHandler = func(client mqtt.Client, err error) {

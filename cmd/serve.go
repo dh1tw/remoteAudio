@@ -58,6 +58,7 @@ func init() {
 	serveCmd.PersistentFlags().Float64P("samplingrate", "s", 16000, "sampling rate on the wire")
 	serveCmd.PersistentFlags().IntP("bitrate", "B", 16, "Bitrate used on the wire")
 	serveCmd.PersistentFlags().String("wire_output_channels", "stereo", "Audio Channels send over the wire")
+	serveCmd.PersistentFlags().Int("wire_buffer_length", 10, "Buffer length (in Samples) for incoming Audio packets")
 
 	viper.BindPFlag("input_device.device_name", serveCmd.PersistentFlags().Lookup("input_device_name"))
 	viper.BindPFlag("input_device.samplingrate", serveCmd.PersistentFlags().Lookup("input_device_sampling_rate"))
@@ -75,6 +76,7 @@ func init() {
 	viper.BindPFlag("wire.bitrate", serveCmd.PersistentFlags().Lookup("bitrate"))
 	viper.BindPFlag("wire.buffersize", serveCmd.PersistentFlags().Lookup("buffersize"))
 	viper.BindPFlag("wire.output_channels", serveCmd.PersistentFlags().Lookup("wire_output_channels"))
+	viper.BindPFlag("wire.buffer_length", serveCmd.PersistentFlags().Lookup("wire_buffer_length"))
 
 	if !viper.IsSet("user.user_id") {
 		viper.Set("user.user_id", utils.RandStringRunes(10))
