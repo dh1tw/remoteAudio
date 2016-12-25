@@ -67,16 +67,16 @@ func audioClient() {
 	// defer profile.Start(profile.BlockProfile, profile.ProfilePath(".")).Stop()
 
 	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
+		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
 	}()
 
 	portaudio.Initialize()
 
 	connStatus := pubsub.New(1)
 
-	toWireCh := make(chan audio.AudioMsg, 5)
-	toSerializeCh := make(chan audio.AudioMsg, 5)
-	toDeserializeCh := make(chan audio.AudioMsg, 10)
+	toWireCh := make(chan audio.AudioMsg)
+	toSerializeCh := make(chan audio.AudioMsg)
+	toDeserializeCh := make(chan audio.AudioMsg)
 	audioLoopbackCh := make(chan audio.AudioMsg)
 
 	evPS := pubsub.New(1)
