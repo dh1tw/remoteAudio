@@ -107,10 +107,9 @@ func RecorderAsync(ad AudioDevice) {
 
 func (ad *AudioDevice) recordCb(in []float32, iTime portaudio.StreamCallbackTimeInfo, iFlags portaudio.StreamCallbackFlags) {
 	switch iFlags {
-	case portaudio.InputUnderflow:
-		fmt.Println("InputUnderflow")
 	case portaudio.InputOverflow:
 		fmt.Println("InputOverflow")
+		return // data was lost (to be confirmed)
 	}
 	// a deep copy is necessary, since portaudio reuses the slice "in"
 	buf := make([]float32, len(in))
