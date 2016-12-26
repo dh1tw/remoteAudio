@@ -2,3 +2,4 @@
 *.pprof
 launch.json
 *.svg
+/icd_gen
