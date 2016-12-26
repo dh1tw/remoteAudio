@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dh1tw/gosamplerate"
 	"github.com/dh1tw/remoteAudio/icd"
-	"github.com/dh1tw/samplerate"
 	"github.com/gordonklaus/portaudio"
 )
 
@@ -45,7 +45,7 @@ type AudioStream struct {
 	FramesPerBuffer int
 	Device          *portaudio.DeviceInfo
 	Stream          *portaudio.Stream
-	Converter       samplerate.Src
+	Converter       gosamplerate.Src
 	out             []float32
 	in              []float32
 }

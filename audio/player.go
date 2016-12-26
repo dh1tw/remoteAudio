@@ -3,7 +3,7 @@ package audio
 import (
 	"fmt"
 
-	samplerate "github.com/dh1tw/samplerate"
+	"github.com/dh1tw/gosamplerate"
 	"github.com/gordonklaus/portaudio"
 	"github.com/spf13/viper"
 )
@@ -60,13 +60,13 @@ func PlayerSync(ad AudioDevice) {
 	}
 	defer stream.Close()
 
-	ad.Converter, err = samplerate.New(viper.GetInt("output_device.quality"), ad.Channels, 65536)
+	ad.Converter, err = gosamplerate.New(viper.GetInt("output_device.quality"), ad.Channels, 65536)
 	if err != nil {
 		fmt.Println("unable to create resampler")
 		fmt.Println(err)
 		return // exit go routine
 	}
-	defer samplerate.Delete(ad.Converter)
+	defer gosamplerate.Delete(ad.Converter)
 
 	if err = stream.Start(); err != nil {
 		fmt.Printf("unable to start playback audio stream on device %s\n", ad.DeviceName)

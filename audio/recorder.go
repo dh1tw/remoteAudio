@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dh1tw/samplerate"
+	"github.com/dh1tw/gosamplerate"
 	"github.com/gordonklaus/portaudio"
 	"github.com/spf13/viper"
 )
@@ -61,14 +61,14 @@ func RecorderSync(ad AudioDevice) {
 
 	defer stream.Stop()
 
-	ad.Converter, err = samplerate.New(viper.GetInt("input_device.quality"), ad.Channels, 65536)
-	//	ad.Converter, err = samplerate.New(samplerate.SRC_SINC_MEDIUM_QUALITY, ad.Channels, 65536)
+	ad.Converter, err = gosamplerate.New(viper.GetInt("input_device.quality"), ad.Channels, 65536)
+	//	ad.Converter, err = gosamplerate.New(gosamplerate.SRC_SINC_MEDIUM_QUALITY, ad.Channels, 65536)
 	if err != nil {
 		fmt.Println("unable to create resampler")
 		fmt.Println(err)
 		return // exit go routine
 	}
-	defer samplerate.Delete(ad.Converter)
+	defer gosamplerate.Delete(ad.Converter)
 
 	if err = stream.Start(); err != nil {
 		fmt.Printf("unable to start recording audio stream on device %s\n", ad.DeviceName)
