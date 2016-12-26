@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dh1tw/gosamplerate"
-	"github.com/dh1tw/remoteAudio/icd"
+	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 	"github.com/gordonklaus/portaudio"
 )
 
@@ -90,8 +90,8 @@ func GetChannel(ch string) int {
 }
 
 // Sync Pool for Protocol Buffers Audio objects (to reduce memory allocation / garbage collection for short lived objects)
-var icdAudioDataPool = sync.Pool{
+var sbAudioDataPool = sync.Pool{
 	New: func() interface{} {
-		return &icd.AudioData{}
+		return &sbAudio.AudioData{}
 	},
 }

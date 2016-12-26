@@ -3,7 +3,7 @@ package audio
 import (
 	"errors"
 
-	"github.com/dh1tw/remoteAudio/icd"
+	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -12,8 +12,8 @@ import (
 // doesn't match with the hosts values, both will be converted to match.
 func (ad *AudioDevice) DeserializeAudioMsg(data []byte) error {
 
-	msg := icdAudioDataPool.Get().(*icd.AudioData)
-	defer icdAudioDataPool.Put(msg)
+	msg := sbAudioDataPool.Get().(*sbAudio.AudioData)
+	defer sbAudioDataPool.Put(msg)
 
 	err := proto.Unmarshal(data, msg)
 	if err != nil {
@@ -23,22 +23,21 @@ func (ad *AudioDevice) DeserializeAudioMsg(data []byte) error {
 	var samplingrate float64
 	var channels, bitrate int
 
-	if msg.Channels != nil {
-		channels = int(msg.GetChannels())
+	channels = int(msg.GetChannels())
+	if channels == 0 {
+		return errors.New("invalid amount of channels")
 	}
 
-	if msg.SamplingRate != nil {
-		samplingrate = float64(msg.GetSamplingRate())
+	samplingrate = float64(msg.GetSamplingRate())
+	if samplingrate == 0 {
+		return errors.New("invalid samplerate")
 	}
 
 	// only accept 8, 12, 16 or 32 bit streams
-	if msg.Bitrate != nil {
-		bitrate = int(msg.GetBitrate())
-		if bitrate != 8 && bitrate != 12 && bitrate != 16 && bitrate != 32 {
-			return errors.New("incompatible bitrate")
-		}
-	} else {
-		return errors.New("unknown bitrate")
+	bitrate = int(msg.GetBitrate())
+
+	if bitrate != 8 && bitrate != 12 && bitrate != 16 && bitrate != 32 {
+		return errors.New("incompatible bitrate")
 	}
 
 	if len(msg.Audio) == 0 {

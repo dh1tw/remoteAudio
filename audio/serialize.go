@@ -1,9 +1,7 @@
 package audio
 
-import (
-	"github.com/dh1tw/remoteAudio/icd"
-	"github.com/gogo/protobuf/proto"
-)
+import "github.com/gogo/protobuf/proto"
+import sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 
 // struct will all repetitive variables for serialization of
 // audio packets
@@ -70,15 +68,15 @@ func (s *serializer) SerializeAudioMsg(in []float32) ([]byte, error) {
 		}
 	}
 
-	msg := icdAudioDataPool.Get().(*icd.AudioData)
-	defer icdAudioDataPool.Put(msg)
+	msg := sbAudioDataPool.Get().(*sbAudio.AudioData)
+	defer sbAudioDataPool.Put(msg)
 
-	msg.Channels = &s.channelsI
-	msg.FrameLength = &s.framesPerBufferI
-	msg.SamplingRate = &s.samplingRateI
-	msg.Bitrate = &s.bitrateI
+	msg.Channels = s.channelsI
+	msg.FrameLength = s.framesPerBufferI
+	msg.SamplingRate = s.samplingRateI
+	msg.Bitrate = s.bitrateI
 	msg.Audio = audioToWire
-	msg.UserId = &s.userID
+	msg.UserId = s.userID
 
 	data, err := proto.Marshal(msg)
 	if err != nil {
