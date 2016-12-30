@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dh1tw/gosamplerate"
+	"github.com/dh1tw/opus"
 	"github.com/gordonklaus/portaudio"
 	"github.com/spf13/viper"
 )
@@ -52,12 +53,52 @@ func RecorderAsync(ad AudioDevice) {
 
 	var s serializer
 	s.AudioDevice = &ad
-	s.wireSamplingrate = viper.GetFloat64("wire.samplingrate")
-	s.wireOutputChannels = GetChannel(viper.GetString("wire.output_channels"))
-	s.framesPerBufferI = int32(ad.FramesPerBuffer)
-	s.samplingRateI = int32(s.wireSamplingrate)
-	s.channelsI = int32(s.wireOutputChannels)
-	s.bitrateI = int32(viper.GetInt("wire.bitrate"))
+	s.pcmSamplingrate = int32(viper.GetFloat64("pcm.samplingrate"))
+	s.pcmBufferSize = int32(ad.FramesPerBuffer)
+	s.pcmChannels = int32(GetChannel(viper.GetString("pcm.channels")))
+	s.pcmBitDepth = int32(viper.GetInt("pcm.bitdepth"))
+
+	app, err := GetOpusApplication(viper.GetString("opus.application"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// initialize Opus Encoder
+
+	opusEncoder, err := opus.NewEncoder(int(ad.Samplingrate), ad.Channels,
+		app)
+	if err != nil || opusEncoder == nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = opusEncoder.SetBitrate(viper.GetInt("opus.bitrate"))
+	if err != nil {
+		fmt.Println("invalid Opus bitrate", err)
+		return
+	}
+
+	err = opusEncoder.SetComplexity(viper.GetInt("opus.complexity"))
+	if err != nil {
+		fmt.Println("invalid Opus complexity value", err)
+		return
+	}
+
+	maxBw, err := GetOpusMaxBandwith(viper.GetString("opus.max_bandwidth"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = opusEncoder.SetMaxBandwidth(maxBw)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	s.opusEncoder = opusEncoder
+	s.opusBuffer = make([]byte, 520000)
 
 	stream, err = portaudio.OpenStream(streamParm, s.recordCb)
 
@@ -85,6 +126,12 @@ func RecorderAsync(ad AudioDevice) {
 
 	defer stream.Close()
 
+	codec, err := GetCodec(viper.GetString("audio.codec"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	mqttTopicAudioOut := viper.GetString("mqtt.topic_audio_out")
 
 	for {
@@ -92,7 +139,13 @@ func RecorderAsync(ad AudioDevice) {
 		case msg := <-ad.ToSerialize:
 			// serialize the Audio data and send to for
 			// transmission to the comms coroutine
-			data, err := s.SerializeAudioMsg(msg.Raw)
+			var data []byte
+			var err error
+			if codec == OPUS {
+				data, err = s.SerializeOpusAudioMsg(msg.Raw)
+			} else if codec == PCM {
+				data, err = s.SerializePCMAudioMsg(msg.Raw)
+			}
 			if err != nil {
 				fmt.Println(err)
 			} else {

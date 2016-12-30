@@ -67,7 +67,7 @@ func audioClient() {
 	// defer profile.Start(profile.BlockProfile, profile.ProfilePath(".")).Stop()
 
 	go func() {
-		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
 	// viper settings need to be copied in local variables
@@ -79,8 +79,8 @@ func audioClient() {
 	mqttClientID := viper.GetString("mqtt.client_id")
 	mqttTopics := []string{viper.GetString("mqtt.topic_audio_in")}
 
-	wireBuffersize := viper.GetInt("wire.buffersize")
-	wireInputBufferLength := viper.GetInt("wire.buffer_length")
+	audioFrameLength := viper.GetInt("audio.frame_length")
+	rxBufferLength := viper.GetInt("audio.rx_buffer_length")
 
 	outputDeviceDeviceName := viper.GetString("output_device.device_name")
 	outputDeviceSamplingrate := viper.GetFloat64("output_device.samplingrate")
@@ -98,7 +98,7 @@ func audioClient() {
 
 	toWireCh := make(chan audio.AudioMsg, 20)
 	toSerializeCh := make(chan audio.AudioMsg, 20)
-	toDeserializeCh := make(chan audio.AudioMsg, wireInputBufferLength)
+	toDeserializeCh := make(chan audio.AudioMsg, rxBufferLength)
 	audioLoopbackCh := make(chan audio.AudioMsg)
 
 	evPS := pubsub.New(1)
@@ -112,7 +112,7 @@ func audioClient() {
 		FromWire:          toDeserializeCh,
 		ToWire:            toWireCh,
 		ConnStatus:        *connStatus,
-		InputBufferLength: wireInputBufferLength,
+		InputBufferLength: rxBufferLength,
 	}
 
 	player := audio.AudioDevice{
@@ -123,7 +123,7 @@ func audioClient() {
 		EventCh:         evPS.Sub(events.EVENTS),
 		AudioStream: audio.AudioStream{
 			DeviceName:      outputDeviceDeviceName,
-			FramesPerBuffer: wireBuffersize,
+			FramesPerBuffer: audioFrameLength,
 			Samplingrate:    outputDeviceSamplingrate,
 			Latency:         outputDeviceLatency,
 			Channels:        audio.GetChannel(outputDeviceChannels),
@@ -138,7 +138,7 @@ func audioClient() {
 		EventCh:         evPS.Sub(events.EVENTS),
 		AudioStream: audio.AudioStream{
 			DeviceName:      inputDeviceDeviceName,
-			FramesPerBuffer: wireBuffersize,
+			FramesPerBuffer: audioFrameLength,
 			Samplingrate:    inputDeviceSamplingrate,
 			Latency:         inputDeviceLatency,
 			Channels:        audio.GetChannel(inputDeviceChannels),
