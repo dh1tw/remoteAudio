@@ -7,6 +7,7 @@ import (
 	"github.com/dh1tw/opus"
 	"github.com/gordonklaus/portaudio"
 	"github.com/spf13/viper"
+	ringBuffer "github.com/zfjagann/golang-ring"
 )
 
 //PlayerSync plays received audio on a local audio device
@@ -94,16 +95,24 @@ func PlayerSync(ad AudioDevice) {
 
 	d.opusBuffer = make([]float32, 100000)
 
+	r := ringBuffer.Ring{}
+	r.SetCapacity(10)
+
 	for {
 		select {
 		case <-ad.EventCh:
 			// TBD
 		case msg := <-ad.ToDeserialize:
-			err := d.DeserializeAudioMsg(msg.Data)
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				stream.Write()
+			r.Enqueue(msg.Data)
+		default:
+			data := r.Dequeue()
+			if data != nil {
+				err := d.DeserializeAudioMsg(data.([]byte))
+				if err != nil {
+					fmt.Println(err)
+				} else {
+					stream.Write()
+				}
 			}
 		}
 	}

@@ -49,11 +49,13 @@ func MqttClient(s MqttSettings) {
 			Data:  msg.Payload()[:len(msg.Payload())],
 		}
 
-		if len(s.FromWire) < s.InputBufferLength {
-			s.FromWire <- audioMsg
-		} else {
-			log.Println("mqtt buffer overflow")
-		}
+		s.FromWire <- audioMsg
+
+		// if len(s.FromWire) < s.InputBufferLength {
+		// 	s.FromWire <- audioMsg
+		// } else {
+		// 	log.Println("mqtt buffer overflow")
+		// }
 	}
 
 	var connectionLostHandler = func(client mqtt.Client, err error) {
