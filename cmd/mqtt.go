@@ -163,8 +163,7 @@ func audioClient() {
 		select {
 		case status := <-connectionStatusCh:
 			fmt.Println(status)
-		case event := <-eventsCh:
-			fmt.Println(event)
+		case <-eventsCh:
 		}
 	}
 }

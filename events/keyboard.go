@@ -2,6 +2,7 @@ package events
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 
 	"github.com/cskr/pubsub"
@@ -12,8 +13,7 @@ const (
 )
 
 type Event struct {
-	EnableLoopback bool
-	Echo           bool
+	SendAudio bool
 }
 
 type EventsConf struct {
@@ -22,16 +22,19 @@ type EventsConf struct {
 
 func CaptureKeyboard(conf EventsConf) {
 
-	enableLoopback := false
+	ptt := false
 
+	scanner := bufio.NewScanner(os.Stdin)
 	for {
-		scanner := bufio.NewScanner(os.Stdin)
 		if scanner.Scan() {
-			if scanner.Text() == "m" {
-				enableLoopback = !enableLoopback
+			if scanner.Text() == "p" {
+				ptt = !ptt
 				ev := Event{}
-				ev.EnableLoopback = enableLoopback
+				ev.SendAudio = ptt
 				conf.EventsPubSub.Pub(ev, EVENTS)
+				fmt.Println("keyboard - ptt:", ptt)
+			} else {
+				fmt.Println("keyboard input:", scanner.Text())
 			}
 		}
 	}

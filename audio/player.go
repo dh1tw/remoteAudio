@@ -96,23 +96,15 @@ func PlayerSync(ad AudioDevice) {
 
 	for {
 		select {
+		case <-ad.EventCh:
+			// TBD
 		case msg := <-ad.ToDeserialize:
-			// if !enableLoopback {
-			// fmt.Println(stream.Info())
 			err := d.DeserializeAudioMsg(msg.Data)
 			if err != nil {
 				fmt.Println(err)
 			} else {
 				stream.Write()
 			}
-			// }
-			// case echo := <-ad.AudioLoopbackCh:
-			// 	// fmt.Println(stream.Info())
-			// 	out = echo.Raw
-			// 	stream.Write()
-
-			// case ev := <-ad.EventCh:
-			// 	enableLoopback = ev.(events.Event).EnableLoopback
 		}
 	}
 }

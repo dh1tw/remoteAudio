@@ -5,6 +5,7 @@ import (
 
 	"github.com/dh1tw/gosamplerate"
 	"github.com/dh1tw/opus"
+	"github.com/dh1tw/remoteAudio/events"
 	"github.com/gordonklaus/portaudio"
 	"github.com/spf13/viper"
 )
@@ -118,13 +119,13 @@ func RecorderAsync(ad AudioDevice) {
 	}
 	defer gosamplerate.Delete(ad.Converter)
 
-	if err = stream.Start(); err != nil {
-		fmt.Printf("unable to start recording audio stream on device %s\n", ad.DeviceName)
-		fmt.Println(err)
-		return // exit go routine
-	}
+	// if err = stream.Start(); err != nil {
+	// 	fmt.Printf("unable to start recording audio stream on device %s\n", ad.DeviceName)
+	// 	fmt.Println(err)
+	// 	return // exit go routine
+	// }
 
-	defer stream.Close()
+	// defer stream.Close()
 
 	codec, err := GetCodec(viper.GetString("audio.codec"))
 	if err != nil {
@@ -136,7 +137,15 @@ func RecorderAsync(ad AudioDevice) {
 
 	for {
 		select {
+		case msg := <-ad.EventCh:
+			ev := msg.(events.Event)
+			if ev.SendAudio {
+				stream.Start()
+			} else if !ev.SendAudio {
+				stream.Stop()
+			}
 		case msg := <-ad.ToSerialize:
+			// if ptt {
 			// serialize the Audio data and send to for
 			// transmission to the comms coroutine
 			var data []byte
@@ -154,6 +163,7 @@ func RecorderAsync(ad AudioDevice) {
 				msg.Data = data
 				ad.ToWire <- msg
 			}
+			// }
 		}
 	}
 }
