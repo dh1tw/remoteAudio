@@ -2,6 +2,7 @@ package audio
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/dh1tw/gosamplerate"
 	"github.com/dh1tw/opus"
@@ -113,6 +114,8 @@ func PlayerSync(ad AudioDevice) {
 				} else {
 					stream.Write()
 				}
+			} else {
+				time.Sleep(time.Microsecond * 100)
 			}
 		}
 	}
