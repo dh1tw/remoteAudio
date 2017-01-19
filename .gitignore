@@ -2,4 +2,5 @@
 *.pprof
 launch.json
 *.svg
-/icd_gen
+/sb_audio
+remoteAudio

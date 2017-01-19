@@ -1,4 +1,4 @@
-// Copyright © 2016 Tobias Wellnitz, DH1TW <Tobias.Wellnitz@gmail.com>
+// Copyright © 2017 Tobias Wellnitz, DH1TW <Tobias.Wellnitz@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,18 +26,33 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// serveCmd represents the serve command
-var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "Server for streaming Audio through a specfic transportation protocol",
-	Long: `The application acts as a server and can stream audio through 
-several transportation protocols. This command is typically used on the devices
-to which a radio is connected.`,
+// connectCmd represents the connect command
+var connectCmd = &cobra.Command{
+	Use:   "connect",
+	Short: "A brief description of your command",
+	Long: `A longer description that spans multiple lines and likely contains examples
+and usage of using your command. For example:
+
+Cobra is a CLI library for Go that empowers applications.
+This application is a tool to generate the needed files
+to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Please select a transportation protocol (--help for available options)")
+		// TODO: Work your own magic here
+		fmt.Println("connect called")
 	},
 }
 
 func init() {
-	RootCmd.AddCommand(serveCmd)
+	RootCmd.AddCommand(connectCmd)
+
+	// Here you will define your flags and configuration settings.
+
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// connectCmd.PersistentFlags().String("foo", "", "A help for foo")
+
+	// Cobra supports local flags which will only run when this command
+	// is called directly, e.g.:
+	// connectCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
 }

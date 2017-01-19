@@ -7,10 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cskr/pubsub"
 	"github.com/dh1tw/gosamplerate"
-	"github.com/dh1tw/opus"
+	"github.com/dh1tw/remoteAudio/comms"
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 	"github.com/gordonklaus/portaudio"
+	"gopkg.in/hraban/opus.v2"
 )
 
 const (
@@ -44,34 +46,28 @@ var bitMapToFloat32 = map[int]float32{
 
 // AudioStream contains the configuration for a portaudio Audiostream
 type AudioStream struct {
-	DeviceName      string
-	Direction       int
-	Channels        int
-	Samplingrate    float64
-	Latency         time.Duration
-	FramesPerBuffer int
-	Device          *portaudio.DeviceInfo
-	Stream          *portaudio.Stream
-	Converter       gosamplerate.Src
-	out             []float32
-	in              []float32
-}
-
-// AudioMsg is a struct for internal communication
-type AudioMsg struct {
-	Data  []byte
-	Raw   []float32
-	Topic string
+	DeviceName             string
+	Direction              int
+	Channels               int
+	Samplingrate           float64
+	Latency                time.Duration
+	FramesPerBuffer        int
+	Device                 *portaudio.DeviceInfo
+	Stream                 *portaudio.Stream
+	PCMSamplerateConverter gosamplerate.Src
+	out                    []float32
+	in                     []float32
 }
 
 // AudioDevice contains the configuration for an Audio Device
 type AudioDevice struct {
 	AudioStream
-	ToSerialize     chan AudioMsg
-	ToWire          chan AudioMsg
-	ToDeserialize   chan AudioMsg
-	AudioLoopbackCh chan AudioMsg
-	EventCh         chan interface{}
+	ToSerialize      chan comms.IOMsg
+	ToWire           chan comms.IOMsg
+	ToDeserialize    chan comms.IOMsg
+	AudioToWireTopic string
+	Events           *pubsub.PubSub
+	WaitGroup        *sync.WaitGroup
 }
 
 // IdentifyDevice checks if the Audio Devices actually exist
@@ -117,11 +113,11 @@ func GetOpusMaxBandwith(maxBw string) (opus.Bandwidth, error) {
 	case "narrowband":
 		return opus.Narrowband, nil
 	case "mediumband":
-		return opus.MediumBand, nil
+		return opus.Mediumband, nil
 	case "wideband":
-		return opus.WideBand, nil
+		return opus.Wideband, nil
 	case "superwideband":
-		return opus.SuperWideBand, nil
+		return opus.SuperWideband, nil
 	case "fullband":
 		return opus.Fullband, nil
 	}

@@ -61,6 +61,7 @@ var tmpl = template.Must(template.New("").Parse(
 {{end}}`,
 ))
 
+// enumerate lists all available Audio devices on the system
 func enumerate() {
 	portaudio.Initialize()
 	defer portaudio.Terminate()

@@ -1,15 +1,16 @@
 package audio
 
 import (
-	"github.com/dh1tw/opus"
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 	"github.com/gogo/protobuf/proto"
+	"gopkg.in/hraban/opus.v2"
 )
 
-// struct will all repetitive variables for serialization of
-// audio packets
+// serializer is a struct mainly used for caching variable which are
+// frequently written in protocol buffers messages.
 type serializer struct {
 	*AudioDevice
+	userID          string
 	samplingrate    float64
 	opusEncoder     *opus.Encoder
 	opusBuffer      []byte
@@ -20,6 +21,9 @@ type serializer struct {
 	pcmBitDepth     int32 // bitrate as int32
 }
 
+// SerializeOpusAudioMsg will encode the Audio Data with the OPUS Encoder
+// serialize it in a protocol buffers message and return the serialized protobuf
+// message in a byte array.
 func (s *serializer) SerializeOpusAudioMsg(in []float32) ([]byte, error) {
 
 	length, err := s.opusEncoder.EncodeFloat32(in, s.opusBuffer)
@@ -27,11 +31,15 @@ func (s *serializer) SerializeOpusAudioMsg(in []float32) ([]byte, error) {
 		return nil, err
 	}
 
+	// using sync.Pool for releasing pressure of the Garbage Collector
 	msg := sbAudioDataPool.Get().(*sbAudio.AudioData)
 	defer sbAudioDataPool.Put(msg)
 
+	codec := sbAudio.Codec_OPUS
+
 	msg.AudioRaw = s.opusBuffer[:length]
-	msg.Codec = sbAudio.Codec_OPUS
+	msg.Codec = &codec
+	msg.UserId = &s.userID
 
 	data, err := proto.Marshal(msg)
 	if err != nil {
@@ -41,9 +49,9 @@ func (s *serializer) SerializeOpusAudioMsg(in []float32) ([]byte, error) {
 	return data, nil
 }
 
-// SerializeAudioMsg serializes audio frames in a protocol buffers with the
+// SerializeAudioMsg serializes PCM audio frames in a protocol buffers with the
 // corresponding meta data. The amount of audio channels and sampingrate can
-// be specified.
+// be specified. If necessary, the audio data will be resampled.
 func (s *serializer) SerializePCMAudioMsg(in []float32) ([]byte, error) {
 
 	var resampledAudio []float32
@@ -55,7 +63,7 @@ func (s *serializer) SerializePCMAudioMsg(in []float32) ([]byte, error) {
 		ratio := float64(s.pcmSamplingrate) / s.Samplingrate // output samplerate / input samplerate
 		var err error
 		// cases: device MONO & output MONO  and device STEREO & output STEREO
-		resampledAudio, err = s.Converter.Process(in, ratio, false)
+		resampledAudio, err = s.PCMSamplerateConverter.Process(in, ratio, false)
 		if err != nil {
 			return nil, err
 		}
@@ -94,22 +102,24 @@ func (s *serializer) SerializePCMAudioMsg(in []float32) ([]byte, error) {
 		}
 	}
 
+	// using sync.Pool for releasing pressure of the Garbage Collector
 	msg := sbAudioDataPool.Get().(*sbAudio.AudioData)
 	defer sbAudioDataPool.Put(msg)
 
-	msg.Channels = s.pcmChannels
-	msg.FrameLength = s.pcmBufferSize
-	msg.SamplingRate = s.pcmSamplingrate
-	msg.BitDepth = s.pcmBitDepth
-	msg.Codec = sbAudio.Codec_PCM
+	codec := sbAudio.Codec_PCM
+
+	msg.Channels = &s.pcmChannels
+	msg.FrameLength = &s.pcmBufferSize
+	msg.SamplingRate = &s.pcmSamplingrate
+	msg.BitDepth = &s.pcmBitDepth
+	msg.Codec = &codec
 	msg.AudioPacked = audioToWire
+	msg.UserId = &s.userID
 
 	data, err := proto.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
-
-	// fmt.Println(len(data))
 
 	return data, nil
 }

@@ -1,0 +1,22 @@
+body {
+  padding-top: 50px;
+}
+.starter-template {
+  padding: 40px 15px;
+  text-align: center;
+}
+
+#connection{
+	bottom: 0px;
+  left: 0px;
+	position: fixed;
+	width: 100%;
+  height: 40px;
+	/*z-index: 20000000;*/
+}
+
+#connection p{
+	text-align: center;
+	padding-top: 10px;
+	padding-bottom: 10px;
+}

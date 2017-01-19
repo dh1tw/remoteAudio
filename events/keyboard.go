@@ -8,32 +8,18 @@ import (
 	"github.com/cskr/pubsub"
 )
 
-const (
-	EVENTS = "events"
-)
-
-type Event struct {
-	SendAudio bool
-}
-
-type EventsConf struct {
-	EventsPubSub *pubsub.PubSub
-}
-
-func CaptureKeyboard(conf EventsConf) {
-
-	ptt := false
+func CaptureKeyboard(evPS *pubsub.PubSub) {
 
 	scanner := bufio.NewScanner(os.Stdin)
+
 	for {
 		if scanner.Scan() {
-			if scanner.Text() == "p" {
-				ptt = !ptt
-				ev := Event{}
-				ev.SendAudio = ptt
-				conf.EventsPubSub.Pub(ev, EVENTS)
-				fmt.Println("keyboard - ptt:", ptt)
-			} else {
+			switch scanner.Text() {
+			case "o":
+				evPS.Pub(true, RecordAudioOn)
+			case "O":
+				evPS.Pub(false, RecordAudioOn)
+			default:
 				fmt.Println("keyboard input:", scanner.Text())
 			}
 		}
