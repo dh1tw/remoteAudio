@@ -20,3 +20,6 @@ addons:
          - libopus-dev
          - libportaudio2
          - portaudio19-dev
+
+script:
+    go build
