@@ -12,12 +12,13 @@ go:
 addons:
     apt: 
       packages: 
+         - pkgconfig
          - libsamplerate0
          - libsamplerate0-dev
-         - libopus0
-         - libopus0-dev
+         - libopusfile-dev
+         - libopus-dev
          - libportaudio2
-         - libportaudio19-dev
+         - portaudio19-dev
 before_install:
     - go get github.com/cskr/pubsub
     - go get github.com/eclipse/paho.mqtt.golang
