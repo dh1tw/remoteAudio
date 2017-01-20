@@ -1,5 +1,6 @@
 language: go
 
+dist: trusty
 sudo: false
 env:
     - GOARCH=amd64
@@ -15,15 +16,7 @@ addons:
          - pkg-config
          - libsamplerate0
          - libsamplerate0-dev
-        #  - libopusfile-dev
-        #  - libopus-dev
+         - libopusfile-dev
+         - libopus-dev
          - libportaudio2
          - portaudio19-dev
-before_install:
-    - go get github.com/cskr/pubsub
-    - go get github.com/eclipse/paho.mqtt.golang
-    - go get github.com/dh1tw/gosamplerate
-    - go get github.com/gordonklaus/portaudio
-    - go get gopkg.in/hraban/opus.v2
-script:
-    - $HOME/gopath/bin/goveralls -service=travis-ci
