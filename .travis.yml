@@ -12,11 +12,11 @@ go:
 addons:
     apt: 
       packages: 
-         - pkgconfig
+         - pkg-config
          - libsamplerate0
          - libsamplerate0-dev
-         - libopusfile-dev
-         - libopus-dev
+        #  - libopusfile-dev
+        #  - libopus-dev
          - libportaudio2
          - portaudio19-dev
 before_install:
