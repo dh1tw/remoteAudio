@@ -1,0 +1,39 @@
+[general]
+user_id = "myCall"
+
+[mqtt]
+#broker_url = "localhost"
+broker_url = "test.mosquitto.org"
+broker_port = 1883
+client_id = "myCallsignPC"
+station = "dl0xxx"
+radio = "ft950"
+
+[input_device]
+device_name = "default"
+samplingrate = 48000
+latency = "5ms"
+channels = "mono"
+
+[output_device]
+device_name = "default"
+samplingrate = 48000
+latency = "5ms"
+channels = "stereo"
+
+[pcm]
+samplingrate = 16000
+bitdepth = 16
+channels = "mono"
+resampling_quality = 4
+
+[opus]
+application = "restricted_lowdelay"
+bitrate = 32000
+complexity = 9
+max_bandwidth = "wideband"
+
+[audio]
+codec = "opus"
+rx_buffer_length = 10
+frame_length = 480  #10ms (needed for opus)
