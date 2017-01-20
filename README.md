@@ -1,8 +1,9 @@
-# libsamplerate binding for Golang
+# remoteAudio
 [![Build Status](https://travis-ci.org/dh1tw/remoteAudio.svg?branch=master)](https://travis-ci.org/dh1tw/remoteAudio)
 
-RemoteAudio is an audio streaming application, built for Amateur Radio purposes,
-written in [Go](1)
+remoteAudio is an audio streaming application, built for Amateur Radio purposes,
+written in [Go](1). The most typical use case for this software is the remote
+operation of an amateur radio station.
 
 **ADVICE**: This project is **under development**. The parameters, ICD and the
 behaviour is still **not stable** and subject to change.
@@ -32,6 +33,7 @@ RemoteAudio has been tested on:
 
     $ sudo apt install pkg-config libsamplerate0 libsamplerate0-dev libopusfile-dev libopus-dev libportaudio2 portaudio19-dev
     $ go get github.com/dh1tw/remoteAudio
+    $ go install github.com/dh1tw/remoteAudio
 
 ```
 
@@ -61,11 +63,11 @@ and their ping to your place obviously will influence the latency.
 
 Both, the server and the client provide extensive configuration possibilities,
 either through a configuration file (TOML|YAML|JSON), typically located in
-your home directory `/home/your_user/.remoteAudio.toml`.
+your home directory `/home/your_user/.remoteAudio.toml`. or through pflags.
 
 An example configuration file is included in the repository.
 
-All parameters can also be set through flags. These are the options for the
+All parameters can be set through pflags. These are the options for the
 server:
 
 ```
@@ -109,16 +111,26 @@ Global Flags:
 
 The Client provides a minimal Web Interface for basic control of the
 client and server side audio streams. Open a Webbrowser at:
-http://localhost:6060 to access the WebUI.
+[http://localhost:6060](https://localhost:6060) to access the WebUI.
 
 ## Troubleshooting
 
-RemoteAudio does it's best to check if your sound hardware is compatible with
+remoteAudio does it's best to check if your sound hardware is compatible with
 the parameters you have set. However it's not entirely possible to check all
 the Settings.
 
 Inexpensive (USB) Soundcards usually operate at 48kHz. They play the audio in
 Stereo and Record the Audio in MONO.
+
+Feel free to open an issue if you encounter problems.
+
+## ToDo List
+
+- [ ] Better Error Logging with various Error Levels and various sinks (File, MQTT,...)
+- [ ] Improve Design of WebUI
+- [ ] Implement a P2P Protocol (UDP / TCP / ZeroMQ / GRPC)
+- [ ] Possibility to select Audio Channels (Left, Right or Both) through WebUI
+- [ ] Bandwidth Monitor
 
 [1]:https://golang.org
 [2]:http://opus-codec.org
