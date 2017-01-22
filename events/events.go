@@ -11,9 +11,11 @@ import (
 
 // internal
 const (
-	MqttConnStatus = "mqttConnStatus" // int
-	RecordAudioOn  = "recordAudio"    // bool
-	Shutdown       = "shutdown"       // bool
+	MqttConnStatus    = "mqttConnStatus"    // int
+	RecordAudioOn     = "recordAudio"       // bool
+	NewAudioFrameSize = "newaudioframesize" // int
+	ForwardAudio      = "forwardAudio"      //bool
+	Shutdown          = "shutdown"          // bool
 )
 
 // for message handling

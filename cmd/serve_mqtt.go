@@ -118,12 +118,13 @@ func mqttAudioServer() {
 
 	toWireCh := make(chan comms.IOMsg, 20)
 	toSerializeAudioDataCh := make(chan comms.IOMsg, 20)
-	toDeserializeAudioDataCh := make(chan comms.IOMsg, 10)
+	toDeserializeAudioDataCh := make(chan []byte, 10)
 	toDeserializeAudioReqCh := make(chan comms.IOMsg, 10)
 
 	// Event PubSub
 	evPS := pubsub.New(1)
 
+	// WaitGroup to coordinate a graceful shutdown
 	var wg sync.WaitGroup
 
 	// mqtt Last Will Message
@@ -140,6 +141,7 @@ func mqttAudioServer() {
 	}
 
 	settings := comms.MqttSettings{
+		WaitGroup:  &wg,
 		Transport:  "tcp",
 		BrokerURL:  mqttBrokerURL,
 		BrokerPort: mqttBrokerPort,
@@ -157,6 +159,7 @@ func mqttAudioServer() {
 		ToSerialize:   nil,
 		ToDeserialize: toDeserializeAudioDataCh,
 		Events:        evPS,
+		WaitGroup:     &wg,
 		AudioStream: audio.AudioStream{
 			DeviceName:      outputDeviceDeviceName,
 			FramesPerBuffer: audioFrameLength,
@@ -172,6 +175,7 @@ func mqttAudioServer() {
 		ToDeserialize:    nil,
 		AudioToWireTopic: serverAudioOutTopic,
 		Events:           evPS,
+		WaitGroup:        &wg,
 		AudioStream: audio.AudioStream{
 			DeviceName:      inputDeviceDeviceName,
 			FramesPerBuffer: audioFrameLength,
@@ -181,11 +185,15 @@ func mqttAudioServer() {
 		},
 	}
 
+	wg.Add(3) //recorder, player and MQTT
+
 	go events.WatchSystemEvents(evPS)
-	go audio.PlayerSync(player)
+	go audio.PlayerASync(player)
+	// give the Audio Streams time to setup and start
+	time.Sleep(time.Millisecond * 150)
 	go audio.RecorderAsync(recorder)
 	// give the Audio Streams time to setup and start
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 150)
 	go comms.MqttClient(settings)
 	// go events.CaptureKeyboard(evPS)
 
@@ -209,21 +217,18 @@ func mqttAudioServer() {
 				if err := updateStatus(&status, toWireCh); err != nil {
 					fmt.Println(err)
 				}
-				// fmt.Println("updated online status")
 			}
 		case ev := <-recordAudioOnCh:
 			status.recordAudioOn = ev.(bool)
 			if err := updateStatus(&status, toWireCh); err != nil {
 				fmt.Println(err)
 			}
-			// fmt.Println("updated recordAudioOn status to", status.recordAudioOn)
 
 		case ev := <-txUserCh:
 			status.txUser = ev.(string)
 			if err := updateStatus(&status, toWireCh); err != nil {
 				fmt.Println(err)
 			}
-			// fmt.Println("updated txUser to", status.txUser)
 
 		case data := <-toDeserializeAudioReqCh:
 

@@ -113,6 +113,13 @@ The Client provides a minimal Web Interface for basic control of the
 client and server side audio streams. Open a Webbrowser at:
 [http://localhost:6060](https://localhost:6060) to access the WebUI.
 
+In any case, the client and server will accept almost any kind of audio frames
+without any configuration. Internally remoteAudio picks the right codec,
+resamples and adjust to the local audio output device.
+
+However if the buffer size does not correspond to the internal buffer size,
+the stream has to be restarted which might result in a small delay.
+
 ## Troubleshooting
 
 remoteAudio does it's best to check if your sound hardware is compatible with

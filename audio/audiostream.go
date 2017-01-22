@@ -64,7 +64,7 @@ type AudioDevice struct {
 	AudioStream
 	ToSerialize      chan comms.IOMsg
 	ToWire           chan comms.IOMsg
-	ToDeserialize    chan comms.IOMsg
+	ToDeserialize    chan []byte
 	AudioToWireTopic string
 	Events           *pubsub.PubSub
 	WaitGroup        *sync.WaitGroup

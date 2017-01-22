@@ -3,6 +3,7 @@ package audio
 import (
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/dh1tw/gosamplerate"
@@ -30,7 +31,7 @@ func RecorderAsync(ad AudioDevice) {
 	// this is necessary to avoid a SIGSEGV in case
 	// DefaultInputDevice is accessed without portaudio
 	// being completely initialized
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 300)
 
 	var deviceInfo *portaudio.DeviceInfo
 	var err error
@@ -124,6 +125,7 @@ func RecorderAsync(ad AudioDevice) {
 
 	s.opusEncoder = opusEncoder
 	s.opusBuffer = make([]byte, 520000) //max opus message size
+	s.opusChannels = int32(ad.Channels)
 
 	// open the audio stream
 	stream, err = portaudio.OpenStream(streamParm, s.recordCb)
@@ -150,6 +152,14 @@ func RecorderAsync(ad AudioDevice) {
 		return
 	}
 
+	err = stream.Start()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	muSend := sync.RWMutex{}
+	sendAudio := false
+
 	// Everything has been set up, let's start exection
 
 	for {
@@ -164,33 +174,42 @@ func RecorderAsync(ad AudioDevice) {
 		// start or stop the Audio recording
 		case msg := <-recordAudioCh:
 			rxAudioOn := msg.(bool)
+			muSend.Lock()
 			if rxAudioOn {
-				err = stream.Start()
+				// err = stream.Start()
+				sendAudio = true
 				log.Println("starting audio stream")
 			} else {
-				err = stream.Stop()
+				// err = stream.Stop()
+				sendAudio = false
 				log.Println("stopping audio stream")
 			}
+			muSend.Unlock()
 			if err != nil {
 				fmt.Println(err)
 			}
 
 		// Serialize the Audio Data (PCM or OPUS)
 		case msg := <-ad.ToSerialize:
-			var data []byte
-			var err error
-			if codec == OPUS {
-				data, err = s.SerializeOpusAudioMsg(msg.Raw)
-			} else {
-				data, err = s.SerializePCMAudioMsg(msg.Raw)
-			}
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				msg := comms.IOMsg{}
-				msg.Topic = ad.AudioToWireTopic
-				msg.Data = data
-				ad.ToWire <- msg
+			muSend.RLock()
+			ms := sendAudio
+			muSend.RUnlock()
+			if ms {
+				var data []byte
+				var err error
+				if codec == OPUS {
+					data, err = s.SerializeOpusAudioMsg(msg.Raw)
+				} else {
+					data, err = s.SerializePCMAudioMsg(msg.Raw)
+				}
+				if err != nil {
+					fmt.Println(err)
+				} else {
+					msg := comms.IOMsg{}
+					msg.Topic = ad.AudioToWireTopic
+					msg.Data = data
+					ad.ToWire <- msg
+				}
 			}
 		}
 	}

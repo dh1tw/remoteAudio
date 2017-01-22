@@ -8,6 +8,7 @@ import (
 
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 	"github.com/gogo/protobuf/proto"
+	ringBuffer "github.com/zfjagann/golang-ring"
 	"gopkg.in/hraban/opus.v2"
 )
 
@@ -18,7 +19,20 @@ type deserializer struct {
 	muTx        sync.Mutex
 	txUser      string
 	txTimestamp time.Time
+	muRing      sync.Mutex
+	ring        ringBuffer.Ring
 }
+
+// // deserialize and write received audio data into the ring buffer
+// func (d *deserializer) Deserializer() {
+// 	select {
+// 	case msg := <-d.ToDeserialize:
+// 		err := d.DeserializeAudioMsg(msg)
+// 		if err != nil {
+// 			fmt.Println(err)
+// 		}
+// 	}
+// }
 
 // DeserializeAudioMsg will deserialize a Protocol Buffers message containing
 // Audio data and its corresponding meta data
@@ -74,19 +88,33 @@ func (d *deserializer) DeserializeAudioMsg(data []byte) error {
 // encoded audio frame.
 func (d *deserializer) DecodeOpusAudioMsg(msg *sbAudio.AudioData) error {
 
-	len, err := d.opusDecoder.DecodeFloat32(msg.GetAudioRaw(), d.opusBuffer)
+	lenSample, err := d.opusDecoder.DecodeFloat32(msg.GetAudioRaw(), d.opusBuffer)
 	if err != nil {
 		return err
 	}
 
-	d.out = d.opusBuffer[:len*d.Channels]
+	if msg.Channels == nil {
+		return errors.New("Warning: Channel information missing for audio frame")
+	}
+
+	lenFrame := lenSample * int(msg.GetChannels())
+
+	//make a new array and copy the data into the array
+	buf := make([]float32, lenFrame)
+	for i := 0; i < lenFrame; i++ {
+		buf[i] = d.opusBuffer[i]
+	}
+
+	d.muRing.Lock()
+	d.ring.Enqueue(buf)
+	d.muRing.Unlock()
 
 	return nil
 }
 
 // DecodePCMAudioMsg conditions an int32 PCM audio frame according to the
 // needs of the local audio stream (channels and/or sampling rate)
-func (ad *AudioDevice) DecodePCMAudioMsg(msg *sbAudio.AudioData) error {
+func (ad *deserializer) DecodePCMAudioMsg(msg *sbAudio.AudioData) error {
 
 	var samplingrate float64
 	var channels, bitdepth int
@@ -151,9 +179,16 @@ func (ad *AudioDevice) DecodePCMAudioMsg(msg *sbAudio.AudioData) error {
 		if err != nil {
 			return err
 		}
-		ad.out = resampledAudio
+
+		ad.muRing.Lock()
+		ad.ring.Enqueue(resampledAudio)
+		ad.muRing.Unlock()
+		// ad.out = resampledAudio
 	} else {
-		ad.out = convertedAudio
+		// ad.out = convertedAudio
+		ad.muRing.Lock()
+		ad.ring.Enqueue(convertedAudio)
+		ad.muRing.Unlock()
 	}
 
 	return nil

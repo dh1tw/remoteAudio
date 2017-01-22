@@ -1,7 +1,6 @@
 package comms
 
 import (
-	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -20,7 +19,7 @@ type MqttSettings struct {
 	BrokerPort               int
 	ClientID                 string
 	Topics                   []string
-	ToDeserializeAudioDataCh chan IOMsg
+	ToDeserializeAudioDataCh chan []byte
 	ToDeserializeAudioReqCh  chan IOMsg
 	ToDeserializeAudioRespCh chan IOMsg
 	ToWire                   chan IOMsg
@@ -41,11 +40,13 @@ type LastWill struct {
 // IOMsg is a struct used internally which either originates from or
 // will be send to the wire
 type IOMsg struct {
-	Data   []byte
-	Raw    []float32
-	Topic  string
-	Retain bool
-	Qos    byte
+	Data       []byte
+	Raw        []float32
+	Topic      string
+	Retain     bool
+	Qos        byte
+	MQTTts     time.Time
+	EnqueuedTs time.Time
 }
 
 const (
@@ -55,28 +56,32 @@ const (
 
 func MqttClient(s MqttSettings) {
 
+	defer s.WaitGroup.Done()
+
 	// mqtt.DEBUG = log.New(os.Stderr, "DEBUG - ", log.LstdFlags)
 	// mqtt.CRITICAL = log.New(os.Stderr, "CRITICAL - ", log.LstdFlags)
 	// mqtt.WARN = log.New(os.Stderr, "WARN - ", log.LstdFlags)
 	// mqtt.ERROR = log.New(os.Stderr, "ERROR - ", log.LstdFlags)
 
 	shutdownCh := s.Events.Sub(events.Shutdown)
+	forwardAudioCh := s.Events.Sub(events.ForwardAudio)
+
+	forwardAudio := false
 
 	var msgHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 		if strings.Contains(msg.Topic(), "audio/audio") {
-			audioMsg := IOMsg{
-				Topic: msg.Topic(),
-				Data:  msg.Payload()[:len(msg.Payload())],
+
+			if forwardAudio {
+				s.ToDeserializeAudioDataCh <- msg.Payload()[:len(msg.Payload())]
 			}
-			fmt.Println("NETWORK", time.Now().Format(time.StampMilli))
-			s.ToDeserializeAudioDataCh <- audioMsg
 
 		} else if strings.Contains(msg.Topic(), "request") {
-			audioReqMsg := IOMsg{
+
+			audioRespMsg := IOMsg{
 				Data: msg.Payload()[:len(msg.Payload())],
 			}
-			s.ToDeserializeAudioReqCh <- audioReqMsg
+			s.ToDeserializeAudioReqCh <- audioRespMsg
 
 		} else if strings.Contains(msg.Topic(), "response") {
 			audioRespMsg := IOMsg{
@@ -131,11 +136,14 @@ func MqttClient(s MqttSettings) {
 		case <-shutdownCh:
 			log.Println("Disconnecting from MQTT Broker")
 			client.Disconnect(0)
-			s.WaitGroup.Done()
 			return
 		case msg := <-s.ToWire:
 			token := client.Publish(msg.Topic, msg.Qos, msg.Retain, msg.Data)
 			token.Wait()
+
+		//indicates if audio data should be forwarded for decoding & play
+		case ev := <-forwardAudioCh:
+			forwardAudio = ev.(bool)
 		}
 	}
 }

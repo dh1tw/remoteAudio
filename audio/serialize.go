@@ -15,6 +15,7 @@ type serializer struct {
 	opusEncoder     *opus.Encoder
 	opusBuffer      []byte
 	opusBitrate     int
+	opusChannels    int32
 	pcmBufferSize   int32 // framesPerBuffer as int32
 	pcmSamplingrate int32 // samplingRate as int32
 	pcmChannels     int32 // output channels as int32
@@ -40,6 +41,7 @@ func (s *serializer) SerializeOpusAudioMsg(in []float32) ([]byte, error) {
 	msg.AudioRaw = s.opusBuffer[:length]
 	msg.Codec = &codec
 	msg.UserId = &s.userID
+	msg.Channels = &s.opusChannels
 
 	data, err := proto.Marshal(msg)
 	if err != nil {

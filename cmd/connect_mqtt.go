@@ -121,10 +121,10 @@ func mqttAudioClient() {
 
 	toWireCh := make(chan comms.IOMsg, 20)
 	toSerializeAudioDataCh := make(chan comms.IOMsg, 20)
-	toDeserializeAudioDataCh := make(chan comms.IOMsg, 10)
+	toDeserializeAudioDataCh := make(chan []byte, 20)
 	toDeserializeAudioRespCh := make(chan comms.IOMsg, 10)
 
-	evPS := pubsub.New(1)
+	evPS := pubsub.New(100)
 
 	var wg sync.WaitGroup
 
@@ -183,10 +183,12 @@ func mqttAudioClient() {
 
 	go webserver.Webserver(webserverSettings)
 	go events.WatchSystemEvents(evPS)
-	go audio.PlayerSync(player)
+	go audio.PlayerASync(player)
+	// give the Audio Streams time to setup and start
+	time.Sleep(time.Millisecond * 150)
 	go audio.RecorderAsync(recorder)
 	// give the Audio Streams time to setup and start
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 150)
 	go comms.MqttClient(settings)
 	// go events.CaptureKeyboard(evPS)
 
