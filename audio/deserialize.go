@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dh1tw/remoteAudio/events"
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 	"github.com/gogo/protobuf/proto"
 	ringBuffer "github.com/zfjagann/golang-ring"
@@ -93,11 +94,11 @@ func (d *deserializer) DecodeOpusAudioMsg(msg *sbAudio.AudioData) error {
 		return err
 	}
 
-	if msg.Channels == nil {
-		return errors.New("Warning: Channel information missing for audio frame")
-	}
+	lenFrame := lenSample * d.Channels
 
-	lenFrame := lenSample * int(msg.GetChannels())
+	if lenFrame != len(d.out) {
+		d.Events.Pub(lenFrame, events.NewAudioFrameSize)
+	}
 
 	//make a new array and copy the data into the array
 	buf := make([]float32, lenFrame)

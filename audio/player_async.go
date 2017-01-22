@@ -170,7 +170,7 @@ func PlayerASync(ad AudioDevice) {
 			// new buffer with new size
 			ad.out = make([]float32, newBufSize)
 			// update stream parameters
-			streamParm.FramesPerBuffer = newBufSize / 2
+			streamParm.FramesPerBuffer = newBufSize / ad.Channels
 
 			stream, err = portaudio.OpenStream(streamParm, d.playCb)
 			if err != nil {
@@ -218,10 +218,6 @@ func (d *deserializer) playCb(in []float32, iTime portaudio.StreamCallbackTimeIn
 		audioData := data.([]float32)
 		if len(audioData) == len(in) {
 			copy(in, audioData) //copy data into buffer
-		} else {
-			// apparently the framerate has changed. Advice to resize
-			// the buffer and restart the Audio stream
-			d.Events.Pub(len(audioData), events.NewAudioFrameSize)
 		}
 		return
 	}
