@@ -22,6 +22,7 @@ type deserializer struct {
 	txTimestamp time.Time
 	muRing      sync.Mutex
 	ring        ringBuffer.Ring
+	volume      float32
 }
 
 // // deserialize and write received audio data into the ring buffer
@@ -106,6 +107,8 @@ func (d *deserializer) DecodeOpusAudioMsg(msg *sbAudio.AudioData) error {
 		buf[i] = d.opusBuffer[i]
 	}
 
+	buf = d.adjustVolume(buf)
+
 	d.muRing.Lock()
 	d.ring.Enqueue(buf)
 	d.muRing.Unlock()
@@ -181,11 +184,16 @@ func (ad *deserializer) DecodePCMAudioMsg(msg *sbAudio.AudioData) error {
 			return err
 		}
 
+		resampledAudio = ad.adjustVolume(resampledAudio)
+
 		ad.muRing.Lock()
 		ad.ring.Enqueue(resampledAudio)
 		ad.muRing.Unlock()
 		// ad.out = resampledAudio
 	} else {
+
+		convertedAudio = ad.adjustVolume(convertedAudio)
+
 		// ad.out = convertedAudio
 		ad.muRing.Lock()
 		ad.ring.Enqueue(convertedAudio)
@@ -193,4 +201,12 @@ func (ad *deserializer) DecodePCMAudioMsg(msg *sbAudio.AudioData) error {
 	}
 
 	return nil
+}
+
+func (d *deserializer) adjustVolume(audio []float32) []float32 {
+	for i := 0; i < len(audio); i++ {
+		audio[i] *= d.volume
+	}
+
+	return audio
 }

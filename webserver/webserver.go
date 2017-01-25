@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 	"sync"
@@ -43,17 +44,19 @@ type WebServerSettings struct {
 }
 
 type ApplicationState struct {
-	ConnectionStatus bool   `json:"connectionStatus"`
-	ServerOnline     bool   `json:"serverOnline"`
-	ServerAudioOn    bool   `json:"serverAudioOn"`
-	Tx               bool   `json:"tx"`
-	TxUser           string `json:"txUser"`
-	Ping             int64  `json:"ping"`
+	ConnectionStatus *bool    `json:"connectionStatus, omitempty"`
+	ServerOnline     *bool    `json:"serverOnline, omitempty"`
+	ServerAudioOn    *bool    `json:"serverAudioOn, omitempty"`
+	TxUser           *string  `json:"txUser, omitempty"`
+	Tx               *bool    `json:"tx, omitempty"`
+	Latency          *int64   `json:"latency, omitempty"`
+	Volume           *float32 `json:"volume, omitempty"`
 }
 
 type ClientMessage struct {
-	RequestServerAudioOn *bool `json:"serverAudioOn, omitempty"`
-	SetPtt               *bool `json:"ptt, omitempty"`
+	RequestServerAudioOn *bool    `json:"serverAudioOn, omitempty"`
+	SetPtt               *bool    `json:"ptt, omitempty"`
+	SetVolume            *float32 `json:"volume, omitempty"`
 }
 
 func (hub *Hub) sendMsg() {
@@ -72,17 +75,31 @@ func (hub *Hub) sendMsg() {
 	hub.muClients.Unlock()
 }
 
+// Update
+func sendLatency(latency int64) {
+
+	msg := ApplicationState{}
+	msg.Latency = &latency
+	data, err := json.Marshal(msg)
+	if err != nil {
+		log.Println(err)
+	}
+
+	for client := range hub.clients {
+		client.send <- data
+	}
+}
+
 func (hub *Hub) handleClientMsg(data []byte) {
 	msg := ClientMessage{}
 	err := json.Unmarshal(data, &msg)
+
 	if err != nil {
-		log.Println("Webserver: unable to unmarshal ClientMessage")
+		log.Println("Webserver: unable to unmarshal ClientMessage", string(data))
+		return
 	}
 
 	if msg.SetPtt != nil {
-		hub.muAppState.Lock()
-		hub.appState.Tx = *msg.SetPtt
-		hub.muAppState.Unlock()
 		hub.events.Pub(*msg.SetPtt, events.RecordAudioOn)
 		hub.sendMsg()
 	}
@@ -90,6 +107,14 @@ func (hub *Hub) handleClientMsg(data []byte) {
 	if msg.RequestServerAudioOn != nil {
 		hub.events.Pub(*msg.RequestServerAudioOn, events.RequestServerAudioOn)
 		hub.sendMsg()
+	}
+
+	if msg.SetVolume != nil {
+		hub.events.Pub(float32(math.Pow(float64(*msg.SetVolume), 3)), events.SetVolume)
+		hub.muAppState.Lock()
+		hub.appState.Volume = msg.SetVolume
+		hub.muAppState.Unlock()
+		fmt.Println("sent new volume", *msg.SetVolume)
 	}
 }
 
@@ -102,45 +127,49 @@ func (hub *Hub) start() {
 	txUserCh := hub.events.Sub(events.TxUser)
 	pingCh := hub.events.Sub(events.Ping)
 
+	hub.appState.Volume = func() *float32 { var vol float32 = 1.0; return &vol }()
+
 	for {
 		select {
 		case ev := <-serverAudioOnCh:
+			state := ev.(bool)
 			hub.muAppState.Lock()
-			hub.appState.ServerAudioOn = ev.(bool)
+			hub.appState.ServerAudioOn = &state
 			hub.muAppState.Unlock()
 			hub.sendMsg()
 
 		case ev := <-serverOnlineCh:
+			state := ev.(bool)
 			hub.muAppState.Lock()
-			hub.appState.ServerOnline = ev.(bool)
+			hub.appState.ServerOnline = &state
 			hub.muAppState.Unlock()
 			hub.sendMsg()
 
 		case ev := <-txCh:
+			state := ev.(bool)
 			hub.muAppState.Lock()
-			hub.appState.Tx = ev.(bool)
+			hub.appState.Tx = &state
 			hub.muAppState.Unlock()
 			hub.sendMsg()
 
 		case ev := <-txUserCh:
+			txUser := ev.(string)
 			hub.muAppState.Lock()
-			hub.appState.TxUser = ev.(string)
+			hub.appState.TxUser = &txUser
 			hub.muAppState.Unlock()
 			hub.sendMsg()
 
 		case ev := <-pingCh:
-			hub.muAppState.Lock()
-			hub.appState.Ping = ev.(int64) / 1000000 // milliseconds
-			hub.muAppState.Unlock()
-			hub.sendMsg()
+			ping := ev.(int64) / 2000000 // milliseconds (one way latency)
+			sendLatency(ping)
 
 		case ev := <-connectionStatusCh:
 			cs := ev.(int)
 			hub.muAppState.Lock()
 			if cs == comms.CONNECTED {
-				hub.appState.ConnectionStatus = true
+				hub.appState.ConnectionStatus = func() *bool { b := true; return &b }()
 			} else {
-				hub.appState.ConnectionStatus = false
+				hub.appState.ConnectionStatus = func() *bool { b := false; return &b }()
 			}
 			hub.muAppState.Unlock()
 			hub.sendMsg()

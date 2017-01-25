@@ -16,6 +16,8 @@ const (
 	NewAudioFrameSize = "newaudioframesize" // int
 	ForwardAudio      = "forwardAudio"      //bool
 	Shutdown          = "shutdown"          // bool
+	SetVolume         = "setVolume"         // int
+	OsExit            = "osExit"            // bool
 )
 
 // for message handling
@@ -38,7 +40,7 @@ func WatchSystemEvents(evPS *pubsub.PubSub) {
 	select {
 	case osSignal := <-osSignals:
 		if osSignal == os.Interrupt {
-			evPS.Pub(true, Shutdown)
+			evPS.Pub(true, OsExit)
 		}
 	}
 }

@@ -200,6 +200,7 @@ func mqttAudioServer() {
 	connectionStatusCh := evPS.Sub(events.MqttConnStatus)
 	txUserCh := evPS.Sub(events.TxUser)
 	recordAudioOnCh := evPS.Sub(events.RecordAudioOn)
+	osExitCh := evPS.Sub(events.OsExit)
 	shutdownCh := evPS.Sub(events.Shutdown)
 
 	status := serverStatus{}
@@ -207,26 +208,43 @@ func mqttAudioServer() {
 
 	for {
 		select {
+
+		// CTRL-C has been pressed; let's prepare the shutdown
+		case <-osExitCh:
+			// advice that we are going offline
+			status.online = false
+			status.recordAudioOn = false
+			if err := status.sendUpdate(toWireCh); err != nil {
+				fmt.Println(err)
+			}
+			time.Sleep(time.Millisecond * 200)
+			evPS.Pub(true, events.Shutdown)
+
 		// shutdown the application gracefully
 		case <-shutdownCh:
 			wg.Wait()
 			os.Exit(0)
 
 		case ev := <-connectionStatusCh:
-			if ev.(int) == comms.CONNECTED {
-				if err := updateStatus(&status, toWireCh); err != nil {
+			connStatus := ev.(int)
+			if connStatus == comms.CONNECTED {
+				status.online = true
+				if err := status.sendUpdate(toWireCh); err != nil {
 					fmt.Println(err)
 				}
+			} else {
+				status.online = false
 			}
+
 		case ev := <-recordAudioOnCh:
 			status.recordAudioOn = ev.(bool)
-			if err := updateStatus(&status, toWireCh); err != nil {
+			if err := status.sendUpdate(toWireCh); err != nil {
 				fmt.Println(err)
 			}
 
 		case ev := <-txUserCh:
 			status.txUser = ev.(string)
-			if err := updateStatus(&status, toWireCh); err != nil {
+			if err := status.sendUpdate(toWireCh); err != nil {
 				fmt.Println(err)
 			}
 
@@ -249,7 +267,7 @@ func mqttAudioServer() {
 				status.pong = msg.GetPing()
 			}
 
-			if err := updateStatus(&status, toWireCh); err != nil {
+			if err := status.sendUpdate(toWireCh); err != nil {
 				fmt.Println(err)
 			}
 		}
@@ -257,6 +275,7 @@ func mqttAudioServer() {
 }
 
 type serverStatus struct {
+	online        bool
 	recordAudioOn bool
 	txUser        string
 	topic         string
@@ -264,20 +283,19 @@ type serverStatus struct {
 	pong          int64
 }
 
-func (s *serverStatus) clearPing() {
-	s.pingOrigin = ""
-	s.pong = -1
+func (status *serverStatus) clearPing() {
+	status.pingOrigin = ""
+	status.pong = -1
 }
 
-func updateStatus(status *serverStatus, toWireCh chan comms.IOMsg) error {
+func (status *serverStatus) sendUpdate(toWireCh chan comms.IOMsg) error {
 
 	now := time.Now().Unix()
-	online := true
 	defer status.clearPing()
 
 	msg := sbAudio.ServerResponse{}
 	msg.LastSeen = &now
-	msg.Online = &online
+	msg.Online = &status.online
 	msg.AudioStream = &status.recordAudioOn
 	msg.TxUser = &status.txUser
 	msg.PingOrigin = &status.pingOrigin

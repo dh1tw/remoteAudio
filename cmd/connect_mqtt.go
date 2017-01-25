@@ -194,14 +194,22 @@ func mqttAudioClient() {
 
 	connectionStatusCh := evPS.Sub(events.MqttConnStatus)
 	reqServerAudioOnCh := evPS.Sub(events.RequestServerAudioOn)
+	osExitCh := evPS.Sub(events.OsExit)
 	shutdownCh := evPS.Sub(events.Shutdown)
 
 	pingTicker := time.NewTicker(time.Second)
 
+	// local states
 	connectionStatus := comms.DISCONNECTED
+	serverOnline := false
+	serverAudioOn := false
 
 	for {
 		select {
+
+		// pre shutdown hooks (CTRL-C)
+		case <-osExitCh:
+			evPS.Pub(true, events.Shutdown)
 
 		// shutdown the application gracefully
 		case <-shutdownCh:
@@ -234,10 +242,6 @@ func mqttAudioClient() {
 			if err != nil {
 				fmt.Println(err)
 			}
-
-			// local states
-			serverOnline := false
-			serverAudioOn := false
 
 			if msg.Online != nil {
 				serverOnline = msg.GetOnline()

@@ -113,6 +113,8 @@ The Client provides a minimal Web Interface for basic control of the
 client and server side audio streams. Open a Webbrowser at:
 [http://localhost:6060](https://localhost:6060) to access the WebUI.
 
+![Alt text](ScreenshotWebUI.png?raw=true "Screenshot remoteAudio WebUI")
+
 In any case, the client and server will accept almost any kind of audio frames
 without any configuration. Internally remoteAudio picks the right codec,
 resamples and adjust to the local audio output device.
@@ -131,13 +133,6 @@ Stereo and Record the Audio in MONO.
 
 Feel free to open an issue if you encounter problems.
 
-## ToDo List
-
-- [ ] Better Error Logging with various Error Levels and various sinks (File, MQTT,...)
-- [ ] Improve Design of WebUI
-- [ ] Implement a P2P Protocol (UDP / TCP / ZeroMQ / GRPC)
-- [ ] Possibility to select Audio Channels (Left, Right or Both) through WebUI
-- [ ] Bandwidth Monitor
 
 [1]:https://golang.org
 [2]:http://opus-codec.org

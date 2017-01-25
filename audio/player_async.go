@@ -86,6 +86,9 @@ func PlayerASync(ad AudioDevice) {
 	d.ring = ringBuffer.Ring{}
 	d.ring.SetCapacity(audioBufferSize)
 
+	// default volume - replay as is
+	d.volume = 1.0
+
 	// initialize the Opus Decoder
 	opusDecoder, err := opus.NewDecoder(int(ad.Samplingrate), ad.AudioStream.Channels)
 
@@ -123,6 +126,7 @@ func PlayerASync(ad AudioDevice) {
 	defer stream.Stop()
 
 	bufferFrameSizeChangeCh := ad.Events.Sub(events.NewAudioFrameSize)
+	setVolumeCh := ad.Events.Sub(events.SetVolume)
 
 	// cache holding the id of user from which we currently receive audio
 	txUser := ""
@@ -156,6 +160,12 @@ func PlayerASync(ad AudioDevice) {
 				ad.Events.Pub(d.txUser, events.TxUser)
 				txUser = d.txUser
 			}
+			d.muTx.Unlock()
+
+		case ev := <-setVolumeCh:
+			volume := ev.(float32)
+			d.muTx.Lock()
+			d.volume = volume
 			d.muTx.Unlock()
 
 		// When the size of the received audio frame is different from our
