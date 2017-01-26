@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/cskr/pubsub"
 	"github.com/dh1tw/remoteAudio/comms"
 	"github.com/dh1tw/remoteAudio/events"
@@ -267,9 +268,9 @@ func Webserver(s WebServerSettings) {
 	hub.events = s.Events
 
 	go hub.start()
-
-	http.Handle("/static/",
-		noDirListing(http.FileServer(http.Dir("html/"))))
+	box := rice.MustFindBox("../html/static")
+	staticFileServer := http.StripPrefix("/static/", http.FileServer(box.HTTPBox()))
+	http.Handle("/static/", noDirListing(staticFileServer))
 
 	http.HandleFunc("/ws", wsPage)
 	http.HandleFunc("/", homePage)
