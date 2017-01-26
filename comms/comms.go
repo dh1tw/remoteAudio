@@ -135,7 +135,9 @@ func MqttClient(s MqttSettings) {
 		select {
 		case <-shutdownCh:
 			log.Println("Disconnecting from MQTT Broker")
-			client.Disconnect(0)
+			if client.IsConnected() {
+				client.Disconnect(0)
+			}
 			return
 		case msg := <-s.ToWire:
 			token := client.Publish(msg.Topic, msg.Qos, msg.Retain, msg.Data)
