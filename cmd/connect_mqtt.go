@@ -56,14 +56,14 @@ var connectMqttCmd = &cobra.Command{
 
 func init() {
 	connectCmd.AddCommand(connectMqttCmd)
-	connectMqttCmd.PersistentFlags().StringP("broker_url", "u", "localhost", "Broker URL")
-	connectMqttCmd.PersistentFlags().StringP("client_id", "c", "", "MQTT Client Id")
-	connectMqttCmd.PersistentFlags().IntP("broker_port", "p", 1883, "Broker Port")
+	connectMqttCmd.PersistentFlags().StringP("broker-url", "u", "localhost", "Broker URL")
+	connectMqttCmd.PersistentFlags().StringP("client-id", "c", "", "MQTT Client Id")
+	connectMqttCmd.PersistentFlags().IntP("broker-port", "p", 1883, "Broker Port")
 	connectMqttCmd.PersistentFlags().StringP("station", "X", "mystation", "Your station callsign")
 	connectMqttCmd.PersistentFlags().StringP("radio", "Y", "myradio", "Radio ID")
-	viper.BindPFlag("mqtt.broker_url", connectMqttCmd.PersistentFlags().Lookup("broker_url"))
-	viper.BindPFlag("mqtt.broker_port", connectMqttCmd.PersistentFlags().Lookup("broker_port"))
-	viper.BindPFlag("mqtt.client_id", connectMqttCmd.PersistentFlags().Lookup("client_id"))
+	viper.BindPFlag("mqtt.broker_url", connectMqttCmd.PersistentFlags().Lookup("broker-url"))
+	viper.BindPFlag("mqtt.broker_port", connectMqttCmd.PersistentFlags().Lookup("broker-port"))
+	viper.BindPFlag("mqtt.client_id", connectMqttCmd.PersistentFlags().Lookup("client-id"))
 	viper.BindPFlag("mqtt.station", connectMqttCmd.PersistentFlags().Lookup("station"))
 	viper.BindPFlag("mqtt.radio", connectMqttCmd.PersistentFlags().Lookup("radio"))
 }
@@ -219,6 +219,7 @@ func mqttAudioClient() {
 		// connection has been established
 		case ev := <-connectionStatusCh:
 			connectionStatus = ev.(int)
+			// evPS.Pub(connectionStatus, events.MqttConnStatus)
 
 		// send ping if connected to Broker
 		case <-pingTicker.C:

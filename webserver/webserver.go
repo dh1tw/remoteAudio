@@ -2,7 +2,6 @@ package webserver
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"math"
 	"net/http"
@@ -114,7 +113,6 @@ func (hub *Hub) handleClientMsg(data []byte) {
 		hub.muAppState.Lock()
 		hub.appState.Volume = msg.SetVolume
 		hub.muAppState.Unlock()
-		fmt.Println("sent new volume", *msg.SetVolume)
 	}
 }
 
@@ -224,7 +222,6 @@ func (c *Client) read() {
 
 	for {
 		_, data, err := c.ws.ReadMessage()
-		fmt.Println("got msg")
 		if err != nil {
 			break
 		}

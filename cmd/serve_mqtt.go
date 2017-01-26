@@ -55,14 +55,14 @@ var serveMqttCmd = &cobra.Command{
 
 func init() {
 	serveCmd.AddCommand(serveMqttCmd)
-	serveMqttCmd.PersistentFlags().StringP("broker_url", "u", "localhost", "Broker URL")
-	serveMqttCmd.PersistentFlags().StringP("client_id", "c", "", "MQTT Client Id")
-	serveMqttCmd.PersistentFlags().IntP("broker_port", "p", 1883, "Broker Port")
+	serveMqttCmd.PersistentFlags().StringP("broker-url", "u", "localhost", "Broker URL")
+	serveMqttCmd.PersistentFlags().StringP("client-id", "c", "", "MQTT Client Id")
+	serveMqttCmd.PersistentFlags().IntP("broker-port", "p", 1883, "Broker Port")
 	serveMqttCmd.PersistentFlags().StringP("station", "X", "mystation", "Your station callsign")
 	serveMqttCmd.PersistentFlags().StringP("radio", "Y", "myradio", "Radio ID")
-	viper.BindPFlag("mqtt.broker_url", serveMqttCmd.PersistentFlags().Lookup("broker_url"))
-	viper.BindPFlag("mqtt.broker_port", serveMqttCmd.PersistentFlags().Lookup("broker_port"))
-	viper.BindPFlag("mqtt.client_id", serveMqttCmd.PersistentFlags().Lookup("client_id"))
+	viper.BindPFlag("mqtt.broker_url", serveMqttCmd.PersistentFlags().Lookup("broker-url"))
+	viper.BindPFlag("mqtt.broker_port", serveMqttCmd.PersistentFlags().Lookup("broker-port"))
+	viper.BindPFlag("mqtt.client_id", serveMqttCmd.PersistentFlags().Lookup("client-id"))
 	viper.BindPFlag("mqtt.station", serveMqttCmd.PersistentFlags().Lookup("station"))
 	viper.BindPFlag("mqtt.radio", serveMqttCmd.PersistentFlags().Lookup("radio"))
 }
