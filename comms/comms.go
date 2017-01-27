@@ -99,7 +99,7 @@ func MqttClient(s MqttSettings) {
 	// since we use SetCleanSession we have to subscribe on each
 	// connect or reconnect to the channels
 	var onConnectHandler = func(client mqtt.Client) {
-		log.Println("Connected to MQTT Broker ")
+		log.Printf("Connected to MQTT Broker %s:%d\n", s.BrokerURL, s.BrokerPort)
 
 		// Subscribe to Task Topics
 		for _, topic := range s.Topics {

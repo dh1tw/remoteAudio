@@ -56,16 +56,14 @@ var connectMqttCmd = &cobra.Command{
 
 func init() {
 	connectCmd.AddCommand(connectMqttCmd)
-	connectMqttCmd.PersistentFlags().StringP("broker-url", "u", "localhost", "Broker URL")
-	connectMqttCmd.PersistentFlags().StringP("client-id", "c", "", "MQTT Client Id")
-	connectMqttCmd.PersistentFlags().IntP("broker-port", "p", 1883, "Broker Port")
-	connectMqttCmd.PersistentFlags().StringP("station", "X", "mystation", "Your station callsign")
-	connectMqttCmd.PersistentFlags().StringP("radio", "Y", "myradio", "Radio ID")
-	viper.BindPFlag("mqtt.broker_url", connectMqttCmd.PersistentFlags().Lookup("broker-url"))
-	viper.BindPFlag("mqtt.broker_port", connectMqttCmd.PersistentFlags().Lookup("broker-port"))
-	viper.BindPFlag("mqtt.client_id", connectMqttCmd.PersistentFlags().Lookup("client-id"))
-	viper.BindPFlag("mqtt.station", connectMqttCmd.PersistentFlags().Lookup("station"))
-	viper.BindPFlag("mqtt.radio", connectMqttCmd.PersistentFlags().Lookup("radio"))
+	connectMqttCmd.Flags().StringP("broker-url", "u", "localhost", "Broker URL")
+	connectMqttCmd.Flags().StringP("client-id", "c", "", "MQTT Client Id")
+	connectMqttCmd.Flags().IntP("broker-port", "p", 1883, "Broker Port")
+	connectMqttCmd.Flags().StringP("station", "X", "mystation", "Your station callsign")
+	connectMqttCmd.Flags().StringP("radio", "Y", "myradio", "Radio ID")
+
+	// no binding necessary since the flags are already bound in init() of the server
+	// bindings are lazy - so they will only be queried during execution!
 }
 
 func mqttAudioClient() {
