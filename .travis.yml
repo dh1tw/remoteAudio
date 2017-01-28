@@ -29,19 +29,19 @@ install:
 - ls -al $GOPATH/bin
 - protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
 - env GOOS=linux GOARCH=amd64 go get github.com/GeertJohan/go.rice/rice
-# - env GOOS=linux GOARCH=$GIMME_ARCH go get -d -v ./...
+- env GOOS=linux GOARCH=$GIMME_ARCH go get -d -v ./...
 script:
-# - make dist
+- make dist
 - echo $GIMME_OS
-# before_deploy:
-# - tar -cvzf remoteAudio-v$TRAVIS_TAG-$GIMME_OS-$GIMME_ARCH.tar.gz remoteAudio
+before_deploy:
+- tar -cvzf remoteAudio-v$TRAVIS_TAG-$GIMME_OS-$GIMME_ARCH.tar.gz remoteAudio
 
-# deploy:
-#   provider: releases
-#   api_key:
-#     secure: OhP5sEYJqU5sRHCIPNz0pGGmRpE9BoRpygTq9qAMJpzjBX/0oak62SvSh+y4Imv81r6K1Jc7qMz3ZmGlJOvY2xeipHPfWZtjI/4RszQSmwDhNzEHGZQ5WiMaHT2p80F9PJgLdSFsvAawot6+VopqlpsvEOpgfocyX9hCgfDveRDB8mpN+NrT4+egEGKu06wT2ADDQSVaGIc1LloLp4uEeNJo9wFLGWDnThPDaQ1oYZXiir9NZjxSjDKXyFDIhAki1WdbM1F9ea/lHZlJHJpUMKY8AA7INNgeyOsHjf3r1DCsdp3X7UKNbkv5KSpSwtURM5frdiPg+S/i/sb/ya9XICXFJAx3zbBKvCecZ4if8bUy82QBZSjlT5L8QJsTi8oHjQKC6m/dQh2lDxBZFbpWOtoTYCBlkexW8NyIuKmx5vsR1arsJn2lJZmii5G5+FwvyDftpbTpc/4NlcVcjIs/rzCGG8TQDhN8rxX+utJ1vs2G5al6CJWVXupqiNz8+S35ciqYhTyuIXeYG5MffEfBM45tzA6F2WQCsutoYatuo2SV5cLQzbCSeWO6LNsfGSWlyw6jC/Ixg6erFpCXbC/3gkbGH7oYAMEVaoSlhMm4TgdLcn+jnaF7z2wdY0YhHioekWATtbLOy1Cwcy5SYGPKuoY9rk+wlsjAPmV6PoIfYQ8=
-#   file: remoteAudio-v$TRAVIS_TAG-$GIMME_OS-$GIMME_ARCH.tar.gz
-#   skip_cleanup: true
-#   on:
-#     repo: dh1tw/remoteAudio
-#     branch: travis
+deploy:
+  provider: releases
+  api_key:
+    secure: OhP5sEYJqU5sRHCIPNz0pGGmRpE9BoRpygTq9qAMJpzjBX/0oak62SvSh+y4Imv81r6K1Jc7qMz3ZmGlJOvY2xeipHPfWZtjI/4RszQSmwDhNzEHGZQ5WiMaHT2p80F9PJgLdSFsvAawot6+VopqlpsvEOpgfocyX9hCgfDveRDB8mpN+NrT4+egEGKu06wT2ADDQSVaGIc1LloLp4uEeNJo9wFLGWDnThPDaQ1oYZXiir9NZjxSjDKXyFDIhAki1WdbM1F9ea/lHZlJHJpUMKY8AA7INNgeyOsHjf3r1DCsdp3X7UKNbkv5KSpSwtURM5frdiPg+S/i/sb/ya9XICXFJAx3zbBKvCecZ4if8bUy82QBZSjlT5L8QJsTi8oHjQKC6m/dQh2lDxBZFbpWOtoTYCBlkexW8NyIuKmx5vsR1arsJn2lJZmii5G5+FwvyDftpbTpc/4NlcVcjIs/rzCGG8TQDhN8rxX+utJ1vs2G5al6CJWVXupqiNz8+S35ciqYhTyuIXeYG5MffEfBM45tzA6F2WQCsutoYatuo2SV5cLQzbCSeWO6LNsfGSWlyw6jC/Ixg6erFpCXbC/3gkbGH7oYAMEVaoSlhMm4TgdLcn+jnaF7z2wdY0YhHioekWATtbLOy1Cwcy5SYGPKuoY9rk+wlsjAPmV6PoIfYQ8=
+  file: remoteAudio-v$TRAVIS_TAG-$GIMME_OS-$GIMME_ARCH.tar.gz
+  skip_cleanup: true
+  on:
+    repo: dh1tw/remoteAudio
+    branch: travis
