@@ -54,7 +54,16 @@ and the following operating Systems:
 
 ```
 
-4. Download the remoteAudio sources and the packages it depends on
+4. Download and install [rice][7] command line tool
+
+```bash
+
+    $ go get github.com/GeertJohan/go.rice/rice
+
+```
+
+
+5. Download the remoteAudio sources and the packages it depends on
 
 ```bash
 
@@ -62,7 +71,10 @@ and the following operating Systems:
 
 ```
 
-5. Build remoteAudio
+as an alternative you can build the protocol buffers compiler also from
+source. This repository contains a build script ```install-protobuf.sh```
+
+6. Build remoteAudio
 
 ```bash
 
@@ -71,7 +83,7 @@ and the following operating Systems:
 
 ```
 
-6. Install remoteAudio on your Systems
+7. Install remoteAudio on your Systems
 
 ```bash
 
@@ -192,3 +204,4 @@ Feel free to open an issue if you encounter problems.
 [4]:https://mosquitto.org
 [5]:https://golang.org/dl
 [6]:https://github.com/google/protobuf/releases
+[7]:https://github.com/GeertJohan/go.rice/rice
