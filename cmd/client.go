@@ -1,4 +1,4 @@
-// Copyright © 2016 Tobias Wellnitz, DH1TW <Tobias.Wellnitz@gmail.com>
+// Copyright © 2017 Tobias Wellnitz, DH1TW <Tobias.Wellnitz@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,18 +26,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// serveCmd represents the serve command
-var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "Server for streaming Audio through a specfic transportation protocol",
-	Long: `The application acts as a server and can stream audio through 
-several transportation protocols. This command is typically used on the devices
-to which a radio is connected.`,
+// clientCmd represents the connect command
+var clientCmd = &cobra.Command{
+	Use:   "client",
+	Short: "remoteAudio client",
+	Long: `Connect to a remoteAudio Server
+
+You have to use the client with a specific transportation protocol.
+`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Please select a transportation protocol (--help for available options)")
+		fmt.Println("Please specify the transportation protocol (--help for available options)")
 	},
 }
 
 func init() {
-	RootCmd.AddCommand(serveCmd)
+	RootCmd.AddCommand(clientCmd)
 }

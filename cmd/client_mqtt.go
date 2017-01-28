@@ -44,43 +44,57 @@ import (
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 )
 
-// connectMqttCmd represents the mqtt command
-var connectMqttCmd = &cobra.Command{
+// clientMqttCmd represents the mqtt command
+var clientMqttCmd = &cobra.Command{
 	Use:   "mqtt",
-	Short: "Client streaming Audio via MQTT",
-	Long:  `Client streaming Audio via MQTT`,
-	Run: func(cmd *cobra.Command, args []string) {
-		mqttAudioClient()
-	},
+	Short: "MQTT Client for bi-directional audio streaming",
+	Long: `MQTT Client for bi-directional audio streaming
+	
+This server implements the Shackbus.org specification (https://shackbus.org).
+	`,
+	Run: mqttAudioClient,
 }
 
 func init() {
-	connectCmd.AddCommand(connectMqttCmd)
-	connectMqttCmd.Flags().StringP("broker-url", "u", "localhost", "Broker URL")
-	connectMqttCmd.Flags().StringP("client-id", "c", "", "MQTT Client Id")
-	connectMqttCmd.Flags().IntP("broker-port", "p", 1883, "Broker Port")
-	connectMqttCmd.Flags().StringP("station", "X", "mystation", "Your station callsign")
-	connectMqttCmd.Flags().StringP("radio", "Y", "myradio", "Radio ID")
-
-	// no binding necessary since the flags are already bound in init() of the server
-	// bindings are lazy - so they will only be queried during execution!
+	clientCmd.AddCommand(clientMqttCmd)
+	clientMqttCmd.Flags().StringP("broker-url", "u", "localhost", "Broker URL")
+	clientMqttCmd.Flags().IntP("broker-port", "p", 1883, "Broker Port")
+	clientMqttCmd.Flags().StringP("station", "X", "mystation", "Station you want to connect to")
+	clientMqttCmd.Flags().StringP("radio", "Y", "myradio", "ID of radio you want to connect to")
+	clientMqttCmd.Flags().Bool("webui-disabled", false, "WebUI server disabled")
+	clientMqttCmd.Flags().String("webui-address", "127.0.0.1", "WebUI - Address of Server")
+	clientMqttCmd.Flags().Int("webui-port", 8080, "WebUI - Port of Server")
 }
 
-func mqttAudioClient() {
+func mqttAudioClient(cmd *cobra.Command, args []string) {
+
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
+
+	// bind the pflags to viper settings
+	viper.BindPFlag("mqtt.broker_url", cmd.Flags().Lookup("broker-url"))
+	viper.BindPFlag("mqtt.broker_port", cmd.Flags().Lookup("broker-port"))
+	viper.BindPFlag("mqtt.station", cmd.Flags().Lookup("station"))
+	viper.BindPFlag("mqtt.radio", cmd.Flags().Lookup("radio"))
+
+	viper.BindPFlag("webui.disabled", cmd.Flags().Lookup("webui-disabled"))
+	viper.BindPFlag("webui.address", cmd.Flags().Lookup("webui-address"))
+	viper.BindPFlag("webui.port", cmd.Flags().Lookup("webui-port"))
 
 	if viper.GetString("general.user_id") == "" {
 		viper.Set("general.user_id", utils.RandStringRunes(10))
 	}
 
-	user_id := viper.GetString("general.user_id")
+	userID := viper.GetString("general.user_id")
 
-	// defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
-	// defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
-	// defer profile.Start(profile.BlockProfile, profile.ProfilePath(".")).Stop()
-
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
+	// profiling server can be enabled through a hidden pflag
+	if profServerEnabled {
+		go func() {
+			log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+		}()
+	}
 
 	// viper settings need to be copied in local variables
 	// since viper lookups allocate of each lookup a copy
@@ -88,7 +102,7 @@ func mqttAudioClient() {
 
 	mqttBrokerURL := viper.GetString("mqtt.broker_url")
 	mqttBrokerPort := viper.GetInt("mqtt.broker_port")
-	mqttClientID := viper.GetString("mqtt.client_id")
+	mqttClientID := userID
 
 	serverBaseTopic := viper.GetString("mqtt.station") +
 		"/radios/" + viper.GetString("mqtt.radio") +
@@ -142,7 +156,9 @@ func mqttAudioClient() {
 	}
 
 	webserverSettings := webserver.WebServerSettings{
-		Events: evPS,
+		Events:  evPS,
+		Address: viper.GetString("webui.address"),
+		Port:    viper.GetInt("webui.port"),
 	}
 
 	player := audio.AudioDevice{
@@ -222,7 +238,7 @@ func mqttAudioClient() {
 		// send ping if connected to Broker
 		case <-pingTicker.C:
 			if connectionStatus == comms.CONNECTED {
-				sendPing(user_id, serverRequestTopic, toWireCh)
+				sendPing(userID, serverRequestTopic, toWireCh)
 			}
 
 		case ev := <-reqServerAudioOnCh:
@@ -261,7 +277,7 @@ func mqttAudioClient() {
 			}
 
 			if msg.PingOrigin != nil && msg.Pong != nil {
-				if msg.GetPingOrigin() == user_id {
+				if msg.GetPingOrigin() == userID {
 					pong := time.Unix(0, msg.GetPong())
 					delta := time.Since(pong)
 					// fmt.Println("Ping:", delta.Nanoseconds()/1000000, "ms")

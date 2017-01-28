@@ -43,41 +43,40 @@ import (
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 )
 
-// serveMqttCmd represents the mqtt command
-var serveMqttCmd = &cobra.Command{
+// serverMqttCmd represents the mqtt command
+var serverMqttCmd = &cobra.Command{
 	Use:   "mqtt",
-	Short: "Server streaming Audio via MQTT",
-	Long:  `Server streaming Audio via MQTT`,
-	Run: func(cmd *cobra.Command, args []string) {
-		mqttAudioServer()
-	},
+	Short: "MQTT Server for bi-directional audio streaming",
+	Long:  `MQTT Server for bi-directional audio streaming`,
+	Run:   mqttAudioServer,
 }
 
 func init() {
-	serveCmd.AddCommand(serveMqttCmd)
-	serveMqttCmd.Flags().StringP("broker-url", "u", "localhost", "Broker URL")
-	serveMqttCmd.Flags().StringP("client-id", "c", "", "MQTT Client Id")
-	serveMqttCmd.Flags().IntP("broker-port", "p", 1883, "Broker Port")
-	serveMqttCmd.Flags().StringP("station", "X", "mystation", "Your station callsign")
-	serveMqttCmd.Flags().StringP("radio", "Y", "myradio", "Radio ID")
-
-	viper.BindPFlag("mqtt.broker_url", serveMqttCmd.Flags().Lookup("broker-url"))
-	viper.BindPFlag("mqtt.broker_port", serveMqttCmd.Flags().Lookup("broker-port"))
-	viper.BindPFlag("mqtt.client_id", serveMqttCmd.Flags().Lookup("client-id"))
-	viper.BindPFlag("mqtt.station", serveMqttCmd.Flags().Lookup("station"))
-	viper.BindPFlag("mqtt.radio", serveMqttCmd.Flags().Lookup("radio"))
+	serverCmd.AddCommand(serverMqttCmd)
+	serverMqttCmd.Flags().StringP("broker-url", "u", "localhost", "Broker URL")
+	serverMqttCmd.Flags().IntP("broker-port", "p", 1883, "Broker Port")
+	serverMqttCmd.Flags().StringP("station", "X", "mystation", "Your station callsign")
+	serverMqttCmd.Flags().StringP("radio", "Y", "myradio", "Radio ID")
 }
 
-func mqttAudioServer() {
+func mqttAudioServer(cmd *cobra.Command, args []string) {
+
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
+
+	// bind the pflags to viper settings
+	viper.BindPFlag("mqtt.broker_url", cmd.Flags().Lookup("broker-url"))
+	viper.BindPFlag("mqtt.broker_port", cmd.Flags().Lookup("broker-port"))
+	viper.BindPFlag("mqtt.station", cmd.Flags().Lookup("station"))
+	viper.BindPFlag("mqtt.radio", cmd.Flags().Lookup("radio"))
 
 	if viper.GetString("general.user_id") == "" {
 		viper.Set("general.user_id", utils.RandStringRunes(10))
 	}
 
-	// defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
-	// defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
-	// defer profile.Start(profile.BlockProfile, profile.ProfilePath(".")).Stop()
-
+	// profiling server can be enabled through a hidden pflag
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
@@ -88,7 +87,7 @@ func mqttAudioServer() {
 
 	mqttBrokerURL := viper.GetString("mqtt.broker_url")
 	mqttBrokerPort := viper.GetInt("mqtt.broker_port")
-	mqttClientID := viper.GetString("mqtt.client_id")
+	mqttClientID := viper.GetString("general.user_id")
 
 	baseTopic := viper.GetString("mqtt.station") +
 		"/radios/" + viper.GetString("mqtt.radio") +

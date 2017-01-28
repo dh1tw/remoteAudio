@@ -30,30 +30,13 @@ import (
 )
 
 var cfgFile string
+var profServerEnabled bool
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "remoteAudio",
-	Short: "Client & Server streaming audio application for remote Radios",
-	Long: `This application is an audio streaming client and server.
-It's main use case is remotely operating amateur radios.
-	
-The application supports the following transportation protocols:
-	- MQTT
-	- TCP
-	- UDP
-
-and the following Audio Codecs:
-	- OPUS
-	- PCM
-
-An extensive set of configuration parameters allow you to adjust the
-application to your needs. The parameters can either be set throug the
-console or in a config file.
-	`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
+	Short: "Audio streaming client & server for remote Amateur radio operations",
+	Long:  `Audio streaming client & server for remote Amateur radio operations`,
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.
@@ -68,14 +51,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports Persistent Flags, which, if defined here,
-	// will be global for your application.
-
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.remoteAudio.yaml)")
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	RootCmd.PersistentFlags().StringP("input-device-name", "i", "default", "Input device")
 	RootCmd.PersistentFlags().Float64("input-device-samplingrate", 48000, "Input device sampling rate")
 	RootCmd.PersistentFlags().Duration("input-device-latency", time.Millisecond*5, "Input latency")
@@ -101,6 +77,10 @@ func init() {
 	RootCmd.PersistentFlags().StringP("codec", "C", "opus", "Audio codec")
 
 	RootCmd.PersistentFlags().StringP("user-id", "U", "", "Your User ID - required for TX")
+
+	// hidden flags
+	RootCmd.PersistentFlags().BoolVar(&profServerEnabled, "prof-server", false, "enable profiling server at http://0.0.0.0:6060/debug/pprof")
+	RootCmd.PersistentFlags().MarkHidden("prof-server")
 
 	viper.BindPFlag("input_device.device_name", RootCmd.PersistentFlags().Lookup("input-device-name"))
 	viper.BindPFlag("input_device.samplingrate", RootCmd.PersistentFlags().Lookup("input-device-samplingrate"))
@@ -128,7 +108,6 @@ func init() {
 	viper.BindPFlag("audio.codec", RootCmd.PersistentFlags().Lookup("codec"))
 
 	viper.BindPFlag("general.user_id", RootCmd.PersistentFlags().Lookup("user-id"))
-
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -140,9 +119,4 @@ func initConfig() {
 	viper.SetConfigName(".remoteAudio") // name of config file (without extension)
 	viper.AddConfigPath("$HOME")        // adding home directory as first search path
 	viper.AutomaticEnv()                // read in environment variables that match
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
 }

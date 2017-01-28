@@ -32,8 +32,8 @@ import (
 // enumerateCmd represents the enumerate command
 var enumerateCmd = &cobra.Command{
 	Use:   "enumerate",
-	Short: "List all available sound devices",
-	Long:  `List all available sound devices and supported HostAPIs`,
+	Short: "List all available audio devices and supported Host APIs",
+	Long:  `List all available audio devices and supported Host APIs`,
 	Run: func(cmd *cobra.Command, args []string) {
 		enumerate()
 	},
@@ -44,7 +44,11 @@ func init() {
 }
 
 var tmpl = template.Must(template.New("").Parse(
-	`{{. | len}} host APIs: {{range .}}
+	`
+Available audio devices and supported Host APIs:
+
+	Detected {{. | len}} host API(s): {{range .}}
+	
 	Name:                   {{.Name}}
 	{{if .DefaultInputDevice}}Default input device:   {{.DefaultInputDevice.Name}}{{end}}
 	{{if .DefaultOutputDevice}}Default output device:  {{.DefaultOutputDevice.Name}}{{end}}

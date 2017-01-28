@@ -2,6 +2,7 @@ package webserver
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"net/http"
@@ -40,7 +41,9 @@ var hub = Hub{
 }
 
 type WebServerSettings struct {
-	Events *pubsub.PubSub
+	Events  *pubsub.PubSub
+	Address string
+	Port    int
 }
 
 type ApplicationState struct {
@@ -272,7 +275,11 @@ func Webserver(s WebServerSettings) {
 	staticFileServer := http.StripPrefix("/static/", http.FileServer(box.HTTPBox()))
 	http.Handle("/static/", noDirListing(staticFileServer))
 
+	serverURL := fmt.Sprintf("%s:%d", s.Address, s.Port)
+
 	http.HandleFunc("/ws", wsPage)
 	http.HandleFunc("/", homePage)
-	http.ListenAndServe(":8080", nil)
+
+	log.Println("Webserver listening on", serverURL)
+	http.ListenAndServe(serverURL, nil)
 }
