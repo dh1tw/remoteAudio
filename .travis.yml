@@ -25,10 +25,10 @@ install:
 - chmod +x ./install-protobuf.sh
 - ./install-protobuf.sh
 - export PATH=$PATH:$HOME/protobuf/bin
-- go get github.com/gogo/protobuf/protoc-gen-gofast
+- env GOOS=linux GOARCH=amd64 go get github.com/gogo/protobuf/protoc-gen-gofast
 - ls -al $GOPATH/bin
 - protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
-- go get github.com/GeertJohan/go.rice/rice
+- env GOOS=linux GOARCH=amd64 go get github.com/GeertJohan/go.rice/rice
 - go get -d -v ./...
 script:
 - make dist
