@@ -34,7 +34,12 @@ lint:
 		golint $$file ; \
 	done
 
-install: vet build
+install: 
+	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
+	cd webserver; \
+	rice embed-go 
+	go install -v ${OUT} -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMITID} \
+		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 # static: vet lint
 # 	go build -i -v -o ${OUT}-v${VERSION} -tags netgo -ldflags="-extldflags \"-static\" -w -s -X main.version=${VERSION}" ${PKG}

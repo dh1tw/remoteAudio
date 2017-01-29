@@ -269,16 +269,14 @@ func noDirListing(h http.Handler) http.HandlerFunc {
 func Webserver(s WebServerSettings) {
 
 	hub.events = s.Events
-
-	go hub.start()
-	box := rice.MustFindBox("../html/static")
-	staticFileServer := http.StripPrefix("/static/", http.FileServer(box.HTTPBox()))
-	http.Handle("/static/", noDirListing(staticFileServer))
-
 	serverURL := fmt.Sprintf("%s:%d", s.Address, s.Port)
 
+	go hub.start()
+	box := rice.MustFindBox("../html")
+	fileServer := http.FileServer(box.HTTPBox())
+
+	http.Handle("/", fileServer)
 	http.HandleFunc("/ws", wsPage)
-	http.HandleFunc("/", homePage)
 
 	log.Println("Webserver listening on", serverURL)
 	http.ListenAndServe(serverURL, nil)

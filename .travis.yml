@@ -1,6 +1,6 @@
 language: go
 dist: trusty
-sudo: false
+sudo: true
 env:
 - GIMME_OS=linux GIMME_ARCH=amd64
 - GIMME_OS=linux GIMME_ARCH=386
