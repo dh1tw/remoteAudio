@@ -38,7 +38,7 @@ install:
 	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
 	cd webserver; \
 	rice embed-go 
-	go install -v ${OUT} -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMITID} \
+	go install -v -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMITID} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 # static: vet lint
