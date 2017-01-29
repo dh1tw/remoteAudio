@@ -1,8 +1,8 @@
 OUT := remoteAudio
 PKG := github.com/dh1tw/remoteAudio
 COMMITID := $(shell git describe --always --long --dirty)
-COMMIT := $(shell git rev-parse HEAD)
-VERSION := $(shell git name-rev --tags --name-only ${COMMIT})
+COMMIT := $(shell git rev-parse --short HEAD)
+VERSION := $(shell git describe --tags)
 
 PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
 GO_FILES := $(shell find . -name '*.go' | grep -v /vendor/)
@@ -12,7 +12,7 @@ build:
 	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
 	cd webserver; \
 	rice embed-go 
-	go build -v -o ${OUT} -ldflags="-X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMITID} \
+	go build -v -o ${OUT} -ldflags="-X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 # strip off dwraf table - used for travis CI
@@ -20,7 +20,7 @@ dist:
 	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
 	cd webserver; \
 	rice embed-go 
-	go build -v -o ${OUT} -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMITID} \
+	go build -v -o ${OUT} -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 # test:
@@ -38,7 +38,7 @@ install:
 	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
 	cd webserver; \
 	rice embed-go 
-	go install -v -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMITID} \
+	go install -v -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 # static: vet lint
