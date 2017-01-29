@@ -32,6 +32,11 @@ and the following operating Systems:
 - Linux (Ubuntu, Raspian)
 - MacOS (Sierra)
 
+## Download
+
+You can download compiled binaries for MacOS, Linux (ARM/AMD64) from the
+[releases][8] page.
+
 ## How build remoteAudio from source on Linux (Ubuntu > 12.04)
 
 ### Dependencies
@@ -205,3 +210,4 @@ Feel free to open an issue if you encounter problems.
 [5]:https://golang.org/dl
 [6]:https://github.com/google/protobuf/releases
 [7]:https://github.com/GeertJohan/go.rice/rice
+[8]:https://github.com/dh1tw/remoteAudio/releases
