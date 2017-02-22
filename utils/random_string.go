@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func initRandom() {
+func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
