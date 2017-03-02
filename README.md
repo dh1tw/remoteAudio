@@ -1,5 +1,7 @@
 # remoteAudio
-[![Build Status](https://travis-ci.org/dh1tw/remoteAudio.svg?branch=master)](https://travis-ci.org/dh1tw/remoteAudio)
+Linux [![Build Status](https://travis-ci.org/dh1tw/remoteAudio.svg?branch=master)](https://travis-ci.org/dh1tw/remoteAudio)
+Windows [![Build status](https://ci.appveyor.com/api/projects/status/it6077sklplhgkyf?svg=true)](https://ci.appveyor.com/project/dh1tw/remoteaudio)
+
 
 remoteAudio is an audio streaming application, built for Amateur Radio purposes,
 written in [Go](1). The most typical use case for this software is the remote

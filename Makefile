@@ -1,4 +1,3 @@
-OUT := remoteAudio
 PKG := github.com/dh1tw/remoteAudio
 COMMITID := $(shell git describe --always --long --dirty)
 COMMIT := $(shell git rev-parse --short HEAD)
@@ -12,7 +11,7 @@ build:
 	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
 	cd webserver; \
 	rice embed-go 
-	go build -v -o ${OUT} -ldflags="-X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
+	go build -v -ldflags="-X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 # strip off dwraf table - used for travis CI
@@ -20,7 +19,7 @@ dist:
 	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
 	cd webserver; \
 	rice embed-go 
-	go build -v -o ${OUT} -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
+	go build -v -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 # test:
@@ -45,12 +44,12 @@ install:
 # 	go build -i -v -o ${OUT}-v${VERSION} -tags netgo -ldflags="-extldflags \"-static\" -w -s -X main.version=${VERSION}" ${PKG}
 
 client: build
-	./${OUT} client mqtt
+	./remoteAudio client mqtt
 
 server: build
-	./${OUT} server mqtt
+	./remoteAudio server mqtt
 
 clean:
-	-@rm ${OUT} ${OUT}-v*
+	-@rm remoteAudio remoteAudio-v*
 
 .PHONY: build client server install vet lint clean
