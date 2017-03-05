@@ -31,16 +31,17 @@ RemoteAudio has been tested on the following platforms:
 
 and the following operating Systems:
 
-- Linux (Ubuntu, Raspian)
+- Linux (Ubuntu, Raspian, Armbian)
 - MacOS (Sierra)
 - Windows (10)
 
 ## Download
 
-You can download a tarball / zip archive with the compiled binaries for MacOS,
-Linux (ARM/AMD64) and Windows from the [releases][8] page.
+You can download a tarball / zip archive with the compiled binary for MacOS,
+Linux (ARM/AMD64) and Windows from the [releases][8] page. remoteAudio is
+just a single exectuable.
 
-## Dependencies
+## Installation / Dependencies
 
 remoteAudio depends on some 3rd party libraries which can be installed on
 Linux and MacOS with the respective packet managers. On Windows the 3rd party
@@ -76,7 +77,7 @@ brokers are good for inital tests, however they are sometimes overloaded.
 ### List audio devices
 
 If you are not sure about the name of your audio devices and their parameters,
-you can easily list that information:
+you can easily list the available devices:
 
 ```bash
 
@@ -85,6 +86,8 @@ you can easily list that information:
 ```
 
 By default the standard input / output devices defined in your OS will be used.
+
+You can find further tips about configuring your audio devices in the [Wiki][9].
 
 ### Configuration
 
@@ -163,67 +166,13 @@ client and server side audio streams. Open a Webbrowser at:
 ![Alt text](ScreenshotWebUI.png?raw=true "Screenshot remoteAudio WebUI")
 
 The client and server will replay incoming PCM and OPUS audio frames. Internally
-remoteAudio picks the right codec, resamples and adjust to the local audio
-output device.
+remoteAudio picks the right codec, decodes, resamples and normalizes the audio
+frames before playing them on the local audio output device.
 
-## How build remoteAudio on Linux, MacOS and Windows
+## How build remoteAudio
 
-### Dependencies
-
-1. Make sure, you have installed the latest [Go][5] version.
-
-2. Install apt packages:
-
-```bash
-
-    $ sudo apt install pkg-config libsamplerate0 libsamplerate0-dev libopusfile-dev libopus-dev libportaudio2 portaudio19-dev
-
-```
-
-3. Download this repository
-
-```bash
-
-    $ go get -d github.com/dh1tw/remoteAudio
-
-```
-
-4. Download and install go dependencies
-
-```bash
-
-    $ cd $GOPATH/src/github.com/dh1tw/remoteAudio
-    $ make install-deps
-
-```
-
-5. Install the latest [Protocol buffers compiler][6] (>=3.0)
-
-```bash
-
-    $ cd $GOPATH/src/github.com/dh1tw/remoteAudio
-    $ ./ci/install-protobuf.sh
-
-```
-
-6. Build remoteAudio
-
-```bash
-
-    $ cd $GOPATH/src/github.com/dh1tw/remoteAudio
-    $ make build
-
-```
-
-7. Install remoteAudio on your Systems
-
-```bash
-
-    $ make install
-
-```
-
-
+The [Wiki][9] contains detailed instructions on how to build remoteAudio
+from source code on Linux, MacOS and Windows.
 
 ## Troubleshooting
 
@@ -233,6 +182,8 @@ the Settings.
 
 Inexpensive (USB) Soundcards usually operate at 48kHz. They play the audio in
 Stereo and Record the Audio in MONO.
+
+The [Wiki][9] contains a Troubleshooting section.
 
 Feel free to open an issue if you encounter problems.
 
@@ -245,3 +196,4 @@ Feel free to open an issue if you encounter problems.
 [6]:https://github.com/google/protobuf/releases
 [7]:https://github.com/GeertJohan/go.rice/rice
 [8]:https://github.com/dh1tw/remoteAudio/releases
+[9]:https://github.com/dh1tw/remoteAudio/wiki
