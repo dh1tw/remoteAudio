@@ -1,5 +1,5 @@
 # remoteAudio
-Linux [![Build Status](https://travis-ci.org/dh1tw/remoteAudio.svg?branch=master)](https://travis-ci.org/dh1tw/remoteAudio)
+Linux & MacOS [![Build Status](https://travis-ci.org/dh1tw/remoteAudio.svg?branch=master)](https://travis-ci.org/dh1tw/remoteAudio)
 Windows [![Build status](https://ci.appveyor.com/api/projects/status/it6077sklplhgkyf?svg=true)](https://ci.appveyor.com/project/dh1tw/remoteaudio)
 
 
