@@ -50,8 +50,7 @@ artifacts:
   - path: '*.zip'
     name: remoteAudio
 deploy:
-  release: $(appveyor_repo_tag_name)
-  description: 'Release description'
+  description: ''
   provider: GitHub
   auth_token:
     secure: j2rLmFvQb9PPmy5aj0OXu2JzSyLEsusZDPMaAnmkYk+wQMjJm+xW2atWuvGhvNZY
