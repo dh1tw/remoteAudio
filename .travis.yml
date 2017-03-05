@@ -27,6 +27,8 @@ addons:
     - libportaudio2
     - portaudio19-dev
     - autoconf automake libtool curl make g++ unzip
+before_install:
+- git fetch --tags
 install:
 - ./ci/install-deps-linux-osx.sh
 - export PATH=$PATH:$HOME/protobuf/bin
