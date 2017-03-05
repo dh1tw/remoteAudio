@@ -3,9 +3,9 @@ Linux [![Build Status](https://travis-ci.org/dh1tw/remoteAudio.svg?branch=master
 Windows [![Build status](https://ci.appveyor.com/api/projects/status/it6077sklplhgkyf?svg=true)](https://ci.appveyor.com/project/dh1tw/remoteaudio)
 
 
-remoteAudio is an audio streaming application, built for Amateur Radio purposes,
-written in [Go](1). The most typical use case for this software is the remote
-operation of an amateur radio station.
+remoteAudio is a cross plattform audio streaming application, built for Amateur
+Radio purposes. The most typical use case for this software is the remote
+operation of an amateur radio station. remoteAudio is written in [Go](1).
 
 **ADVICE**: This project is **under development**. The parameters, ICD and the
 behaviour is still **not stable** and subject to change.
@@ -33,68 +33,33 @@ and the following operating Systems:
 
 - Linux (Ubuntu, Raspian)
 - MacOS (Sierra)
+- Windows (10)
 
 ## Download
 
-You can download compiled binaries for MacOS, Linux (ARM/AMD64) from the
-[releases][8] page.
+You can download a tarball / zip archive with the compiled binaries for MacOS,
+Linux (ARM/AMD64) and Windows from the [releases][8] page.
 
-## How build remoteAudio from source on Linux (Ubuntu > 12.04)
+## Dependencies
 
-### Dependencies
+remoteAudio depends on some 3rd party libraries which can be installed on
+Linux and MacOS with the respective packet managers. On Windows the 3rd party
+libraries are included in the zip archive.
 
-1. Make sure you have the latest [Go][5] version installed 
-2. Download and install the latest version of the [Protocol buffers compiler][6]
-3. Install ````pkg-config```, ```libsamplerate``` and ```libopus```
+### Linux (Ubuntu >= 14.04)
 
 ```bash
 
-    $ sudo apt install pkg-config libsamplerate0 libsamplerate0-dev libopusfile-dev libopus-dev libportaudio2 portaudio19-dev
+    $ sudo apt-get install -y pkg-config libsamplerate0 libopus0 libopusfile0 libportaudio2
 
 ```
 
-3. Install the gogo protocol buffers plugin
+### MacOS
 
 ```bash
 
-    $ go get github.com/gogo/protobuf/protoc-gen-gofast
-
-```
-
-4. Download and install [rice][7] command line tool
-
-```bash
-
-    $ go get github.com/GeertJohan/go.rice/rice
-
-```
-
-
-5. Download the remoteAudio sources and the packages it depends on
-
-```bash
-
-    $ go get -d github.com/dh1tw/remoteAudio
-
-```
-
-as an alternative you can build the protocol buffers compiler also from
-source. This repository contains a build script ```install-protobuf.sh```
-
-6. Build remoteAudio
-
-```bash
-
-    $ cd $GOPATH/src/github.com/dh1tw/remoteAudio
-    $ make build
-
-```
-
-7. Install remoteAudio on your Systems
-
-```bash
-
-    $ make install
+    $ brew update
+    $ brew install pkg-config opus opusfile portaudio libsamplerate
 
 ```
 
@@ -103,26 +68,13 @@ source. This repository contains a build script ```install-protobuf.sh```
 In order to operate remoteAudio you need to either run your own MQTT Broker
 ([Mosquitto](4) is a good choice) or connect to a public broker, like
 `iot.eclipse.org` or `test.mosquitto.org`. The load of these brokers
-and their ping to your place obviously will influence the latency. These public
+and the ping to your place will influence the latency. These public
 brokers are good for inital tests, however they are sometimes overloaded.
 
-## Execute Audio Server
+## Getting started
 
-```bash
+### List audio devices
 
-    $ remoteAudio server mqtt
-
-```
-
-## Execute Audio Client
-
-```bash
-
-    $ remoteAudio client mqtt
-
-```
-
-## List audio devices
 If you are not sure about the name of your audio devices and their parameters,
 you can easily list that information:
 
@@ -132,12 +84,16 @@ you can easily list that information:
 
 ```
 
+By default the standard input / output devices defined in your OS will be used.
+
+### Configuration
 
 Both, the server and the client provide extensive configuration possibilities,
 either through a configuration file (TOML|YAML|JSON), typically located in
 your home directory `/home/your_user/.remoteAudio.toml`. or through pflags.
 
-An example configuration file is included in the repository.
+An example configuration file named ```.remoteAudio.toml```is included in the
+repository.
 
 All parameters can be set through pflags. The following *example* shows the
 options for ```$ remoteAudio server mqtt --help```:
@@ -180,18 +136,94 @@ Global Flags:
 
 ```
 
+
+
+## Execute Audio Server
+
+```bash
+
+    $ remoteAudio server mqtt
+
+```
+
+## Execute Audio Client
+
+```bash
+
+    $ remoteAudio client mqtt
+
+```
+
+## WebUI
+
 The Client provides a minimal Web Interface for basic control of the
 client and server side audio streams. Open a Webbrowser at:
 [http://localhost:6060](https://localhost:6060) to access the WebUI.
 
 ![Alt text](ScreenshotWebUI.png?raw=true "Screenshot remoteAudio WebUI")
 
-In any case, the client and server will accept almost any kind of audio frames
-without any configuration. Internally remoteAudio picks the right codec,
-resamples and adjust to the local audio output device.
+The client and server will replay incoming PCM and OPUS audio frames. Internally
+remoteAudio picks the right codec, resamples and adjust to the local audio
+output device.
 
-However if the buffer size does not correspond to the internal buffer size,
-the stream has to be restarted which might result in a small delay.
+## How build remoteAudio on Linux, MacOS and Windows
+
+### Dependencies
+
+1. Make sure, you have installed the latest [Go][5] version.
+
+2. Install apt packages:
+
+```bash
+
+    $ sudo apt install pkg-config libsamplerate0 libsamplerate0-dev libopusfile-dev libopus-dev libportaudio2 portaudio19-dev
+
+```
+
+3. Download this repository
+
+```bash
+
+    $ go get -d github.com/dh1tw/remoteAudio
+
+```
+
+4. Download and install go dependencies
+
+```bash
+
+    $ cd $GOPATH/src/github.com/dh1tw/remoteAudio
+    $ make install-deps
+
+```
+
+5. Install the latest [Protocol buffers compiler][6] (>=3.0)
+
+```bash
+
+    $ cd $GOPATH/src/github.com/dh1tw/remoteAudio
+    $ ./ci/install-protobuf.sh
+
+```
+
+6. Build remoteAudio
+
+```bash
+
+    $ cd $GOPATH/src/github.com/dh1tw/remoteAudio
+    $ make build
+
+```
+
+7. Install remoteAudio on your Systems
+
+```bash
+
+    $ make install
+
+```
+
+
 
 ## Troubleshooting
 

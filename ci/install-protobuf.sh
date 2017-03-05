@@ -8,6 +8,7 @@ if [ ! -d "$HOME/protobuf/lib" ]; then
   cd $HOME/protobuf-3.1.0 && ./autogen.sh && ./configure --prefix=$HOME/protobuf && make && make install
   chmod +x $HOME/protobuf/bin/protoc
   cd $CURDIR #get back to initial directory
+  export PATH="$PATH:$HOME/protobuf/bin"
 else
   echo "Using cached directory."
 fi

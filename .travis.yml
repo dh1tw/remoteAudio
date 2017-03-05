@@ -1,12 +1,18 @@
 language: go
 dist: trusty
 sudo: true
-env:
-- GIMME_OS=linux GIMME_ARCH=amd64
-# - GIMME_OS=linux GIMME_ARCH=386
-# - GIMME_OS=linux GIMME_ARCH=arm
-go:
-- 1.7
+matrix:
+  include: 
+    - os: linux
+      env: 
+        - GIMME_OS=linux 
+        - GIMME_ARCH=amd64
+      go: 1.8
+    - os: osx
+      env: 
+        - GIMME_OS=darwin
+        - GIMME_ARCH=amd64
+      go: 1.7
 cache:
   directories:
   - $HOME/protobuf
@@ -22,20 +28,12 @@ addons:
     - portaudio19-dev
     - autoconf automake libtool curl make g++ unzip
 install:
-- chmod +x ./install-protobuf.sh
-- ./install-protobuf.sh
-- export PATH=$PATH:$HOME/protobuf/bin
-- env GOOS=linux GOARCH=amd64 go get github.com/gogo/protobuf/protoc-gen-gofast
-- ls -al $GOPATH/bin
-- protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
-- env GOOS=linux GOARCH=amd64 go get github.com/GeertJohan/go.rice/rice
-- env GOOS=linux GOARCH=$GIMME_ARCH go get -d -v ./...
+- ./ci/install-deps-linux-osx.sh
+# - export PATH=$PATH:$HOME/protobuf/bin
 script:
 - make dist
-- echo $GIMME_OS
 before_deploy:
 - tar -cvzf remoteAudio-v$TRAVIS_TAG-$GIMME_OS-$GIMME_ARCH.tar.gz remoteAudio
-
 deploy:
   provider: releases
   api_key:
@@ -44,4 +42,6 @@ deploy:
   skip_cleanup: true
   on:
     repo: dh1tw/remoteAudio
-    branch: travis
+    tags: true
+    draft: true
+    go: 1.8

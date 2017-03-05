@@ -40,6 +40,11 @@ install:
 	go install -v -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
+install-deps:
+	go get github.com/gogo/protobuf/protoc-gen-gofast
+	go get github.com/GeertJohan/go.rice/rice
+	go get ./...
+
 # static: vet lint
 # 	go build -i -v -o ${OUT}-v${VERSION} -tags netgo -ldflags="-extldflags \"-static\" -w -s -X main.version=${VERSION}" ${PKG}
 
@@ -52,4 +57,4 @@ server: build
 clean:
 	-@rm remoteAudio remoteAudio-v*
 
-.PHONY: build client server install vet lint clean
+.PHONY: build client server install vet lint clean install-deps

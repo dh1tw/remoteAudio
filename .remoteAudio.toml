@@ -5,7 +5,6 @@ user_id = "myCall"
 #broker_url = "localhost"
 broker_url = "test.mosquitto.org"
 broker_port = 1883
-client_id = "myCallsignPC"
 station = "dl0xxx"
 radio = "ft950"
 
@@ -37,3 +36,8 @@ max_bandwidth = "wideband"
 codec = "opus"
 rx_buffer_length = 10
 frame_length = 480  #10ms (needed for opus)
+
+[webui]
+disabled = false
+address = "localhost"
+port = 7070
