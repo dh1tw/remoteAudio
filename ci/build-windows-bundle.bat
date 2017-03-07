@@ -7,6 +7,8 @@ REM copy the needed shared libraries and the binary
 %MSYS_PATH%\usr\bin\bash -lc "cp /mingw%MSYS2_BITS%/**/libopusfile-0.dll /c/gopath/src/github.com/dh1tw/remoteAudio/release/"
 %MSYS_PATH%\usr\bin\bash -lc "cp /mingw%MSYS2_BITS%/**/libportaudio-2.dll /c/gopath/src/github.com/dh1tw/remoteAudio/release/"
 %MSYS_PATH%\usr\bin\bash -lc "cp /mingw%MSYS2_BITS%/**/libsamplerate-0.dll /c/gopath/src/github.com/dh1tw/remoteAudio/release/"
+%MSYS_PATH%\usr\bin\bash -lc "cp /mingw%MSYS2_BITS%/**/libgcc_s_dw2-1.dll /c/gopath/src/github.com/dh1tw/remoteAudio/release/"
+%MSYS_PATH%\usr\bin\bash -lc "cp /mingw%MSYS2_BITS%/**/libwinpthread-1.dll /c/gopath/src/github.com/dh1tw/remoteAudio/release/"
 REM %MSYS_PATH%\usr\bin\bash -lc "cd /c/gopath/src/github.com/dh1tw/remoteAudio && ci/release"
 %MSYS_PATH%\usr\bin\bash -lc "cp /c/gopath/src/github.com/dh1tw/remoteAudio/remoteAudio.exe /c/gopath/src/github.com/dh1tw/remoteAudio/release"
 
