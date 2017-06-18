@@ -70,11 +70,12 @@ func RecorderAsync(ad AudioDevice) {
 
 	var stream *portaudio.Stream
 
-	userID := viper.GetString("general.user_id")
-
 	// the serializer struct is mainly used to cache variables which are
 	// frequently written into a protocol buffers message
 	// viper Lookups are unfortunately CPU intensive
+
+	userID := viper.GetString("mqtt.client-id")
+
 	var s serializer
 	s.AudioDevice = &ad
 	s.userID = userID
@@ -110,7 +111,7 @@ func RecorderAsync(ad AudioDevice) {
 		return
 	}
 
-	maxBw, err := GetOpusMaxBandwith(viper.GetString("opus.max_bandwidth"))
+	maxBw, err := GetOpusMaxBandwith(viper.GetString("opus.max-bandwidth"))
 	if err != nil {
 		fmt.Println(err)
 
@@ -138,7 +139,7 @@ func RecorderAsync(ad AudioDevice) {
 	defer stream.Stop()
 
 	// create the PCM samplerate converter
-	ad.PCMSamplerateConverter, err = gosamplerate.New(viper.GetInt("input_device.quality"), ad.Channels, 65536)
+	ad.PCMSamplerateConverter, err = gosamplerate.New(viper.GetInt("input-device.quality"), ad.Channels, 65536)
 	if err != nil {
 		fmt.Println("unable to create PCM samplerate converter")
 		fmt.Println(err)

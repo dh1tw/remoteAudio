@@ -30,7 +30,6 @@ import (
 )
 
 var cfgFile string
-var profServerEnabled bool
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -72,42 +71,37 @@ func init() {
 	RootCmd.PersistentFlags().Int("opus-complexity", 9, "Computational complexity of opus encoder")
 	RootCmd.PersistentFlags().String("opus-max-bandwidth", "wideband", "maximum bandwidth of opus encoder")
 
-	RootCmd.PersistentFlags().IntP("audio-frame-length", "f", 480, "Amount of audio samples in one frame")
+	RootCmd.PersistentFlags().IntP("audio-frame-length", "f", 960, "Amount of audio samples in one frame")
 	RootCmd.PersistentFlags().IntP("rx-buffer-length", "R", 10, "Buffer length (in frames) for incoming Audio packets")
-	RootCmd.PersistentFlags().StringP("codec", "C", "opus", "Audio codec")
-
-	RootCmd.PersistentFlags().StringP("user-id", "U", "", "Your User ID - required for TX")
+	RootCmd.PersistentFlags().StringP("codec", "c", "opus", "Audio codec")
 
 	// hidden flags
-	RootCmd.PersistentFlags().BoolVar(&profServerEnabled, "prof-server", false, "enable profiling server at http://0.0.0.0:6060/debug/pprof")
-	RootCmd.PersistentFlags().MarkHidden("prof-server")
+	// RootCmd.PersistentFlags().BoolVar(&profServerEnabled, "prof-server", false, "enable profiling server at http://0.0.0.0:6060/debug/pprof")
+	// RootCmd.PersistentFlags().MarkHidden("prof-server")
 
-	viper.BindPFlag("input_device.device_name", RootCmd.PersistentFlags().Lookup("input-device-name"))
-	viper.BindPFlag("input_device.samplingrate", RootCmd.PersistentFlags().Lookup("input-device-samplingrate"))
-	viper.BindPFlag("input_device.latency", RootCmd.PersistentFlags().Lookup("input-device-latency"))
-	viper.BindPFlag("input_device.channels", RootCmd.PersistentFlags().Lookup("input-device-channels"))
+	viper.BindPFlag("input-device.device-name", RootCmd.PersistentFlags().Lookup("input-device-name"))
+	viper.BindPFlag("input-device.samplingrate", RootCmd.PersistentFlags().Lookup("input-device-samplingrate"))
+	viper.BindPFlag("input-device.latency", RootCmd.PersistentFlags().Lookup("input-device-latency"))
+	viper.BindPFlag("input-device.channels", RootCmd.PersistentFlags().Lookup("input-device-channels"))
 
-	viper.BindPFlag("output_device.device_name", RootCmd.PersistentFlags().Lookup("output-device-name"))
-	viper.BindPFlag("output_device.samplingrate", RootCmd.PersistentFlags().Lookup("output-device-samplingrate"))
-	viper.BindPFlag("output_device.latency", RootCmd.PersistentFlags().Lookup("output-device-latency"))
-	viper.BindPFlag("output_device.channels", RootCmd.PersistentFlags().Lookup("output-device-channels"))
+	viper.BindPFlag("output-device.device-name", RootCmd.PersistentFlags().Lookup("output-device-name"))
+	viper.BindPFlag("output-device.samplingrate", RootCmd.PersistentFlags().Lookup("output-device-samplingrate"))
+	viper.BindPFlag("output-device.latency", RootCmd.PersistentFlags().Lookup("output-device-latency"))
+	viper.BindPFlag("output-device.channels", RootCmd.PersistentFlags().Lookup("output-device-channels"))
 
-	viper.BindPFlag("pcm.framelength", RootCmd.PersistentFlags().Lookup("pcm-framelength"))
 	viper.BindPFlag("pcm.samplingrate", RootCmd.PersistentFlags().Lookup("pcm-samplingrate"))
 	viper.BindPFlag("pcm.bitdepth", RootCmd.PersistentFlags().Lookup("pcm-bitdepth"))
 	viper.BindPFlag("pcm.channels", RootCmd.PersistentFlags().Lookup("pcm-channels"))
-	viper.BindPFlag("pcm.resampling_quality", RootCmd.PersistentFlags().Lookup("resampling-quality"))
+	viper.BindPFlag("pcm.resampling-quality", RootCmd.PersistentFlags().Lookup("resampling-quality"))
 
 	viper.BindPFlag("opus.application", RootCmd.PersistentFlags().Lookup("opus-application"))
 	viper.BindPFlag("opus.bitrate", RootCmd.PersistentFlags().Lookup("opus-bitrate"))
 	viper.BindPFlag("opus.complexity", RootCmd.PersistentFlags().Lookup("opus-complexity"))
-	viper.BindPFlag("opus.max_bandwidth", RootCmd.PersistentFlags().Lookup("opus-max-bandwidth"))
+	viper.BindPFlag("opus.max-bandwidth", RootCmd.PersistentFlags().Lookup("opus-max-bandwidth"))
 
-	viper.BindPFlag("audio.frame_length", RootCmd.PersistentFlags().Lookup("audio-frame-length"))
-	viper.BindPFlag("audio.rx_buffer_length", RootCmd.PersistentFlags().Lookup("rx-buffer-length"))
+	viper.BindPFlag("audio.frame-length", RootCmd.PersistentFlags().Lookup("audio-frame-length"))
+	viper.BindPFlag("audio.rx_buffer-length", RootCmd.PersistentFlags().Lookup("rx-buffer-length"))
 	viper.BindPFlag("audio.codec", RootCmd.PersistentFlags().Lookup("codec"))
-
-	viper.BindPFlag("general.user_id", RootCmd.PersistentFlags().Lookup("user-id"))
 }
 
 // initConfig reads in config file and ENV variables if set.

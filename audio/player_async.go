@@ -74,7 +74,7 @@ func PlayerASync(ad AudioDevice) {
 
 	var stream *portaudio.Stream
 
-	audioBufferSize := viper.GetInt("audio.rx_buffer_length")
+	audioBufferSize := viper.GetInt("audio.rx-buffer-length")
 
 	// the deserializer struct is mainly used to cache variables which have
 	// to be read / set during the deserialization
@@ -109,7 +109,7 @@ func PlayerASync(ad AudioDevice) {
 	defer stream.Close()
 
 	// create the PCM samplerate converter
-	ad.PCMSamplerateConverter, err = gosamplerate.New(viper.GetInt("output_device.quality"), ad.Channels, 65536)
+	ad.PCMSamplerateConverter, err = gosamplerate.New(viper.GetInt("output-device.quality"), ad.Channels, 65536)
 	if err != nil {
 		fmt.Println("unable to create resampler")
 		fmt.Println(err)

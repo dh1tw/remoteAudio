@@ -44,6 +44,7 @@ deploy:
   skip_cleanup: true
   on:
     repo: dh1tw/remoteAudio
-    tags: true
+    tags:
+      true
     draft: true
     go: 1.8

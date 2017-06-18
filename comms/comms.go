@@ -17,6 +17,8 @@ type MqttSettings struct {
 	Transport                string
 	BrokerURL                string
 	BrokerPort               int
+	Username                 string
+	Password                 string
 	ClientID                 string
 	Topics                   []string
 	ToDeserializeAudioDataCh chan []byte
@@ -113,6 +115,8 @@ func MqttClient(s MqttSettings) {
 
 	opts := mqtt.NewClientOptions().AddBroker(s.Transport + "://" + s.BrokerURL + ":" + strconv.Itoa(s.BrokerPort))
 	opts.SetClientID(s.ClientID)
+	opts.SetUsername(s.Username)
+	opts.SetPassword(s.Password)
 	opts.SetDefaultPublishHandler(msgHandler)
 	opts.SetKeepAlive(time.Second * 5)
 	opts.SetMaxReconnectInterval(time.Second)
@@ -128,7 +132,9 @@ func MqttClient(s MqttSettings) {
 	client := mqtt.NewClient(opts)
 
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		log.Println(token.Error())
+		log.Println("MQTT:", token.Error())
+		s.Events.Pub(true, events.Shutdown)
+
 	}
 
 	for {

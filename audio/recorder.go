@@ -61,7 +61,7 @@ package audio
 
 // 	defer stream.Stop()
 
-// 	ad.Converter, err = gosamplerate.New(viper.GetInt("input_device.quality"), ad.Channels, 65536)
+// 	ad.Converter, err = gosamplerate.New(viper.GetInt("input-device.quality"), ad.Channels, 65536)
 // 	//	ad.Converter, err = gosamplerate.New(gosamplerate.SRC_SINC_MEDIUM_QUALITY, ad.Channels, 65536)
 // 	if err != nil {
 // 		fmt.Println("unable to create resampler")
@@ -80,12 +80,12 @@ package audio
 // 	var s serializer
 // 	s.AudioDevice = &ad
 // 	s.wireSamplingrate = viper.GetFloat64("wire.samplingrate")
-// 	s.wireOutputChannels = GetChannel(viper.GetString("wire.output_channels"))
+// 	s.wireOutputChannels = GetChannel(viper.GetString("wire.output-channels"))
 // 	s.framesPerBufferI = int32(ad.FramesPerBuffer)
 // 	s.samplingRateI = int32(s.wireSamplingrate)
 // 	s.channelsI = int32(s.wireOutputChannels)
 // 	s.bitrateI = int32(viper.GetInt("wire.bitrate"))
-// 	s.userID = string(viper.GetString("general.user_id"))
+// 	s.userID = string(viper.GetString("general.user-id"))
 
 // 	for {
 // 		num, err := stream.AvailableToRead()
@@ -104,7 +104,7 @@ package audio
 // 				fmt.Println(err)
 // 			} else {
 // 				msg := AudioMsg{}
-// 				msg.Topic = viper.GetString("mqtt.topic_audio_out")
+// 				msg.Topic = viper.GetString("mqtt.topic-audio-out")
 // 				msg.Data = data
 // 				ad.ToWire <- msg
 // 			}

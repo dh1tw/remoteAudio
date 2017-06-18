@@ -22,8 +22,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
-	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -38,7 +36,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	_ "net/http/pprof"
+	// _ "net/http/pprof"
 
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 )
@@ -53,8 +51,11 @@ var serverMqttCmd = &cobra.Command{
 
 func init() {
 	serverCmd.AddCommand(serverMqttCmd)
-	serverMqttCmd.Flags().StringP("broker-url", "u", "localhost", "Broker URL")
-	serverMqttCmd.Flags().IntP("broker-port", "p", 1883, "Broker Port")
+	serverMqttCmd.Flags().StringP("broker-url", "u", "test.mosquitto.org", "MQTT Broker URL")
+	serverMqttCmd.Flags().IntP("broker-port", "p", 1883, "MQTT Broker Port")
+	serverMqttCmd.Flags().StringP("username", "U", "", "MQTT Username")
+	serverMqttCmd.Flags().StringP("password", "P", "", "MQTT Password")
+	serverMqttCmd.Flags().StringP("client-id", "C", "remoteAudio-svr", "MQTT ClientID")
 	serverMqttCmd.Flags().StringP("station", "X", "mystation", "Your station callsign")
 	serverMqttCmd.Flags().StringP("radio", "Y", "myradio", "Radio ID")
 }
@@ -67,27 +68,35 @@ func mqttAudioServer(cmd *cobra.Command, args []string) {
 	}
 
 	// bind the pflags to viper settings
-	viper.BindPFlag("mqtt.broker_url", cmd.Flags().Lookup("broker-url"))
-	viper.BindPFlag("mqtt.broker_port", cmd.Flags().Lookup("broker-port"))
+	viper.BindPFlag("mqtt.username", cmd.Flags().Lookup("username"))
+	viper.BindPFlag("mqtt.password", cmd.Flags().Lookup("password"))
+	viper.BindPFlag("mqtt.client-id", cmd.Flags().Lookup("client-id"))
+	viper.BindPFlag("mqtt.broker-url", cmd.Flags().Lookup("broker-url"))
+	viper.BindPFlag("mqtt.broker-port", cmd.Flags().Lookup("broker-port"))
 	viper.BindPFlag("mqtt.station", cmd.Flags().Lookup("station"))
 	viper.BindPFlag("mqtt.radio", cmd.Flags().Lookup("radio"))
 
-	if viper.GetString("general.user_id") == "" {
-		viper.Set("general.user_id", utils.RandStringRunes(10))
-	}
-
-	// profiling server can be enabled through a hidden pflag
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
+	// profiling server
+	// go func() {
+	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
+	// }()
 
 	// viper settings need to be copied in local variables
 	// since viper lookups allocate of each lookup a copy
 	// and are quite inperformant
 
-	mqttBrokerURL := viper.GetString("mqtt.broker_url")
-	mqttBrokerPort := viper.GetInt("mqtt.broker_port")
-	mqttClientID := viper.GetString("general.user_id")
+	mqttBrokerURL := viper.GetString("mqtt.broker-url")
+	mqttBrokerPort := viper.GetInt("mqtt.broker-port")
+	mqttClientID := viper.GetString("mqtt.client-id")
+	mqttUsername := viper.GetString("mqtt.username")
+	mqttPassword := viper.GetString("mqtt.password")
+
+	if mqttClientID == "remoteAudio-svr" {
+		mqttClientID = mqttClientID + "-" + utils.RandStringRunes(5)
+		// update the viper key since it will be retrieved in other parts
+		// of the application
+		viper.Set("mqtt.client-id", mqttClientID)
+	}
 
 	baseTopic := viper.GetString("mqtt.station") +
 		"/radios/" + viper.GetString("mqtt.radio") +
@@ -102,17 +111,17 @@ func mqttAudioServer(cmd *cobra.Command, args []string) {
 
 	mqttTopics := []string{serverRequestTopic, serverAudioInTopic}
 
-	audioFrameLength := viper.GetInt("audio.frame_length")
+	audioFrameLength := viper.GetInt("audio.frame-length")
 
-	outputDeviceDeviceName := viper.GetString("output_device.device_name")
-	outputDeviceSamplingrate := viper.GetFloat64("output_device.samplingrate")
-	outputDeviceLatency := viper.GetDuration("output_device.latency")
-	outputDeviceChannels := viper.GetString("output_device.channels")
+	outputDeviceDeviceName := viper.GetString("output-device.device-name")
+	outputDeviceSamplingrate := viper.GetFloat64("output-device.samplingrate")
+	outputDeviceLatency := viper.GetDuration("output-device.latency")
+	outputDeviceChannels := viper.GetString("output-device.channels")
 
-	inputDeviceDeviceName := viper.GetString("input_device.device_name")
-	inputDeviceSamplingrate := viper.GetFloat64("input_device.samplingrate")
-	inputDeviceLatency := viper.GetDuration("input_device.latency")
-	inputDeviceChannels := viper.GetString("input_device.channels")
+	inputDeviceDeviceName := viper.GetString("input-device.device-name")
+	inputDeviceSamplingrate := viper.GetFloat64("input-device.samplingrate")
+	inputDeviceLatency := viper.GetDuration("input-device.latency")
+	inputDeviceChannels := viper.GetString("input-device.channels")
 
 	portaudio.Initialize()
 
@@ -146,6 +155,8 @@ func mqttAudioServer(cmd *cobra.Command, args []string) {
 		BrokerURL:  mqttBrokerURL,
 		BrokerPort: mqttBrokerPort,
 		ClientID:   mqttClientID,
+		Username:   mqttUsername,
+		Password:   mqttPassword,
 		Topics:     mqttTopics,
 		ToDeserializeAudioDataCh: toDeserializeAudioDataCh,
 		ToDeserializeAudioReqCh:  toDeserializeAudioReqCh,

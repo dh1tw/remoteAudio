@@ -50,18 +50,14 @@ libraries are included in the zip archive.
 ### Linux (Ubuntu >= 14.04)
 
 ```bash
-
-    $ sudo apt-get install -y pkg-config libsamplerate0 libopus0 libopusfile0 libportaudio2
-
+$ sudo apt-get install -y pkg-config libsamplerate0 libopus0 libopusfile0 libportaudio2
 ```
 
 ### MacOS
 
 ```bash
-
-    $ brew update
-    $ brew install pkg-config opus opusfile portaudio libsamplerate
-
+$ brew update
+$ brew install pkg-config opus opusfile portaudio libsamplerate
 ```
 
 ## Requirements
@@ -80,9 +76,7 @@ If you are not sure about the name of your audio devices and their parameters,
 you can easily list the available devices:
 
 ```bash
-
-    $ remoteAudio enumerate
-
+$ remoteAudio enumerate
 ```
 
 By default the standard input / output devices defined in your OS will be used.
@@ -99,24 +93,30 @@ An example configuration file named ```.remoteAudio.toml```is included in the
 repository.
 
 All parameters can be set through pflags. The following *example* shows the
-options for ```$ remoteAudio server mqtt --help```:
+options for
 
+```bash
+$ remoteAudio server mqtt --help
 ```
 
+```
 MQTT Server for bi-directional audio streaming
 
 Usage:
   remoteAudio server mqtt [flags]
 
 Flags:
-  -p, --broker-port int     Broker Port (default 1883)
-  -u, --broker-url string   Broker URL (default "localhost")
+  -p, --broker-port int     MQTT Broker Port (default 1883)
+  -u, --broker-url string   MQTT Broker URL (default "test.mosquitto.org")
+  -C, --client-id string    MQTT ClientID (default "remoteAudio-svr")
+  -P, --password string     MQTT Password
   -Y, --radio string        Radio ID (default "myradio")
   -X, --station string      Your station callsign (default "mystation")
+  -U, --username string     MQTT Username
 
 Global Flags:
-  -f, --audio-frame-length int             Amount of audio samples in one frame (default 480)
-  -C, --codec string                       Audio codec (default "opus")
+  -f, --audio-frame-length int             Amount of audio samples in one frame (default 960)
+  -c, --codec string                       Audio codec (default "opus")
       --config string                      config file (default is $HOME/.remoteAudio.yaml)
       --input-device-channels string       Input Channels (default "mono")
       --input-device-latency duration      Input latency (default 5ms)
@@ -135,8 +135,6 @@ Global Flags:
       --pcm-resampling-quality int         pcm resampling quality (default 1)
       --pcm-samplingrate float             pcm sampling rate (default 16000)
   -R, --rx-buffer-length int               Buffer length (in frames) for incoming Audio packets (default 10)
-  -U, --user-id string                     Your User ID - required for TX
-
 ```
 
 
@@ -144,17 +142,13 @@ Global Flags:
 ## Execute Audio Server
 
 ```bash
-
-    $ remoteAudio server mqtt
-
+$ remoteAudio server mqtt
 ```
 
 ## Execute Audio Client
 
 ```bash
-
-    $ remoteAudio client mqtt
-
+$ remoteAudio client mqtt
 ```
 
 ## WebUI

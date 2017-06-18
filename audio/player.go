@@ -46,7 +46,7 @@ func PlayerSync(ad AudioDevice) {
 	var deviceInfo *portaudio.DeviceInfo
 	var err error
 
-	audioBufferSize := viper.GetInt("audio.rx_buffer_length")
+	audioBufferSize := viper.GetInt("audio.rx-buffer-length")
 
 	// initialize audio (ring) buffer
 	r := ringBuffer.Ring{}
@@ -113,7 +113,7 @@ func PlayerSync(ad AudioDevice) {
 	defer stream.Close()
 
 	// create the PCM samplerate converter
-	ad.PCMSamplerateConverter, err = gosamplerate.New(viper.GetInt("output_device.quality"), ad.Channels, 65536)
+	ad.PCMSamplerateConverter, err = gosamplerate.New(viper.GetInt("output-device.quality"), ad.Channels, 65536)
 	if err != nil {
 		fmt.Println("unable to create resampler")
 		fmt.Println(err)

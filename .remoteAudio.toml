@@ -1,21 +1,22 @@
-[general]
-user_id = "myCall"
 
 [mqtt]
-#broker_url = "localhost"
-broker_url = "test.mosquitto.org"
-broker_port = 1883
+#broker-url = "localhost"
+broker-url = "test.mosquitto.org"
+broker-port = 1883
+username = ""
+password = ""
+client-id = "ShackPC"
 station = "dl0xxx"
 radio = "ft950"
 
 [input_device]
-device_name = "default"
+device-name = "default"
 samplingrate = 48000
 latency = "5ms"
 channels = "mono"
 
 [output_device]
-device_name = "default"
+device-name = "default"
 samplingrate = 48000
 latency = "5ms"
 channels = "stereo"
@@ -24,18 +25,19 @@ channels = "stereo"
 samplingrate = 16000
 bitdepth = 16
 channels = "mono"
-resampling_quality = 4
+resampling-quality = 4
 
 [opus]
 application = "restricted_lowdelay"
 bitrate = 32000
 complexity = 9
-max_bandwidth = "wideband"
+max-bandwidth = "wideband"
 
 [audio]
 codec = "opus"
-rx_buffer_length = 10
-frame_length = 480  #10ms (needed for opus)
+rx-buffer-length = 10
+frame-length = 960  #20ms @ 48kHz (should work for most cases)
+# opus does not accept arbitrary frame length! Check OPUS documentation
 
 [webui]
 disabled = false
