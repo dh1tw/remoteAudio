@@ -9,13 +9,13 @@ client-id = "ShackPC"
 station = "dl0xxx"
 radio = "ft950"
 
-[input_device]
+[input-device]
 device-name = "default"
 samplingrate = 48000
 latency = "5ms"
 channels = "mono"
 
-[output_device]
+[output-device]
 device-name = "default"
 samplingrate = 48000
 latency = "5ms"

@@ -100,7 +100,7 @@ func init() {
 	viper.BindPFlag("opus.max-bandwidth", RootCmd.PersistentFlags().Lookup("opus-max-bandwidth"))
 
 	viper.BindPFlag("audio.frame-length", RootCmd.PersistentFlags().Lookup("audio-frame-length"))
-	viper.BindPFlag("audio.rx_buffer-length", RootCmd.PersistentFlags().Lookup("rx-buffer-length"))
+	viper.BindPFlag("audio.rx-buffer-length", RootCmd.PersistentFlags().Lookup("rx-buffer-length"))
 	viper.BindPFlag("audio.codec", RootCmd.PersistentFlags().Lookup("codec"))
 }
 
