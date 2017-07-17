@@ -23,6 +23,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -62,9 +63,21 @@ func init() {
 
 func mqttAudioServer(cmd *cobra.Command, args []string) {
 
-	// If a config file is found, read it in.
+	// Try to read config file
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	} else {
+		if strings.Contains(err.Error(), "Not Found in") {
+			fmt.Println("no config file found")
+		} else {
+			fmt.Println("Error parsing config file", viper.ConfigFileUsed())
+			fmt.Println(err)
+			os.Exit(-1)
+		}
+	}
+
+	if !checkAudioParameterValues() {
+		os.Exit(-1)
 	}
 
 	// bind the pflags to viper settings
