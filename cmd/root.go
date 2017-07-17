@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/dh1tw/utils"
+	"github.com/dh1tw/remoteAudio/utils"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
