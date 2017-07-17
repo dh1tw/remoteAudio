@@ -56,6 +56,7 @@ func PlayerASync(ad AudioDevice) {
 			fmt.Println(err)
 			return
 		}
+		deviceInfo = ad.Device
 	}
 
 	// setup Audio Stream

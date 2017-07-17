@@ -53,6 +53,7 @@ func RecorderAsync(ad AudioDevice) {
 			fmt.Println(err)
 			return //exit go routine
 		}
+		deviceInfo = ad.Device
 	}
 
 	// setup Audio Stream
