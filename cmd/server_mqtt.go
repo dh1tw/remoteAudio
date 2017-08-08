@@ -85,10 +85,12 @@ func mqttAudioServer(cmd *cobra.Command, args []string) {
 	mqttUsername := viper.GetString("mqtt.username")
 	mqttPassword := viper.GetString("mqtt.password")
 
-	mqttClientID = mqttClientID + "-" + utils.RandStringRunes(5)
-	// update the viper key since it will be retrieved in other parts
-	// of the application
-	viper.Set("mqtt.client-id", mqttClientID)
+	if mqttClientID == "remoteAudio-svr" {
+		mqttClientID = mqttClientID + "-" + utils.RandStringRunes(5)
+		// update the viper key since it will be retrieved in other parts
+		// of the application
+		viper.Set("mqtt.client-id", mqttClientID)
+	}
 
 	baseTopic := viper.GetString("mqtt.station") +
 		"/radios/" + viper.GetString("mqtt.radio") +
