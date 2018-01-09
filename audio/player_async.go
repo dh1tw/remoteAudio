@@ -177,7 +177,7 @@ func PlayerASync(ad AudioDevice) {
 			newBufSize := ev.(int)
 			stream.Abort()
 			stream.Close()
-			log.Printf("WARNING: Samplerate has changed from %d, to %d", len(ad.out), newBufSize)
+			log.Printf("WARNING: Audio frame size has changed from %d, to %d", len(ad.out), newBufSize)
 			// new buffer with new size
 			ad.out = make([]float32, newBufSize)
 			// update stream parameters
