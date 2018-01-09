@@ -128,6 +128,7 @@ func mqttAudioClient(cmd *cobra.Command, args []string) {
 	inputDeviceChannels := viper.GetString("input-device.channels")
 
 	portaudio.Initialize()
+	defer portaudio.Terminate()
 
 	toWireCh := make(chan comms.IOMsg, 20)
 	toSerializeAudioDataCh := make(chan comms.IOMsg, 20)
