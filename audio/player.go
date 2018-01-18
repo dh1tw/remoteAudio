@@ -3,207 +3,351 @@ package audio
 import (
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/dh1tw/gosamplerate"
-	"github.com/dh1tw/remoteAudio/comms"
-	"github.com/dh1tw/remoteAudio/events"
-	"github.com/gordonklaus/portaudio"
-	"github.com/spf13/viper"
+	pa "github.com/gordonklaus/portaudio"
 	ringBuffer "github.com/zfjagann/golang-ring"
-	"gopkg.in/hraban/opus.v2"
 )
 
-//PlayerSync plays received audio on a local audio device
-func PlayerSync(ad AudioDevice) {
+// paPlayer implements the audio.Sink interface and is used to store
+// the player's internal data / state
+type paPlayer struct {
+	sync.RWMutex
+	options    Options
+	deviceInfo *pa.DeviceInfo
+	stream     *pa.Stream
+	ringMutex  sync.Mutex
+	ring       ringBuffer.Ring
+	stash      []float32
+	volume     float32
+	src        src
+}
 
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+// src contains a samplerate converter and its needed variables
+type src struct {
+	gosamplerate.Src
+	samplerate float64
+	ratio      float64
+}
 
-	defer ad.WaitGroup.Done()
+// NewPlayer is a factory which returns a new audio player for a specific
+// audio output device.
+func NewPlayer(opts ...Option) (Sink, error) {
 
-	portaudio.Initialize()
-	defer portaudio.Terminate()
+	if err := pa.Initialize(); err != nil {
+		return nil, err
+	}
 
-	// Subscribe on events
-	shutdownCh := ad.Events.Sub(events.Shutdown)
+	info, err := pa.DefaultOutputDevice()
+	if err != nil {
+		return nil, err
+	}
 
-	// give Portaudio a few milliseconds to initialize
-	// this is necessary to avoid a SIGSEGV in case
-	// DefaultOutputDevice is accessed without portaudio
-	// being completely initialized
-	time.Sleep(time.Millisecond * 200)
+	player := &paPlayer{
+		options: Options{
+			DeviceName:      "default",
+			Channels:        2,
+			Samplerate:      48000,
+			FramesPerBuffer: 480,
+			RingBufferSize:  10,
+			Latency:         time.Millisecond * 10,
+		},
+		deviceInfo: info,
+		ring:       ringBuffer.Ring{},
+		volume:     1.0,
+	}
 
-	ad.out = make([]float32, ad.FramesPerBuffer*ad.Channels)
+	for _, option := range opts {
+		option(&player.options)
+	}
 
-	fmt.Println("Player Channels:", ad.Channels)
-	fmt.Println("Player Frames:", ad.FramesPerBuffer)
-	fmt.Println("Player Out Buffer:", len(ad.out))
+	// setup a samplerate converter
+	srConv, err := gosamplerate.New(gosamplerate.SRC_SINC_FASTEST, player.options.Channels, 65536)
+	if err != nil {
+		return nil, fmt.Errorf("player: %v", err)
+	}
 
-	//ad.out doesn't need to be initialized with a fixed buffer size
-	//since the slice will be copied from the incoming data
-	//and will therefore replay any buffer size
-
-	var deviceInfo *portaudio.DeviceInfo
-	var err error
-
-	audioBufferSize := viper.GetInt("audio.rx-buffer-length")
-
-	// initialize audio (ring) buffer
-	r := ringBuffer.Ring{}
-	r.SetCapacity(audioBufferSize)
+	player.src = src{
+		Src:        srConv,
+		samplerate: player.options.Samplerate,
+		ratio:      1,
+	}
 
 	// select Playback Audio Device
-	if ad.DeviceName == "default" {
-		deviceInfo, err = portaudio.DefaultOutputDevice()
+	if player.options.DeviceName != "default" {
+		device, err := getPaDevice(player.options.DeviceName)
 		if err != nil {
-			fmt.Println("unable to find default playback sound device")
-			fmt.Println(err)
-			ad.WaitGroup.Done()
-			return // exit go routine
+			return nil, err
 		}
-	} else {
-		if err := ad.IdentifyDevice(); err != nil {
-			fmt.Printf("unable to find recording sound device %s\n", ad.DeviceName)
-			fmt.Println(err)
-			ad.WaitGroup.Done()
-			return
-		}
+		player.deviceInfo = device
 	}
 
 	// setup Audio Stream
-	streamDeviceParam := portaudio.StreamDeviceParameters{
-		Device:   deviceInfo,
-		Channels: ad.Channels,
-		Latency:  ad.Latency,
+	streamDeviceParam := pa.StreamDeviceParameters{
+		Device:   player.deviceInfo,
+		Channels: player.options.Channels,
+		Latency:  player.options.Latency,
 	}
 
-	streamParm := portaudio.StreamParameters{
-		FramesPerBuffer: ad.FramesPerBuffer,
+	streamParm := pa.StreamParameters{
+		FramesPerBuffer: player.options.FramesPerBuffer,
 		Output:          streamDeviceParam,
-		SampleRate:      ad.Samplingrate,
+		SampleRate:      player.options.Samplerate,
 	}
 
-	var stream *portaudio.Stream
+	// setup ring buffer
+	player.ring.SetCapacity(player.options.RingBufferSize)
 
-	// the deserializer struct is mainly used to cache variables which have
-	// to be read / set during the deserialization
-	var d deserializer
-	d.AudioDevice = &ad
-	d.txTimestamp = time.Now()
+	stream, err := pa.OpenStream(streamParm, player.playCb)
+	if err != nil {
+		return nil,
+			fmt.Errorf("unable to open playback audio stream on device %s: %s",
+				player.options.DeviceName, err)
+	}
 
-	// initialize the Opus Decoder
-	opusDecoder, err := opus.NewDecoder(int(ad.Samplingrate), ad.AudioStream.Channels)
+	player.stream = stream
 
-	if err != nil || opusDecoder == nil {
-		fmt.Println(err)
-		ad.WaitGroup.Done()
+	return player, nil
+}
+
+// pulseaudio callback which will be called continously when the stream is
+// started; this function should be short and never block
+func (p *paPlayer) playCb(in []float32,
+	iTime pa.StreamCallbackTimeInfo,
+	iFlags pa.StreamCallbackFlags) {
+	switch iFlags {
+	case pa.OutputUnderflow:
+		log.Println("Output Underflow")
+		return // move on!
+	case pa.OutputOverflow:
+		log.Println("Output Overflow")
+		return // move on!
+	}
+
+	//pull data from Ringbuffer
+	p.ringMutex.Lock()
+	data := p.ring.Dequeue()
+	p.ringMutex.Unlock()
+
+	if data == nil {
+		// fill with silence
+		for i := 0; i < len(in); i++ {
+			in[i] = 0
+		}
 		return
 	}
-	d.opusDecoder = opusDecoder
-	d.opusBuffer = make([]float32, 520000) //max opus message size
 
-	// open the audio stream
-	stream, err = portaudio.OpenStream(streamParm, &ad.out)
-	if err != nil {
-		fmt.Printf("unable to open playback audio stream on device %s\n", ad.DeviceName)
-		fmt.Println(err)
-		ad.WaitGroup.Done()
-		return // exit go routine
+	audioData := data.([]float32)
+
+	// should never happen
+	if len(audioData) != len(in) {
+		log.Printf("unable to play audio frame; expected frame size %d, but got %d",
+			len(in), len(audioData))
+		return
 	}
-	defer stream.Close()
 
-	// create the PCM samplerate converter
-	ad.PCMSamplerateConverter, err = gosamplerate.New(viper.GetInt("output-device.quality"), ad.Channels, 65536)
-	if err != nil {
-		fmt.Println("unable to create resampler")
-		fmt.Println(err)
-		ad.WaitGroup.Done()
-		return // exit go routine
+	//copy data into buffer
+	copy(in, audioData)
+}
+
+func (p *paPlayer) Start() error {
+	if p.stream == nil {
+		return fmt.Errorf("portaudio stream not initialized")
 	}
-	defer gosamplerate.Delete(ad.PCMSamplerateConverter)
+	return p.stream.Start()
+}
 
-	// Start the playback audio stream
-	if err = stream.Start(); err != nil {
-		fmt.Printf("unable to start playback audio stream on device %s\n", ad.DeviceName)
-		fmt.Println(err)
-		ad.WaitGroup.Done()
-		return // exit go routine
+func (p *paPlayer) Stop() error {
+	if p.stream == nil {
+		return fmt.Errorf("portaudio stream not initialized")
 	}
-	defer stream.Stop()
+	return p.stream.Stop()
+}
 
-	// cache holding the id of user from which we currently receive audio
-	txUser := ""
+func (p *paPlayer) Close() error {
+	if p.stream == nil {
+		return fmt.Errorf("portaudio stream not initialized")
+	}
+	p.stream.Abort()
+	p.stream.Stop()
+	return nil
+}
 
-	// Tickers to check if we still receive audio from a certain user.
-	// This is needed on the server to release the "lock" and allow
-	// others to transmit
-	txUserResetTicker := time.NewTicker(1 * time.Second)
-	txMonitorTicker := time.NewTicker(100 * time.Millisecond)
+func (p *paPlayer) SetVolume(v float32) {
+	p.Lock()
+	defer p.Unlock()
+	if v < 0 {
+		p.volume = 0
+		return
+	}
+	p.volume = v
+}
 
-	// Everything has been set up, let's start execution
+func (p *paPlayer) Volume() float32 {
+	p.RLock()
+	defer p.RUnlock()
+	return p.volume
+}
 
-	for {
-		select {
+// Enqueue converts the frames in the audio buffer into the right format
+// and queues them for playing on the speaker. The token is used to indicate
+// if the calling application has to wait before it can enqueue the next
+// buffer (e.g. when enqueuing data from a file).
+func (p *paPlayer) Enqueue(msg AudioMsg, token Token) {
 
-		// shutdown application gracefully
-		case <-shutdownCh:
-			log.Println("Shutdown Player")
-			ad.WaitGroup.Done()
-			return
+	var aData []float32
+	var err error
 
-		// clear the tx user lock if nobody transmitted during the last 500ms
-		case <-txUserResetTicker.C:
-			d.muTx.Lock()
-			if time.Since(d.txTimestamp) > 500*time.Millisecond {
-				d.txUser = ""
-			}
-			d.muTx.Unlock()
+	// if necessary adjust the amount of audio channels
+	if msg.Channels != p.options.Channels {
+		aData = adjustChannels(msg.Channels, p.options.Channels, msg.Data)
+	} else {
+		aData = msg.Data
+	}
 
-		// check if the tx user has changed
-		case <-txMonitorTicker.C:
-			d.muTx.Lock()
-
-			if txUser != d.txUser {
-				ad.Events.Pub(d.txUser, events.TxUser)
-				txUser = d.txUser
-			}
-			d.muTx.Unlock()
-
-		// write received audio data into the ring buffer
-		case msg := <-ad.ToDeserialize:
-			// msg.EnqueuedTs = time.Now()
-			r.Enqueue(msg)
-
-		default:
-			data := r.Dequeue()
-			// check if new data is available in the ring buffer
-			av, _ := stream.AvailableToWrite()
-			if av > 0 {
-				// fmt.Println("av to write", av)
-				if data != nil {
-					// err := d.DeserializeAudioMsg(data.([]byte))
-					ts := data.(comms.IOMsg)
-					err := d.DeserializeAudioMsg(ts.Data)
-					if err != nil {
-						fmt.Println(err)
-					} else {
-						// fmt.Println("Start write", time.Now().Format(time.StampMilli))
-						if err := stream.Write(); err != nil {
-							fmt.Println("data write", err)
-						}
-						// fmt.Println("Finished write", time.Now().Format(time.StampMilli))
-					}
-				} else {
-					ad.out = make([]float32, 960)
-					// fmt.Println("ad.out", len(ad.out))
-					log.Println("Start writing")
-					if err := stream.Write(); err != nil {
-						fmt.Println("empty write", err)
-					}
-					log.Println("Stop writing")
-					// time.Sleep(time.Millisecond * 20)
-				}
-			}
+	// if necessary, resample the audio
+	if msg.Samplerate != p.options.Samplerate {
+		if p.src.samplerate != msg.Samplerate {
+			p.src.Reset()
+			p.src.samplerate = msg.Samplerate
+			p.src.ratio = p.options.Samplerate / msg.Samplerate
 		}
+		aData, err = p.src.Process(aData, p.src.ratio, false)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+
+	// audio buffer size we want to write into our ring buffer
+	// (size expected by portaudio callback)
+	expBufferSize := p.options.FramesPerBuffer * p.options.Channels
+
+	// if there is data stashed from previous calles, get it and prepend it
+	// to the data received
+	if len(p.stash) > 0 {
+		aData = append(p.stash, aData...)
+		p.stash = p.stash[:0] // empty
+	}
+
+	if msg.EOF {
+		// get the stuff from the stash
+		fmt.Println("EOF!!!")
+		fmt.Println("stash size:", len(p.stash))
+	}
+
+	// if the audio buffer size is actually smaller than the one we need,
+	// then stash it for the next time and return
+	if len(aData) < expBufferSize {
+		p.stash = aData
+		return
+	}
+
+	// slice of audio buffers which will be enqueued into the ring buffer
+	var bData [][]float32
+
+	p.ringMutex.Lock()
+	bufCap := p.ring.Capacity()
+	bufAvail := bufCap - p.ring.Length()
+	p.ringMutex.Unlock()
+
+	// if the aData contains multiples of the expected buffer size,
+	// then we chop it into (several) buffers
+	if len(aData) >= expBufferSize {
+		p.Lock()
+		vol := p.volume
+		p.Unlock()
+
+		for len(aData) >= expBufferSize {
+			if vol != 1 {
+				// if necessary, adjust the volume
+				adjustVolume(vol, aData[:expBufferSize])
+			}
+			bData = append(bData, aData[:expBufferSize])
+			aData = aData[expBufferSize:]
+		}
+	}
+
+	// stash the left over
+	if len(aData) > 0 {
+		p.stash = aData
+	}
+
+	// if the msg originates from a stream, we ignore the next statement
+	// and move on (which could mean that we overwrite data in the
+	// ring buffer - but thats OK to keep latency low)
+
+	// in case we don't have a stream (e.g. writing from a file) and the
+	// ring buffer might be full, we have to wait until there is some
+	// space available again in the ring buffer
+	if !msg.IsStream && bufAvail <= len(bData) {
+
+		token.Add(1)
+
+		go func() {
+			for len(bData) > 0 {
+
+				// wait until there is enough space in the ring buffer,
+				// or at least 1/2 of the ring buffer is empty again
+
+				for !(bufAvail >= len(bData) || bufAvail >= bufCap/2) {
+					time.Sleep(time.Millisecond * 10)
+					p.ringMutex.Lock()
+					bufAvail = bufCap - p.ring.Length()
+					p.ringMutex.Unlock()
+				}
+
+				// now we have the space
+				p.ringMutex.Lock()
+				counter := 0
+				for _, frame := range bData {
+					p.ring.Enqueue(frame)
+					counter++
+
+					bufAvail = bufCap - p.ring.Length()
+					if bufAvail == 0 {
+						break
+					}
+				}
+				// remove the frames which were enqueued
+				bData = bData[counter:]
+
+				// update the available space
+				bufAvail = bufCap - p.ring.Length()
+				p.ringMutex.Unlock()
+			}
+
+			token.Done()
+		}()
+		return
+	}
+
+	p.enqueue(bData, msg.EOF)
+
+	return
+}
+
+func (p *paPlayer) enqueue(bData [][]float32, EOF bool) {
+	p.ringMutex.Lock()
+	defer p.ringMutex.Unlock()
+	for _, frame := range bData {
+		p.ring.Enqueue(frame)
+	}
+}
+
+// Flush clears all internal buffers
+func (p *paPlayer) Flush() {
+	p.ringMutex.Lock()
+	defer p.ringMutex.Unlock()
+
+	// delete the stash
+	p.stash = []float32{}
+
+	var x interface{}
+	// empty the ring buffer
+	for x != nil {
+		x = p.ring.Dequeue()
 	}
 }

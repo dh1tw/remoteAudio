@@ -9,9 +9,12 @@
 		audio.proto
 
 	It has these top-level messages:
-		AudioData
-		ClientRequest
-		ServerResponse
+		None
+		Error
+		Capabilities
+		PingPong
+		Frame
+		State
 */
 package shackbus_audio
 
@@ -32,213 +35,234 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+type Channels int32
+
+const (
+	Channels_unknown Channels = 0
+	Channels_mono    Channels = 1
+	Channels_stereo  Channels = 2
+)
+
+var Channels_name = map[int32]string{
+	0: "unknown",
+	1: "mono",
+	2: "stereo",
+}
+var Channels_value = map[string]int32{
+	"unknown": 0,
+	"mono":    1,
+	"stereo":  2,
+}
+
+func (x Channels) String() string {
+	return proto.EnumName(Channels_name, int32(x))
+}
+func (Channels) EnumDescriptor() ([]byte, []int) { return fileDescriptorAudio, []int{0} }
+
 type Codec int32
 
 const (
-	Codec_NONE Codec = 0
-	Codec_OPUS Codec = 1
-	Codec_PCM  Codec = 2
+	Codec_none Codec = 0
+	Codec_opus Codec = 1
+	Codec_pcm  Codec = 2
 )
 
 var Codec_name = map[int32]string{
-	0: "NONE",
-	1: "OPUS",
-	2: "PCM",
+	0: "none",
+	1: "opus",
+	2: "pcm",
 }
 var Codec_value = map[string]int32{
-	"NONE": 0,
-	"OPUS": 1,
-	"PCM":  2,
+	"none": 0,
+	"opus": 1,
+	"pcm":  2,
 }
 
-func (x Codec) Enum() *Codec {
-	p := new(Codec)
-	*p = x
-	return p
-}
 func (x Codec) String() string {
 	return proto.EnumName(Codec_name, int32(x))
 }
-func (x *Codec) UnmarshalJSON(data []byte) error {
-	value, err := proto.UnmarshalJSONEnum(Codec_value, data, "Codec")
-	if err != nil {
-		return err
-	}
-	*x = Codec(value)
-	return nil
-}
-func (Codec) EnumDescriptor() ([]byte, []int) { return fileDescriptorAudio, []int{0} }
+func (Codec) EnumDescriptor() ([]byte, []int) { return fileDescriptorAudio, []int{1} }
 
-type AudioData struct {
-	Codec            *Codec  `protobuf:"varint,1,opt,name=codec,enum=shackbus.audio.Codec" json:"codec,omitempty"`
-	Channels         *int32  `protobuf:"varint,2,opt,name=channels" json:"channels,omitempty"`
-	FrameLength      *int32  `protobuf:"varint,3,opt,name=frame_length,json=frameLength" json:"frame_length,omitempty"`
-	SamplingRate     *int32  `protobuf:"varint,4,opt,name=sampling_rate,json=samplingRate" json:"sampling_rate,omitempty"`
-	BitDepth         *int32  `protobuf:"varint,5,opt,name=bit_depth,json=bitDepth" json:"bit_depth,omitempty"`
-	AudioRaw         []byte  `protobuf:"bytes,6,opt,name=audio_raw,json=audioRaw" json:"audio_raw,omitempty"`
-	AudioPacked      []int32 `protobuf:"zigzag32,7,rep,packed,name=audio_packed,json=audioPacked" json:"audio_packed,omitempty"`
-	UserId           *string `protobuf:"bytes,8,opt,name=user_id,json=userId" json:"user_id,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
+type None struct {
 }
 
-func (m *AudioData) Reset()                    { *m = AudioData{} }
-func (m *AudioData) String() string            { return proto.CompactTextString(m) }
-func (*AudioData) ProtoMessage()               {}
-func (*AudioData) Descriptor() ([]byte, []int) { return fileDescriptorAudio, []int{0} }
+func (m *None) Reset()                    { *m = None{} }
+func (m *None) String() string            { return proto.CompactTextString(m) }
+func (*None) ProtoMessage()               {}
+func (*None) Descriptor() ([]byte, []int) { return fileDescriptorAudio, []int{0} }
 
-func (m *AudioData) GetCodec() Codec {
-	if m != nil && m.Codec != nil {
-		return *m.Codec
-	}
-	return Codec_NONE
+type Error struct {
+	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *AudioData) GetChannels() int32 {
-	if m != nil && m.Channels != nil {
-		return *m.Channels
-	}
-	return 0
-}
+func (m *Error) Reset()                    { *m = Error{} }
+func (m *Error) String() string            { return proto.CompactTextString(m) }
+func (*Error) ProtoMessage()               {}
+func (*Error) Descriptor() ([]byte, []int) { return fileDescriptorAudio, []int{1} }
 
-func (m *AudioData) GetFrameLength() int32 {
-	if m != nil && m.FrameLength != nil {
-		return *m.FrameLength
-	}
-	return 0
-}
-
-func (m *AudioData) GetSamplingRate() int32 {
-	if m != nil && m.SamplingRate != nil {
-		return *m.SamplingRate
-	}
-	return 0
-}
-
-func (m *AudioData) GetBitDepth() int32 {
-	if m != nil && m.BitDepth != nil {
-		return *m.BitDepth
-	}
-	return 0
-}
-
-func (m *AudioData) GetAudioRaw() []byte {
+func (m *Error) GetError() string {
 	if m != nil {
-		return m.AudioRaw
+		return m.Error
 	}
-	return nil
+	return ""
 }
 
-func (m *AudioData) GetAudioPacked() []int32 {
+type Capabilities struct {
+	Name            string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	RxStreamAddress string `protobuf:"bytes,2,opt,name=rx_stream_address,json=rxStreamAddress,proto3" json:"rx_stream_address,omitempty"`
+	TxStreamAddress string `protobuf:"bytes,3,opt,name=tx_stream_address,json=txStreamAddress,proto3" json:"tx_stream_address,omitempty"`
+}
+
+func (m *Capabilities) Reset()                    { *m = Capabilities{} }
+func (m *Capabilities) String() string            { return proto.CompactTextString(m) }
+func (*Capabilities) ProtoMessage()               {}
+func (*Capabilities) Descriptor() ([]byte, []int) { return fileDescriptorAudio, []int{2} }
+
+func (m *Capabilities) GetName() string {
 	if m != nil {
-		return m.AudioPacked
+		return m.Name
+	}
+	return ""
+}
+
+func (m *Capabilities) GetRxStreamAddress() string {
+	if m != nil {
+		return m.RxStreamAddress
+	}
+	return ""
+}
+
+func (m *Capabilities) GetTxStreamAddress() string {
+	if m != nil {
+		return m.TxStreamAddress
+	}
+	return ""
+}
+
+type PingPong struct {
+	Ping int64 `protobuf:"varint,1,opt,name=ping,proto3" json:"ping,omitempty"`
+}
+
+func (m *PingPong) Reset()                    { *m = PingPong{} }
+func (m *PingPong) String() string            { return proto.CompactTextString(m) }
+func (*PingPong) ProtoMessage()               {}
+func (*PingPong) Descriptor() ([]byte, []int) { return fileDescriptorAudio, []int{3} }
+
+func (m *PingPong) GetPing() int64 {
+	if m != nil {
+		return m.Ping
+	}
+	return 0
+}
+
+// Audio frame consisting of the raw audio byte array + metadata
+type Frame struct {
+	Codec        Codec    `protobuf:"varint,1,opt,name=codec,proto3,enum=shackbus.audio.Codec" json:"codec,omitempty"`
+	Channels     Channels `protobuf:"varint,2,opt,name=channels,proto3,enum=shackbus.audio.Channels" json:"channels,omitempty"`
+	FrameLength  int32    `protobuf:"varint,3,opt,name=frame_length,json=frameLength,proto3" json:"frame_length,omitempty"`
+	SamplingRate int32    `protobuf:"varint,4,opt,name=sampling_rate,json=samplingRate,proto3" json:"sampling_rate,omitempty"`
+	BitDepth     int32    `protobuf:"varint,5,opt,name=bit_depth,json=bitDepth,proto3" json:"bit_depth,omitempty"`
+	Data         []byte   `protobuf:"bytes,6,opt,name=data,proto3" json:"data,omitempty"`
+	UserId       string   `protobuf:"bytes,8,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+}
+
+func (m *Frame) Reset()                    { *m = Frame{} }
+func (m *Frame) String() string            { return proto.CompactTextString(m) }
+func (*Frame) ProtoMessage()               {}
+func (*Frame) Descriptor() ([]byte, []int) { return fileDescriptorAudio, []int{4} }
+
+func (m *Frame) GetCodec() Codec {
+	if m != nil {
+		return m.Codec
+	}
+	return Codec_none
+}
+
+func (m *Frame) GetChannels() Channels {
+	if m != nil {
+		return m.Channels
+	}
+	return Channels_unknown
+}
+
+func (m *Frame) GetFrameLength() int32 {
+	if m != nil {
+		return m.FrameLength
+	}
+	return 0
+}
+
+func (m *Frame) GetSamplingRate() int32 {
+	if m != nil {
+		return m.SamplingRate
+	}
+	return 0
+}
+
+func (m *Frame) GetBitDepth() int32 {
+	if m != nil {
+		return m.BitDepth
+	}
+	return 0
+}
+
+func (m *Frame) GetData() []byte {
+	if m != nil {
+		return m.Data
 	}
 	return nil
 }
 
-func (m *AudioData) GetUserId() string {
-	if m != nil && m.UserId != nil {
-		return *m.UserId
+func (m *Frame) GetUserId() string {
+	if m != nil {
+		return m.UserId
 	}
 	return ""
 }
 
-type ClientRequest struct {
-	AudioStream      *bool   `protobuf:"varint,1,opt,name=audio_stream,json=audioStream" json:"audio_stream,omitempty"`
-	PingOrigin       *string `protobuf:"bytes,2,opt,name=ping_origin,json=pingOrigin" json:"ping_origin,omitempty"`
-	Ping             *int64  `protobuf:"varint,3,opt,name=ping" json:"ping,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
+type State struct {
+	RxOn   bool   `protobuf:"varint,1,opt,name=rx_on,json=rxOn,proto3" json:"rx_on,omitempty"`
+	TxOn   bool   `protobuf:"varint,2,opt,name=tx_on,json=txOn,proto3" json:"tx_on,omitempty"`
+	TxUser string `protobuf:"bytes,3,opt,name=tx_user,json=txUser,proto3" json:"tx_user,omitempty"`
 }
 
-func (m *ClientRequest) Reset()                    { *m = ClientRequest{} }
-func (m *ClientRequest) String() string            { return proto.CompactTextString(m) }
-func (*ClientRequest) ProtoMessage()               {}
-func (*ClientRequest) Descriptor() ([]byte, []int) { return fileDescriptorAudio, []int{1} }
+func (m *State) Reset()                    { *m = State{} }
+func (m *State) String() string            { return proto.CompactTextString(m) }
+func (*State) ProtoMessage()               {}
+func (*State) Descriptor() ([]byte, []int) { return fileDescriptorAudio, []int{5} }
 
-func (m *ClientRequest) GetAudioStream() bool {
-	if m != nil && m.AudioStream != nil {
-		return *m.AudioStream
+func (m *State) GetRxOn() bool {
+	if m != nil {
+		return m.RxOn
 	}
 	return false
 }
 
-func (m *ClientRequest) GetPingOrigin() string {
-	if m != nil && m.PingOrigin != nil {
-		return *m.PingOrigin
-	}
-	return ""
-}
-
-func (m *ClientRequest) GetPing() int64 {
-	if m != nil && m.Ping != nil {
-		return *m.Ping
-	}
-	return 0
-}
-
-type ServerResponse struct {
-	Online           *bool   `protobuf:"varint,1,opt,name=online" json:"online,omitempty"`
-	LastSeen         *int64  `protobuf:"varint,2,opt,name=last_seen,json=lastSeen" json:"last_seen,omitempty"`
-	AudioStream      *bool   `protobuf:"varint,3,opt,name=audio_stream,json=audioStream" json:"audio_stream,omitempty"`
-	TxUser           *string `protobuf:"bytes,4,opt,name=tx_user,json=txUser" json:"tx_user,omitempty"`
-	PingOrigin       *string `protobuf:"bytes,5,opt,name=ping_origin,json=pingOrigin" json:"ping_origin,omitempty"`
-	Pong             *int64  `protobuf:"varint,6,opt,name=pong" json:"pong,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
-}
-
-func (m *ServerResponse) Reset()                    { *m = ServerResponse{} }
-func (m *ServerResponse) String() string            { return proto.CompactTextString(m) }
-func (*ServerResponse) ProtoMessage()               {}
-func (*ServerResponse) Descriptor() ([]byte, []int) { return fileDescriptorAudio, []int{2} }
-
-func (m *ServerResponse) GetOnline() bool {
-	if m != nil && m.Online != nil {
-		return *m.Online
+func (m *State) GetTxOn() bool {
+	if m != nil {
+		return m.TxOn
 	}
 	return false
 }
 
-func (m *ServerResponse) GetLastSeen() int64 {
-	if m != nil && m.LastSeen != nil {
-		return *m.LastSeen
-	}
-	return 0
-}
-
-func (m *ServerResponse) GetAudioStream() bool {
-	if m != nil && m.AudioStream != nil {
-		return *m.AudioStream
-	}
-	return false
-}
-
-func (m *ServerResponse) GetTxUser() string {
-	if m != nil && m.TxUser != nil {
-		return *m.TxUser
+func (m *State) GetTxUser() string {
+	if m != nil {
+		return m.TxUser
 	}
 	return ""
-}
-
-func (m *ServerResponse) GetPingOrigin() string {
-	if m != nil && m.PingOrigin != nil {
-		return *m.PingOrigin
-	}
-	return ""
-}
-
-func (m *ServerResponse) GetPong() int64 {
-	if m != nil && m.Pong != nil {
-		return *m.Pong
-	}
-	return 0
 }
 
 func init() {
-	proto.RegisterType((*AudioData)(nil), "shackbus.audio.AudioData")
-	proto.RegisterType((*ClientRequest)(nil), "shackbus.audio.ClientRequest")
-	proto.RegisterType((*ServerResponse)(nil), "shackbus.audio.ServerResponse")
+	proto.RegisterType((*None)(nil), "shackbus.audio.None")
+	proto.RegisterType((*Error)(nil), "shackbus.audio.Error")
+	proto.RegisterType((*Capabilities)(nil), "shackbus.audio.Capabilities")
+	proto.RegisterType((*PingPong)(nil), "shackbus.audio.PingPong")
+	proto.RegisterType((*Frame)(nil), "shackbus.audio.Frame")
+	proto.RegisterType((*State)(nil), "shackbus.audio.State")
+	proto.RegisterEnum("shackbus.audio.Channels", Channels_name, Channels_value)
 	proto.RegisterEnum("shackbus.audio.Codec", Codec_name, Codec_value)
 }
-func (m *AudioData) Marshal() (dAtA []byte, err error) {
+func (m *None) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -248,73 +272,39 @@ func (m *AudioData) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *AudioData) MarshalTo(dAtA []byte) (int, error) {
+func (m *None) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.Codec != nil {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintAudio(dAtA, i, uint64(*m.Codec))
+	return i, nil
+}
+
+func (m *Error) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
 	}
-	if m.Channels != nil {
-		dAtA[i] = 0x10
+	return dAtA[:n], nil
+}
+
+func (m *Error) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Error) > 0 {
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintAudio(dAtA, i, uint64(*m.Channels))
-	}
-	if m.FrameLength != nil {
-		dAtA[i] = 0x18
-		i++
-		i = encodeVarintAudio(dAtA, i, uint64(*m.FrameLength))
-	}
-	if m.SamplingRate != nil {
-		dAtA[i] = 0x20
-		i++
-		i = encodeVarintAudio(dAtA, i, uint64(*m.SamplingRate))
-	}
-	if m.BitDepth != nil {
-		dAtA[i] = 0x28
-		i++
-		i = encodeVarintAudio(dAtA, i, uint64(*m.BitDepth))
-	}
-	if m.AudioRaw != nil {
-		dAtA[i] = 0x32
-		i++
-		i = encodeVarintAudio(dAtA, i, uint64(len(m.AudioRaw)))
-		i += copy(dAtA[i:], m.AudioRaw)
-	}
-	if len(m.AudioPacked) > 0 {
-		dAtA1 := make([]byte, len(m.AudioPacked)*5)
-		var j2 int
-		for _, num := range m.AudioPacked {
-			x3 := (uint32(num) << 1) ^ uint32((num >> 31))
-			for x3 >= 1<<7 {
-				dAtA1[j2] = uint8(uint64(x3)&0x7f | 0x80)
-				j2++
-				x3 >>= 7
-			}
-			dAtA1[j2] = uint8(x3)
-			j2++
-		}
-		dAtA[i] = 0x3a
-		i++
-		i = encodeVarintAudio(dAtA, i, uint64(j2))
-		i += copy(dAtA[i:], dAtA1[:j2])
-	}
-	if m.UserId != nil {
-		dAtA[i] = 0x42
-		i++
-		i = encodeVarintAudio(dAtA, i, uint64(len(*m.UserId)))
-		i += copy(dAtA[i:], *m.UserId)
-	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+		i = encodeVarintAudio(dAtA, i, uint64(len(m.Error)))
+		i += copy(dAtA[i:], m.Error)
 	}
 	return i, nil
 }
 
-func (m *ClientRequest) Marshal() (dAtA []byte, err error) {
+func (m *Capabilities) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -324,39 +314,33 @@ func (m *ClientRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *ClientRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *Capabilities) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.AudioStream != nil {
-		dAtA[i] = 0x8
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
 		i++
-		if *m.AudioStream {
-			dAtA[i] = 1
-		} else {
-			dAtA[i] = 0
-		}
-		i++
+		i = encodeVarintAudio(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
 	}
-	if m.PingOrigin != nil {
+	if len(m.RxStreamAddress) > 0 {
 		dAtA[i] = 0x12
 		i++
-		i = encodeVarintAudio(dAtA, i, uint64(len(*m.PingOrigin)))
-		i += copy(dAtA[i:], *m.PingOrigin)
+		i = encodeVarintAudio(dAtA, i, uint64(len(m.RxStreamAddress)))
+		i += copy(dAtA[i:], m.RxStreamAddress)
 	}
-	if m.Ping != nil {
-		dAtA[i] = 0x18
+	if len(m.TxStreamAddress) > 0 {
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintAudio(dAtA, i, uint64(*m.Ping))
-	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+		i = encodeVarintAudio(dAtA, i, uint64(len(m.TxStreamAddress)))
+		i += copy(dAtA[i:], m.TxStreamAddress)
 	}
 	return i, nil
 }
 
-func (m *ServerResponse) Marshal() (dAtA []byte, err error) {
+func (m *PingPong) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -366,55 +350,114 @@ func (m *ServerResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *ServerResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *PingPong) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.Online != nil {
+	if m.Ping != 0 {
 		dAtA[i] = 0x8
 		i++
-		if *m.Online {
-			dAtA[i] = 1
-		} else {
-			dAtA[i] = 0
-		}
-		i++
+		i = encodeVarintAudio(dAtA, i, uint64(m.Ping))
 	}
-	if m.LastSeen != nil {
+	return i, nil
+}
+
+func (m *Frame) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Frame) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Codec != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintAudio(dAtA, i, uint64(m.Codec))
+	}
+	if m.Channels != 0 {
 		dAtA[i] = 0x10
 		i++
-		i = encodeVarintAudio(dAtA, i, uint64(*m.LastSeen))
+		i = encodeVarintAudio(dAtA, i, uint64(m.Channels))
 	}
-	if m.AudioStream != nil {
+	if m.FrameLength != 0 {
 		dAtA[i] = 0x18
 		i++
-		if *m.AudioStream {
+		i = encodeVarintAudio(dAtA, i, uint64(m.FrameLength))
+	}
+	if m.SamplingRate != 0 {
+		dAtA[i] = 0x20
+		i++
+		i = encodeVarintAudio(dAtA, i, uint64(m.SamplingRate))
+	}
+	if m.BitDepth != 0 {
+		dAtA[i] = 0x28
+		i++
+		i = encodeVarintAudio(dAtA, i, uint64(m.BitDepth))
+	}
+	if len(m.Data) > 0 {
+		dAtA[i] = 0x32
+		i++
+		i = encodeVarintAudio(dAtA, i, uint64(len(m.Data)))
+		i += copy(dAtA[i:], m.Data)
+	}
+	if len(m.UserId) > 0 {
+		dAtA[i] = 0x42
+		i++
+		i = encodeVarintAudio(dAtA, i, uint64(len(m.UserId)))
+		i += copy(dAtA[i:], m.UserId)
+	}
+	return i, nil
+}
+
+func (m *State) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *State) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.RxOn {
+		dAtA[i] = 0x8
+		i++
+		if m.RxOn {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
 		}
 		i++
 	}
-	if m.TxUser != nil {
-		dAtA[i] = 0x22
+	if m.TxOn {
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintAudio(dAtA, i, uint64(len(*m.TxUser)))
-		i += copy(dAtA[i:], *m.TxUser)
-	}
-	if m.PingOrigin != nil {
-		dAtA[i] = 0x2a
+		if m.TxOn {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
 		i++
-		i = encodeVarintAudio(dAtA, i, uint64(len(*m.PingOrigin)))
-		i += copy(dAtA[i:], *m.PingOrigin)
 	}
-	if m.Pong != nil {
-		dAtA[i] = 0x30
+	if len(m.TxUser) > 0 {
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintAudio(dAtA, i, uint64(*m.Pong))
-	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+		i = encodeVarintAudio(dAtA, i, uint64(len(m.TxUser)))
+		i += copy(dAtA[i:], m.TxUser)
 	}
 	return i, nil
 }
@@ -446,89 +489,90 @@ func encodeVarintAudio(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return offset + 1
 }
-func (m *AudioData) Size() (n int) {
+func (m *None) Size() (n int) {
 	var l int
 	_ = l
-	if m.Codec != nil {
-		n += 1 + sovAudio(uint64(*m.Codec))
-	}
-	if m.Channels != nil {
-		n += 1 + sovAudio(uint64(*m.Channels))
-	}
-	if m.FrameLength != nil {
-		n += 1 + sovAudio(uint64(*m.FrameLength))
-	}
-	if m.SamplingRate != nil {
-		n += 1 + sovAudio(uint64(*m.SamplingRate))
-	}
-	if m.BitDepth != nil {
-		n += 1 + sovAudio(uint64(*m.BitDepth))
-	}
-	if m.AudioRaw != nil {
-		l = len(m.AudioRaw)
+	return n
+}
+
+func (m *Error) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Error)
+	if l > 0 {
 		n += 1 + l + sovAudio(uint64(l))
-	}
-	if len(m.AudioPacked) > 0 {
-		l = 0
-		for _, e := range m.AudioPacked {
-			l += sozAudio(uint64(e))
-		}
-		n += 1 + sovAudio(uint64(l)) + l
-	}
-	if m.UserId != nil {
-		l = len(*m.UserId)
-		n += 1 + l + sovAudio(uint64(l))
-	}
-	if m.XXX_unrecognized != nil {
-		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
 
-func (m *ClientRequest) Size() (n int) {
+func (m *Capabilities) Size() (n int) {
 	var l int
 	_ = l
-	if m.AudioStream != nil {
-		n += 2
-	}
-	if m.PingOrigin != nil {
-		l = len(*m.PingOrigin)
+	l = len(m.Name)
+	if l > 0 {
 		n += 1 + l + sovAudio(uint64(l))
 	}
-	if m.Ping != nil {
-		n += 1 + sovAudio(uint64(*m.Ping))
+	l = len(m.RxStreamAddress)
+	if l > 0 {
+		n += 1 + l + sovAudio(uint64(l))
 	}
-	if m.XXX_unrecognized != nil {
-		n += len(m.XXX_unrecognized)
+	l = len(m.TxStreamAddress)
+	if l > 0 {
+		n += 1 + l + sovAudio(uint64(l))
 	}
 	return n
 }
 
-func (m *ServerResponse) Size() (n int) {
+func (m *PingPong) Size() (n int) {
 	var l int
 	_ = l
-	if m.Online != nil {
-		n += 2
+	if m.Ping != 0 {
+		n += 1 + sovAudio(uint64(m.Ping))
 	}
-	if m.LastSeen != nil {
-		n += 1 + sovAudio(uint64(*m.LastSeen))
+	return n
+}
+
+func (m *Frame) Size() (n int) {
+	var l int
+	_ = l
+	if m.Codec != 0 {
+		n += 1 + sovAudio(uint64(m.Codec))
 	}
-	if m.AudioStream != nil {
-		n += 2
+	if m.Channels != 0 {
+		n += 1 + sovAudio(uint64(m.Channels))
 	}
-	if m.TxUser != nil {
-		l = len(*m.TxUser)
+	if m.FrameLength != 0 {
+		n += 1 + sovAudio(uint64(m.FrameLength))
+	}
+	if m.SamplingRate != 0 {
+		n += 1 + sovAudio(uint64(m.SamplingRate))
+	}
+	if m.BitDepth != 0 {
+		n += 1 + sovAudio(uint64(m.BitDepth))
+	}
+	l = len(m.Data)
+	if l > 0 {
 		n += 1 + l + sovAudio(uint64(l))
 	}
-	if m.PingOrigin != nil {
-		l = len(*m.PingOrigin)
+	l = len(m.UserId)
+	if l > 0 {
 		n += 1 + l + sovAudio(uint64(l))
 	}
-	if m.Pong != nil {
-		n += 1 + sovAudio(uint64(*m.Pong))
+	return n
+}
+
+func (m *State) Size() (n int) {
+	var l int
+	_ = l
+	if m.RxOn {
+		n += 2
 	}
-	if m.XXX_unrecognized != nil {
-		n += len(m.XXX_unrecognized)
+	if m.TxOn {
+		n += 2
+	}
+	l = len(m.TxUser)
+	if l > 0 {
+		n += 1 + l + sovAudio(uint64(l))
 	}
 	return n
 }
@@ -546,7 +590,7 @@ func sovAudio(x uint64) (n int) {
 func sozAudio(x uint64) (n int) {
 	return sovAudio(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *AudioData) Unmarshal(dAtA []byte) error {
+func (m *None) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -569,17 +613,352 @@ func (m *AudioData) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: AudioData: wiretype end group for non-group")
+			return fmt.Errorf("proto: None: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: AudioData: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: None: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAudio(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAudio
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Error) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAudio
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAudio
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAudio
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Error = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAudio(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAudio
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Capabilities) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAudio
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Capabilities: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Capabilities: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAudio
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAudio
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RxStreamAddress", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAudio
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAudio
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RxStreamAddress = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxStreamAddress", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAudio
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAudio
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TxStreamAddress = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAudio(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAudio
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *PingPong) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAudio
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: PingPong: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: PingPong: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Ping", wireType)
+			}
+			m.Ping = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAudio
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Ping |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAudio(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAudio
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Frame) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAudio
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Frame: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Frame: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Codec", wireType)
 			}
-			var v Codec
+			m.Codec = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowAudio
@@ -589,17 +968,16 @@ func (m *AudioData) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				v |= (Codec(b) & 0x7F) << shift
+				m.Codec |= (Codec(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.Codec = &v
 		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Channels", wireType)
 			}
-			var v int32
+			m.Channels = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowAudio
@@ -609,17 +987,16 @@ func (m *AudioData) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				v |= (int32(b) & 0x7F) << shift
+				m.Channels |= (Channels(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.Channels = &v
 		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field FrameLength", wireType)
 			}
-			var v int32
+			m.FrameLength = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowAudio
@@ -629,17 +1006,16 @@ func (m *AudioData) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				v |= (int32(b) & 0x7F) << shift
+				m.FrameLength |= (int32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.FrameLength = &v
 		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field SamplingRate", wireType)
 			}
-			var v int32
+			m.SamplingRate = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowAudio
@@ -649,17 +1025,16 @@ func (m *AudioData) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				v |= (int32(b) & 0x7F) << shift
+				m.SamplingRate |= (int32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.SamplingRate = &v
 		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field BitDepth", wireType)
 			}
-			var v int32
+			m.BitDepth = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowAudio
@@ -669,15 +1044,14 @@ func (m *AudioData) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				v |= (int32(b) & 0x7F) << shift
+				m.BitDepth |= (int32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.BitDepth = &v
 		case 6:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field AudioRaw", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Data", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
@@ -701,75 +1075,11 @@ func (m *AudioData) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.AudioRaw = append(m.AudioRaw[:0], dAtA[iNdEx:postIndex]...)
-			if m.AudioRaw == nil {
-				m.AudioRaw = []byte{}
+			m.Data = append(m.Data[:0], dAtA[iNdEx:postIndex]...)
+			if m.Data == nil {
+				m.Data = []byte{}
 			}
 			iNdEx = postIndex
-		case 7:
-			if wireType == 2 {
-				var packedLen int
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowAudio
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					packedLen |= (int(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				if packedLen < 0 {
-					return ErrInvalidLengthAudio
-				}
-				postIndex := iNdEx + packedLen
-				if postIndex > l {
-					return io.ErrUnexpectedEOF
-				}
-				for iNdEx < postIndex {
-					var v int32
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowAudio
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						v |= (int32(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					v = int32((uint32(v) >> 1) ^ uint32(((v&1)<<31)>>31))
-					m.AudioPacked = append(m.AudioPacked, v)
-				}
-			} else if wireType == 0 {
-				var v int32
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowAudio
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					v |= (int32(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				v = int32((uint32(v) >> 1) ^ uint32(((v&1)<<31)>>31))
-				m.AudioPacked = append(m.AudioPacked, v)
-			} else {
-				return fmt.Errorf("proto: wrong wireType = %d for field AudioPacked", wireType)
-			}
 		case 8:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field UserId", wireType)
@@ -797,8 +1107,7 @@ func (m *AudioData) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			s := string(dAtA[iNdEx:postIndex])
-			m.UserId = &s
+			m.UserId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -812,7 +1121,6 @@ func (m *AudioData) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -822,7 +1130,7 @@ func (m *AudioData) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *ClientRequest) Unmarshal(dAtA []byte) error {
+func (m *State) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -845,15 +1153,15 @@ func (m *ClientRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ClientRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: State: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ClientRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: State: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field AudioStream", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field RxOn", wireType)
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -870,153 +1178,10 @@ func (m *ClientRequest) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			b := bool(v != 0)
-			m.AudioStream = &b
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PingOrigin", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAudio
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthAudio
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			s := string(dAtA[iNdEx:postIndex])
-			m.PingOrigin = &s
-			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ping", wireType)
-			}
-			var v int64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAudio
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.Ping = &v
-		default:
-			iNdEx = preIndex
-			skippy, err := skipAudio(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthAudio
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ServerResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowAudio
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ServerResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ServerResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Online", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAudio
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			b := bool(v != 0)
-			m.Online = &b
+			m.RxOn = bool(v != 0)
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LastSeen", wireType)
-			}
-			var v int64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAudio
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.LastSeen = &v
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field AudioStream", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TxOn", wireType)
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -1033,9 +1198,8 @@ func (m *ServerResponse) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			b := bool(v != 0)
-			m.AudioStream = &b
-		case 4:
+			m.TxOn = bool(v != 0)
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TxUser", wireType)
 			}
@@ -1062,59 +1226,8 @@ func (m *ServerResponse) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			s := string(dAtA[iNdEx:postIndex])
-			m.TxUser = &s
+			m.TxUser = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PingOrigin", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAudio
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthAudio
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			s := string(dAtA[iNdEx:postIndex])
-			m.PingOrigin = &s
-			iNdEx = postIndex
-		case 6:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Pong", wireType)
-			}
-			var v int64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAudio
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.Pong = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := skipAudio(dAtA[iNdEx:])
@@ -1127,7 +1240,6 @@ func (m *ServerResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1245,33 +1357,38 @@ var (
 func init() { proto.RegisterFile("audio.proto", fileDescriptorAudio) }
 
 var fileDescriptorAudio = []byte{
-	// 438 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x6c, 0x92, 0x51, 0x8e, 0xd3, 0x30,
-	0x10, 0x86, 0xd7, 0x4d, 0xd3, 0x26, 0xd3, 0x6e, 0x15, 0x2c, 0xc1, 0x46, 0x20, 0x95, 0x50, 0x40,
-	0x8a, 0x40, 0xea, 0x03, 0x37, 0x60, 0xbb, 0x3c, 0x20, 0xc1, 0xb6, 0x72, 0xb5, 0xcf, 0x91, 0x9b,
-	0x0c, 0xa9, 0xb5, 0xa9, 0x1d, 0x6c, 0x97, 0xdd, 0x93, 0x20, 0x4e, 0xc2, 0x19, 0x78, 0xe4, 0x08,
-	0xa8, 0x5c, 0x04, 0xd9, 0x29, 0x48, 0xb0, 0xbc, 0xcd, 0xff, 0xcd, 0x68, 0xfc, 0xcf, 0x2f, 0xc3,
-	0x88, 0xef, 0x2b, 0xa1, 0xe6, 0xad, 0x56, 0x56, 0xd1, 0x89, 0xd9, 0xf2, 0xf2, 0x7a, 0xb3, 0x37,
-	0x73, 0x4f, 0x67, 0x9f, 0x7b, 0x10, 0xbf, 0x76, 0xd5, 0x05, 0xb7, 0x9c, 0xbe, 0x84, 0xb0, 0x54,
-	0x15, 0x96, 0x29, 0xc9, 0x48, 0x3e, 0x79, 0x75, 0x7f, 0xfe, 0xf7, 0xf4, 0x7c, 0xe1, 0x9a, 0xac,
-	0x9b, 0xa1, 0x0f, 0x21, 0x2a, 0xb7, 0x5c, 0x4a, 0x6c, 0x4c, 0xda, 0xcb, 0x48, 0x1e, 0xb2, 0x3f,
-	0x9a, 0x3e, 0x81, 0xf1, 0x07, 0xcd, 0x77, 0x58, 0x34, 0x28, 0x6b, 0xbb, 0x4d, 0x03, 0xdf, 0x1f,
-	0x79, 0xf6, 0xce, 0x23, 0xfa, 0x14, 0x4e, 0x0d, 0xdf, 0xb5, 0x8d, 0x90, 0x75, 0xa1, 0xb9, 0xc5,
-	0xb4, 0xef, 0x67, 0xc6, 0xbf, 0x21, 0xe3, 0x16, 0xe9, 0x23, 0x88, 0x37, 0xc2, 0x16, 0x15, 0xb6,
-	0x76, 0x9b, 0x86, 0xdd, 0x23, 0x1b, 0x61, 0x2f, 0x9c, 0x76, 0x4d, 0x6f, 0xab, 0xd0, 0xfc, 0x26,
-	0x1d, 0x64, 0x24, 0x1f, 0xb3, 0xc8, 0x03, 0xc6, 0x6f, 0xe8, 0x73, 0x18, 0x77, 0xcd, 0x96, 0x97,
-	0xd7, 0x58, 0xa5, 0xc3, 0x2c, 0xc8, 0xef, 0x9d, 0xf7, 0x12, 0xc2, 0xba, 0x3c, 0x56, 0x1e, 0xd3,
-	0x33, 0x18, 0xee, 0x0d, 0xea, 0x42, 0x54, 0x69, 0x94, 0x91, 0x3c, 0x66, 0x03, 0x27, 0xdf, 0x56,
-	0xb3, 0x1a, 0x4e, 0x17, 0x8d, 0x40, 0x69, 0x19, 0x7e, 0xdc, 0xa3, 0xb1, 0xee, 0xa4, 0x6e, 0xa1,
-	0xb1, 0x1a, 0xf9, 0xce, 0x47, 0x14, 0x1d, 0x97, 0xad, 0x3d, 0xa2, 0x8f, 0x61, 0xd4, 0xba, 0x73,
-	0x94, 0x16, 0xb5, 0x90, 0x3e, 0x94, 0x98, 0x81, 0x43, 0x4b, 0x4f, 0x28, 0x85, 0xbe, 0x53, 0x3e,
-	0x8e, 0x80, 0xf9, 0x7a, 0xf6, 0x95, 0xc0, 0x64, 0x8d, 0xfa, 0x13, 0x6a, 0x86, 0xa6, 0x55, 0xd2,
-	0x20, 0x7d, 0x00, 0x03, 0x25, 0x1b, 0x21, 0xf1, 0xf8, 0xc8, 0x51, 0xb9, 0x83, 0x1b, 0x6e, 0x6c,
-	0x61, 0x10, 0xbb, 0xed, 0x01, 0x8b, 0x1c, 0x58, 0x23, 0xca, 0x3b, 0xfe, 0x82, 0xbb, 0xfe, 0xce,
-	0x60, 0x68, 0x6f, 0x0b, 0x77, 0xa0, 0x0f, 0x3b, 0x66, 0x03, 0x7b, 0x7b, 0x65, 0x50, 0xff, 0x6b,
-	0x3c, 0xfc, 0xaf, 0x71, 0x25, 0x6b, 0x9f, 0xb2, 0x33, 0xae, 0x64, 0xfd, 0xe2, 0x19, 0x84, 0xfe,
-	0x3f, 0xd0, 0x08, 0xfa, 0x97, 0xcb, 0xcb, 0x37, 0xc9, 0x89, 0xab, 0x96, 0xab, 0xab, 0x75, 0x42,
-	0xe8, 0x10, 0x82, 0xd5, 0xe2, 0x7d, 0xd2, 0x3b, 0x4f, 0xbe, 0x1d, 0xa6, 0xe4, 0xfb, 0x61, 0x4a,
-	0x7e, 0x1c, 0xa6, 0xe4, 0xcb, 0xcf, 0xe9, 0xc9, 0xaf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x55, 0x4c,
-	0x07, 0x08, 0x90, 0x02, 0x00, 0x00,
+	// 518 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x93, 0xcf, 0x6e, 0xd3, 0x40,
+	0x10, 0xc6, 0xeb, 0xd4, 0x76, 0xdc, 0x49, 0x48, 0xcd, 0x52, 0x54, 0xab, 0x40, 0x54, 0x0c, 0x87,
+	0x2a, 0x88, 0x1c, 0x02, 0x17, 0x7a, 0x83, 0x52, 0x10, 0x08, 0x41, 0xe5, 0x88, 0xb3, 0xb5, 0x89,
+	0x87, 0x64, 0xd5, 0x64, 0xd7, 0xda, 0x9d, 0x80, 0xc5, 0x91, 0xa7, 0xe0, 0x91, 0x38, 0xf2, 0x08,
+	0x28, 0xbc, 0x06, 0x07, 0xb4, 0xeb, 0x04, 0x11, 0xa2, 0x5e, 0xb8, 0xcd, 0x7e, 0xf3, 0x5b, 0xcf,
+	0x9f, 0xfd, 0x0c, 0x2d, 0xbe, 0x28, 0x84, 0xea, 0x97, 0x5a, 0x91, 0x62, 0x1d, 0x33, 0xe5, 0xe3,
+	0xcb, 0xd1, 0xc2, 0xf4, 0x9d, 0x9a, 0x86, 0xe0, 0xbf, 0x55, 0x12, 0xd3, 0x3b, 0x10, 0x9c, 0x6b,
+	0xad, 0x34, 0x3b, 0x80, 0x00, 0x6d, 0x90, 0x78, 0xc7, 0xde, 0xc9, 0x5e, 0x56, 0x1f, 0xd2, 0xcf,
+	0xd0, 0x3e, 0xe3, 0x25, 0x1f, 0x89, 0x99, 0x20, 0x81, 0x86, 0x31, 0xf0, 0x25, 0x9f, 0xe3, 0x0a,
+	0x72, 0x31, 0xeb, 0xc1, 0x75, 0x5d, 0xe5, 0x86, 0x34, 0xf2, 0x79, 0xce, 0x8b, 0x42, 0xa3, 0x31,
+	0x49, 0xc3, 0x01, 0xfb, 0xba, 0x1a, 0x3a, 0xfd, 0x69, 0x2d, 0x5b, 0x96, 0xb6, 0xd8, 0xdd, 0x9a,
+	0xa5, 0x4d, 0x36, 0xed, 0x42, 0x74, 0x21, 0xe4, 0xe4, 0x42, 0xc9, 0x89, 0xad, 0x5b, 0x0a, 0x39,
+	0x71, 0x75, 0x77, 0x33, 0x17, 0xa7, 0xbf, 0x3c, 0x08, 0x5e, 0x68, 0xdb, 0xc1, 0x03, 0x08, 0xc6,
+	0xaa, 0xc0, 0xb1, 0x4b, 0x77, 0x06, 0x37, 0xfb, 0x9b, 0xc3, 0xf6, 0xcf, 0x6c, 0x32, 0xab, 0x19,
+	0xf6, 0x18, 0xa2, 0xf1, 0x94, 0x4b, 0x89, 0xb3, 0xba, 0xcb, 0xce, 0x20, 0xd9, 0xe2, 0x57, 0xf9,
+	0xec, 0x0f, 0xc9, 0xee, 0x42, 0xfb, 0x83, 0xad, 0x95, 0xcf, 0x50, 0x4e, 0x68, 0xea, 0x7a, 0x0e,
+	0xb2, 0x96, 0xd3, 0xde, 0x38, 0x89, 0xdd, 0x83, 0x6b, 0x86, 0xcf, 0xcb, 0x99, 0x90, 0x93, 0x5c,
+	0x73, 0xc2, 0xc4, 0x77, 0x4c, 0x7b, 0x2d, 0x66, 0x9c, 0x90, 0xdd, 0x82, 0xbd, 0x91, 0xa0, 0xbc,
+	0xc0, 0x92, 0xa6, 0x49, 0xe0, 0x80, 0x68, 0x24, 0xe8, 0xb9, 0x3d, 0xdb, 0x29, 0x0b, 0x4e, 0x3c,
+	0x09, 0x8f, 0xbd, 0x93, 0x76, 0xe6, 0x62, 0x76, 0x08, 0xcd, 0x85, 0x41, 0x9d, 0x8b, 0x22, 0x89,
+	0xdc, 0x9e, 0x42, 0x7b, 0x7c, 0x55, 0xa4, 0xaf, 0x21, 0x18, 0x92, 0xfd, 0xe4, 0x0d, 0x08, 0x74,
+	0x95, 0x2b, 0xe9, 0xa6, 0x8f, 0x32, 0x5f, 0x57, 0xef, 0xa4, 0x15, 0xc9, 0x89, 0x8d, 0x5a, 0x24,
+	0x2b, 0x1e, 0x42, 0x93, 0xaa, 0xdc, 0xde, 0x5f, 0xed, 0x3c, 0xa4, 0xea, 0xbd, 0x41, 0xdd, 0x7b,
+	0x08, 0xd1, 0x7a, 0x66, 0xd6, 0x82, 0xe6, 0x42, 0x5e, 0x4a, 0xf5, 0x49, 0xc6, 0x3b, 0x2c, 0x02,
+	0x7f, 0xae, 0xa4, 0x8a, 0x3d, 0x06, 0x10, 0x1a, 0x42, 0x8d, 0x2a, 0x6e, 0xf4, 0xee, 0x43, 0xe0,
+	0x56, 0x6a, 0xd3, 0x52, 0x49, 0xac, 0x41, 0x55, 0x2e, 0x4c, 0xec, 0xb1, 0x26, 0xec, 0x96, 0xe3,
+	0x79, 0xdc, 0x18, 0x7c, 0x69, 0x40, 0x38, 0x44, 0xfd, 0x11, 0x35, 0x3b, 0x87, 0xfd, 0x97, 0x48,
+	0x1b, 0x4e, 0x3a, 0xf8, 0x77, 0xe9, 0xd6, 0x8e, 0x47, 0xb7, 0xb7, 0x9e, 0xe2, 0xef, 0x3b, 0xa7,
+	0xd0, 0x1a, 0x12, 0xd7, 0x54, 0xfb, 0xe4, 0x8a, 0x4f, 0x6c, 0xbd, 0x7e, 0xed, 0xef, 0x27, 0x00,
+	0x43, 0x52, 0xe5, 0xff, 0x5c, 0x3d, 0x05, 0xdf, 0x1a, 0x91, 0x6d, 0xf9, 0x64, 0x6d, 0xcf, 0xa3,
+	0x2b, 0x33, 0xcf, 0xe2, 0x6f, 0xcb, 0xae, 0xf7, 0x7d, 0xd9, 0xf5, 0x7e, 0x2c, 0xbb, 0xde, 0xd7,
+	0x9f, 0xdd, 0x9d, 0x51, 0xe8, 0x7e, 0xc8, 0x47, 0xbf, 0x03, 0x00, 0x00, 0xff, 0xff, 0x46, 0x47,
+	0x4d, 0x36, 0x9f, 0x03, 0x00, 0x00,
 }
