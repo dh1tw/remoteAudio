@@ -16,6 +16,7 @@ import (
 // audio frames in the wav format.
 type WavWriter struct {
 	sync.Mutex
+	file    *os.File
 	encoder *wav.Encoder
 	options Options
 	volume  float32
@@ -45,6 +46,7 @@ func NewWavWriter(path string, opts ...Option) (*WavWriter, error) {
 			Samplerate: DefaultSamplerate,
 		},
 		volume: 1.0,
+		file:   f,
 	}
 
 	for _, o := range opts {
@@ -88,7 +90,9 @@ func (w *WavWriter) Stop() error {
 
 // Close shuts down properly the wavWriter.
 func (w *WavWriter) Close() error {
-	return w.encoder.Close()
+	err := w.encoder.Close()
+	w.file.Close()
+	return err
 }
 
 // SetVolume sets the volume for all incoming audio frames.
@@ -126,6 +130,10 @@ func (w *WavWriter) Enqueue(msg audio.AudioMsg, token audio.Token) {
 	} else {
 		aData = msg.Data
 	}
+
+	w.Lock()
+	audio.AdjustVolume(w.volume, aData)
+	w.Unlock()
 
 	if msg.Samplerate != w.options.Samplerate {
 		if w.src.samplerate != msg.Samplerate {

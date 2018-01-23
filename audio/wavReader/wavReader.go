@@ -3,6 +3,7 @@ package wavReader
 import (
 	"errors"
 	"os"
+	"sync"
 
 	"github.com/dh1tw/remoteAudio/audio"
 	ga "github.com/go-audio/audio"
@@ -12,6 +13,7 @@ import (
 // WavReader implements the audio.Source interface and is used to read (play)
 // audio frames from a wav source (e.g. file).
 type WavReader struct {
+	sync.RWMutex
 	options   Options
 	buffer    []audio.AudioMsg
 	cb        audio.OnDataCb
@@ -20,15 +22,15 @@ type WavReader struct {
 
 // NewWavReader reads a wav file from disk into memory and returns a
 // WavReader object which implements the audio.Source interface.
-func NewWavReader(path string, opts ...Option) (*WavReader, error) {
-	file, err := os.Open(path)
+func NewWavReader(file string, opts ...Option) (*WavReader, error) {
+
+	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
-	defer file.Close()
-
-	dec := wav.NewDecoder(file)
+	dec := wav.NewDecoder(f)
 
 	if !dec.IsValidFile() {
 		return nil, errors.New("invalid WAV file")
@@ -96,7 +98,7 @@ func (w *WavReader) Start() error {
 	// TBD use mutex!
 	go func() {
 		for _, msg := range w.buffer {
-			if w.cb != nil {
+			if w.cb != nil && w.isPlaying {
 				w.cb(msg)
 			}
 		}
@@ -108,7 +110,7 @@ func (w *WavReader) Start() error {
 
 // Stop cancels sending audio through the callback.
 func (w *WavReader) Stop() error {
-	w.cb = nil
+	w.isPlaying = false
 	return nil
 }
 

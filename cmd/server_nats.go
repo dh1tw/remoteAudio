@@ -127,7 +127,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	n.router.AddSink("speaker", speaker, false)
 	n.router.AddSink("wavFile", wavRec, false)
 
-	wav, err := wavReader.NewWavReader("./test.wav")
+	wav, err := wavReader.NewWavReader("test.wav")
 	if err != nil {
 		log.Fatal(err)
 	}
