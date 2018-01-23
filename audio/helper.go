@@ -26,6 +26,11 @@ func AdjustChannels(iChs, oChs int, audioFrames []float32) []float32 {
 // AdjustVolume adjusts the volume in all the audio frames within
 // an audio buffer
 func AdjustVolume(volume float32, aBuffer []float32) {
+
+	if volume == 1 {
+		return
+	}
+
 	for i := 0; i < len(aBuffer); i++ {
 		aBuffer[i] *= volume
 	}
