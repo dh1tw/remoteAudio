@@ -1,19 +1,22 @@
-package audio
+package scReader
 
-import "time"
+import (
+	"time"
+
+	"github.com/dh1tw/remoteAudio/audio"
+)
 
 // Option is the type for a function option
 type Option func(*Options)
 
-// Options contains the parameters for initializing an input or output audio
-// device.
+// Options contains the parameters for initializing a soundcard reader.
 type Options struct {
 	DeviceName      string
 	Channels        int
 	Samplerate      float64
 	FramesPerBuffer int
 	Latency         time.Duration
-	RingBufferSize  int
+	Callback        audio.OnDataCb
 }
 
 // DeviceName is a functional option to specify the name of the
@@ -59,12 +62,10 @@ func Latency(t time.Duration) Option {
 	}
 }
 
-// RingBufferSize is a functional option to set the size of the ring buffer
-// of Output audio devices. When enqueing samples, they are stored in the ring
-// buffer from where the callback will retrieve them for playing them on the
-// speaker.
-func RingBufferSize(size int) Option {
+// Callback is a functional option to set the callback which will be executed
+// whenever new data has been read from the audio device (e.g. microphone).
+func Callback(cb audio.OnDataCb) Option {
 	return func(args *Options) {
-		args.RingBufferSize = size
+		args.Callback = cb
 	}
 }

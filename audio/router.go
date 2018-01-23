@@ -1,24 +1,22 @@
-package router
+package audio
 
 import (
 	"fmt"
 	"sync"
-
-	"github.com/dh1tw/remoteAudio/audio"
 )
 
 type Router interface {
-	AddSink(string, audio.Sink, bool)
+	AddSink(string, Sink, bool)
 	RemoveSink(string) error
-	Sink(string) (audio.Sink, error)
-	// Sinks() map[string]audio.Sink
+	Sink(string) (Sink, error)
+	// Sinks() map[string]Sink
 	EnableSink(string, bool) error
-	Enqueue(audio.AudioMsg) audio.Token
+	Enqueue(AudioMsg) Token
 	Flush()
 }
 
 type sink struct {
-	audio.Sink
+	Sink
 	active bool
 }
 
@@ -27,7 +25,7 @@ type router struct {
 	sinks        map[string]*sink
 }
 
-func NewRouter(opts ...Option) (Router, error) {
+func NewRouter() (Router, error) {
 
 	r := &router{
 		sinks: make(map[string]*sink),
@@ -36,9 +34,9 @@ func NewRouter(opts ...Option) (Router, error) {
 	return r, nil
 }
 
-func (r *router) Enqueue(msg audio.AudioMsg) audio.Token {
+func (r *router) Enqueue(msg AudioMsg) Token {
 
-	token := audio.NewToken()
+	token := NewToken()
 
 	r.RLock()
 	defer r.RUnlock()
@@ -53,7 +51,7 @@ func (r *router) Enqueue(msg audio.AudioMsg) audio.Token {
 	return token
 }
 
-func (r *router) AddSink(name string, s audio.Sink, active bool) {
+func (r *router) AddSink(name string, s Sink, active bool) {
 	r.Lock()
 	defer r.Unlock()
 	r.sinks[name] = &sink{s, active}
@@ -69,7 +67,7 @@ func (r *router) RemoveSink(name string) error {
 	return nil
 }
 
-func (r *router) Sink(name string) (audio.Sink, error) {
+func (r *router) Sink(name string) (Sink, error) {
 	r.RLock()
 	defer r.RUnlock()
 	s, ok := r.sinks[name]
@@ -79,7 +77,7 @@ func (r *router) Sink(name string) (audio.Sink, error) {
 	return s, nil
 }
 
-// func (r *router) Sinks() map[string]audio.Sink {
+// func (r *router) Sinks() map[string]Sink {
 // 	r.RLock()
 // 	defer r.RUnlock()
 // 	return r.sinks // concurrency? deep copy or shallow copy?
@@ -93,7 +91,10 @@ func (r *router) EnableSink(name string, active bool) error {
 		return fmt.Errorf("unknown sink %s", name)
 	}
 	s.active = active
-	return nil
+	if s.active {
+		return s.Start()
+	}
+	return s.Stop()
 }
 
 func (r *router) Flush() {
@@ -105,8 +106,3 @@ func (r *router) Flush() {
 		}
 	}
 }
-
-type Options struct {
-}
-
-type Option func(*Options)

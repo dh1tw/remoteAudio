@@ -1,4 +1,4 @@
-package audio
+package scWriter
 
 import (
 	"fmt"
@@ -7,18 +7,18 @@ import (
 	"time"
 
 	"github.com/dh1tw/gosamplerate"
+	"github.com/dh1tw/remoteAudio/audio"
 	pa "github.com/gordonklaus/portaudio"
 	ringBuffer "github.com/zfjagann/golang-ring"
 )
 
-// paPlayer implements the audio.Sink interface and is used to store
-// the player's internal data / state
-type paPlayer struct {
+// ScWriter implements the audio.Sink interface and is used to write (play)
+// audio on a local audio output device (e.g. speakers).
+type ScWriter struct {
 	sync.RWMutex
 	options    Options
 	deviceInfo *pa.DeviceInfo
 	stream     *pa.Stream
-	ringMutex  sync.Mutex
 	ring       ringBuffer.Ring
 	stash      []float32
 	volume     float32
@@ -32,9 +32,9 @@ type src struct {
 	ratio      float64
 }
 
-// NewPlayer is a factory which returns a new audio player for a specific
-// audio output device.
-func NewPlayer(opts ...Option) (Sink, error) {
+// NewScWriter returns a new soundcard writer for a specific audio output
+// device. This is typically a speaker or a pair of headphones.
+func NewScWriter(opts ...Option) (*ScWriter, error) {
 
 	if err := pa.Initialize(); err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func NewPlayer(opts ...Option) (Sink, error) {
 		return nil, err
 	}
 
-	player := &paPlayer{
+	w := &ScWriter{
 		options: Options{
 			DeviceName:      "default",
 			Channels:        2,
@@ -60,61 +60,61 @@ func NewPlayer(opts ...Option) (Sink, error) {
 	}
 
 	for _, option := range opts {
-		option(&player.options)
+		option(&w.options)
 	}
 
 	// setup a samplerate converter
-	srConv, err := gosamplerate.New(gosamplerate.SRC_SINC_FASTEST, player.options.Channels, 65536)
+	srConv, err := gosamplerate.New(gosamplerate.SRC_SINC_FASTEST, w.options.Channels, 65536)
 	if err != nil {
 		return nil, fmt.Errorf("player: %v", err)
 	}
 
-	player.src = src{
+	w.src = src{
 		Src:        srConv,
-		samplerate: player.options.Samplerate,
+		samplerate: w.options.Samplerate,
 		ratio:      1,
 	}
 
 	// select Playback Audio Device
-	if player.options.DeviceName != "default" {
-		device, err := getPaDevice(player.options.DeviceName)
+	if w.options.DeviceName != "default" {
+		device, err := getPaDevice(w.options.DeviceName)
 		if err != nil {
 			return nil, err
 		}
-		player.deviceInfo = device
+		w.deviceInfo = device
 	}
 
 	// setup Audio Stream
 	streamDeviceParam := pa.StreamDeviceParameters{
-		Device:   player.deviceInfo,
-		Channels: player.options.Channels,
-		Latency:  player.options.Latency,
+		Device:   w.deviceInfo,
+		Channels: w.options.Channels,
+		Latency:  w.options.Latency,
 	}
 
 	streamParm := pa.StreamParameters{
-		FramesPerBuffer: player.options.FramesPerBuffer,
+		FramesPerBuffer: w.options.FramesPerBuffer,
 		Output:          streamDeviceParam,
-		SampleRate:      player.options.Samplerate,
+		SampleRate:      w.options.Samplerate,
 	}
 
 	// setup ring buffer
-	player.ring.SetCapacity(player.options.RingBufferSize)
+	w.ring.SetCapacity(w.options.RingBufferSize)
 
-	stream, err := pa.OpenStream(streamParm, player.playCb)
+	stream, err := pa.OpenStream(streamParm, w.playCb)
 	if err != nil {
 		return nil,
 			fmt.Errorf("unable to open playback audio stream on device %s: %s",
-				player.options.DeviceName, err)
+				w.options.DeviceName, err)
 	}
 
-	player.stream = stream
+	w.stream = stream
 
-	return player, nil
+	return w, nil
 }
 
-// pulseaudio callback which will be called continously when the stream is
+// portaudio callback which will be called continously when the stream is
 // started; this function should be short and never block
-func (p *paPlayer) playCb(in []float32,
+func (p *ScWriter) playCb(in []float32,
 	iTime pa.StreamCallbackTimeInfo,
 	iFlags pa.StreamCallbackFlags) {
 	switch iFlags {
@@ -127,9 +127,9 @@ func (p *paPlayer) playCb(in []float32,
 	}
 
 	//pull data from Ringbuffer
-	p.ringMutex.Lock()
+	p.Lock()
 	data := p.ring.Dequeue()
-	p.ringMutex.Unlock()
+	p.Unlock()
 
 	if data == nil {
 		// fill with silence
@@ -152,21 +152,24 @@ func (p *paPlayer) playCb(in []float32,
 	copy(in, audioData)
 }
 
-func (p *paPlayer) Start() error {
+// Start starts streaming audio to the Soundcard output device (e.g. Speaker).
+func (p *ScWriter) Start() error {
 	if p.stream == nil {
 		return fmt.Errorf("portaudio stream not initialized")
 	}
 	return p.stream.Start()
 }
 
-func (p *paPlayer) Stop() error {
+// Stop stops streaming audio.
+func (p *ScWriter) Stop() error {
 	if p.stream == nil {
 		return fmt.Errorf("portaudio stream not initialized")
 	}
 	return p.stream.Stop()
 }
 
-func (p *paPlayer) Close() error {
+// Close shutsdown properly the soundcard audio device.
+func (p *ScWriter) Close() error {
 	if p.stream == nil {
 		return fmt.Errorf("portaudio stream not initialized")
 	}
@@ -175,7 +178,8 @@ func (p *paPlayer) Close() error {
 	return nil
 }
 
-func (p *paPlayer) SetVolume(v float32) {
+// SetVolume sets the volume for all upcoming audio frames.
+func (p *ScWriter) SetVolume(v float32) {
 	p.Lock()
 	defer p.Unlock()
 	if v < 0 {
@@ -185,7 +189,8 @@ func (p *paPlayer) SetVolume(v float32) {
 	p.volume = v
 }
 
-func (p *paPlayer) Volume() float32 {
+// Volume returns the current volume.
+func (p *ScWriter) Volume() float32 {
 	p.RLock()
 	defer p.RUnlock()
 	return p.volume
@@ -195,14 +200,14 @@ func (p *paPlayer) Volume() float32 {
 // and queues them for playing on the speaker. The token is used to indicate
 // if the calling application has to wait before it can enqueue the next
 // buffer (e.g. when enqueuing data from a file).
-func (p *paPlayer) Enqueue(msg AudioMsg, token Token) {
+func (p *ScWriter) Enqueue(msg audio.AudioMsg, token audio.Token) {
 
 	var aData []float32
 	var err error
 
 	// if necessary adjust the amount of audio channels
 	if msg.Channels != p.options.Channels {
-		aData = adjustChannels(msg.Channels, p.options.Channels, msg.Data)
+		aData = audio.AdjustChannels(msg.Channels, p.options.Channels, msg.Data)
 	} else {
 		aData = msg.Data
 	}
@@ -248,10 +253,10 @@ func (p *paPlayer) Enqueue(msg AudioMsg, token Token) {
 	// slice of audio buffers which will be enqueued into the ring buffer
 	var bData [][]float32
 
-	p.ringMutex.Lock()
+	p.Lock()
 	bufCap := p.ring.Capacity()
 	bufAvail := bufCap - p.ring.Length()
-	p.ringMutex.Unlock()
+	p.Unlock()
 
 	// if the aData contains multiples of the expected buffer size,
 	// then we chop it into (several) buffers
@@ -263,7 +268,7 @@ func (p *paPlayer) Enqueue(msg AudioMsg, token Token) {
 		for len(aData) >= expBufferSize {
 			if vol != 1 {
 				// if necessary, adjust the volume
-				adjustVolume(vol, aData[:expBufferSize])
+				audio.AdjustVolume(vol, aData[:expBufferSize])
 			}
 			bData = append(bData, aData[:expBufferSize])
 			aData = aData[expBufferSize:]
@@ -294,13 +299,13 @@ func (p *paPlayer) Enqueue(msg AudioMsg, token Token) {
 
 				for !(bufAvail >= len(bData) || bufAvail >= bufCap/2) {
 					time.Sleep(time.Millisecond * 10)
-					p.ringMutex.Lock()
+					p.Lock()
 					bufAvail = bufCap - p.ring.Length()
-					p.ringMutex.Unlock()
+					p.Unlock()
 				}
 
 				// now we have the space
-				p.ringMutex.Lock()
+				p.Lock()
 				counter := 0
 				for _, frame := range bData {
 					p.ring.Enqueue(frame)
@@ -316,7 +321,7 @@ func (p *paPlayer) Enqueue(msg AudioMsg, token Token) {
 
 				// update the available space
 				bufAvail = bufCap - p.ring.Length()
-				p.ringMutex.Unlock()
+				p.Unlock()
 			}
 
 			token.Done()
@@ -329,25 +334,34 @@ func (p *paPlayer) Enqueue(msg AudioMsg, token Token) {
 	return
 }
 
-func (p *paPlayer) enqueue(bData [][]float32, EOF bool) {
-	p.ringMutex.Lock()
-	defer p.ringMutex.Unlock()
+func (p *ScWriter) enqueue(bData [][]float32, EOF bool) {
+	p.Lock()
+	defer p.Unlock()
 	for _, frame := range bData {
 		p.ring.Enqueue(frame)
 	}
 }
 
 // Flush clears all internal buffers
-func (p *paPlayer) Flush() {
-	p.ringMutex.Lock()
-	defer p.ringMutex.Unlock()
+func (p *ScWriter) Flush() {
+	p.Lock()
+	defer p.Unlock()
 
 	// delete the stash
 	p.stash = []float32{}
 
-	var x interface{}
-	// empty the ring buffer
-	for x != nil {
-		x = p.ring.Dequeue()
+	p.ring = ringBuffer.Ring{}
+	p.ring.SetCapacity(p.options.RingBufferSize)
+}
+
+// getPaDevice checks if the Audio Devices actually exist and
+// then returns it
+func getPaDevice(name string) (*pa.DeviceInfo, error) {
+	devices, _ := pa.Devices()
+	for _, device := range devices {
+		if device.Name == name {
+			return device, nil
+		}
 	}
+	return nil, fmt.Errorf("unknown audio device %s", name)
 }

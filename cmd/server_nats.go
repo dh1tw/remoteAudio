@@ -8,11 +8,13 @@ import (
 	"os/signal"
 	"strings"
 
-	"net/http"
 	// _ "net/http/pprof"
 
 	"github.com/dh1tw/remoteAudio/audio"
-	"github.com/dh1tw/remoteAudio/router"
+	"github.com/dh1tw/remoteAudio/audio/scReader"
+	"github.com/dh1tw/remoteAudio/audio/scWriter"
+	"github.com/dh1tw/remoteAudio/audio/wavReader"
+	"github.com/dh1tw/remoteAudio/audio/wavWriter"
 	"github.com/gordonklaus/portaudio"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -42,11 +44,11 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	} else {
 		if strings.Contains(err.Error(), "Not Found in") {
-			fmt.Println("no config file found")
+			fmt.Println("no config file f ound")
 		} else {
 			fmt.Println("Error parsing config file", viper.ConfigFileUsed())
 			fmt.Println(err)
-			os.Exit(-1)
+			os.Exit(1)
 		}
 	}
 
@@ -63,9 +65,9 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	viper.BindPFlag("nats.radio", cmd.Flags().Lookup("radio"))
 
 	// profiling server
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
+	// go func() {
+	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
+	// }()
 
 	// viper settings need to be copied in local variables
 	// since viper lookups allocate of each lookup a copy
@@ -87,45 +89,63 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	portaudio.Initialize()
 	defer portaudio.Terminate()
 
-	r, err := router.NewRouter()
+	r, err := audio.NewRouter()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s, err := audio.NewSelector()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	n := &natsServer{
-		Router: r,
-		play:   make(chan audio.AudioMsg, 10),
+		router:   r,
+		selector: s,
 	}
 
-	player, err := audio.NewPlayer(
-		audio.DeviceName(oDeviceName),
-		audio.Channels(oChannels),
-		audio.Samplerate(oSamplerate),
-		audio.Latency(oLatency),
-		audio.RingBufferSize(oRingBufferSize),
-		audio.FramesPerBuffer(audioFramesPerBuffer),
+	speaker, err := scWriter.NewScWriter(
+		scWriter.DeviceName(oDeviceName),
+		scWriter.Channels(oChannels),
+		scWriter.Samplerate(oSamplerate),
+		scWriter.Latency(oLatency),
+		scWriter.RingBufferSize(oRingBufferSize),
+		scWriter.FramesPerBuffer(audioFramesPerBuffer),
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	rec, err := audio.NewRecorder(n.recCb,
-		audio.DeviceName(iDeviceName),
-		audio.Channels(iChannels),
-		audio.Samplerate(iSamplerate),
-		audio.Latency(iLatency),
-		audio.FramesPerBuffer(audioFramesPerBuffer),
+	wavRec, err := wavWriter.NewWavWriter("test_rec.wav",
+		wavWriter.BitDepth(8),
+		wavWriter.Channels(1),
+		wavWriter.Samplerate(4000))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	n.router.AddSink("speaker", speaker, false)
+	n.router.AddSink("wavFile", wavRec, false)
+
+	wav, err := wavReader.NewWavReader("./test.wav")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	mic, err := scReader.NewScReader(
+		scReader.Callback(n.recCb),
+		scReader.DeviceName(iDeviceName),
+		scReader.Channels(iChannels),
+		scReader.Samplerate(iSamplerate),
+		scReader.Latency(iLatency),
+		scReader.FramesPerBuffer(audioFramesPerBuffer),
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	n.AddSink("player", player, true)
-
-	wav, err := audio.WavFile("./test.wav")
-	if err != nil {
-		log.Fatal(err)
-	}
+	n.selector.AddSource("mic", mic)
+	n.selector.AddSource("file", wav)
 
 	// Channel to handle OS signals
 	osSignals := make(chan os.Signal, 1)
@@ -133,13 +153,9 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	//subscribe to os.Interrupt (CTRL-C signal)
 	signal.Notify(osSignals, os.Interrupt)
 
-	if err := player.Start(); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := rec.Start(); err != nil {
-		log.Fatal(err)
-	}
+	n.selector.SetCb(n.recCb)
+	n.router.EnableSink("speaker", true)
+	n.selector.SetSource("mic")
 
 	keyb := make(chan string, 10)
 
@@ -151,83 +167,61 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		}
 	}()
 
-	stop := make(chan struct{})
-	finish := make(chan bool)
-
 	for {
 		select {
 		case input := <-keyb:
 			switch input {
 			case "a":
-				rec.Start()
-			case "b":
-				if n.isPlaying {
-					continue
+				if err := n.router.EnableSink("wavFile", true); err != nil {
+					log.Println(err)
 				}
-				rec.Stop()
-				n.Flush()
-				n.isPlaying = true
-				stop = n.PlayAudio(wav, finish)
-			case "c":
-				if n.isPlaying {
-					close(stop)
+			case "b":
+				if err := n.router.EnableSink("wavFile", false); err != nil {
+					log.Println(err)
+				}
+			case "f":
+				n.router.Flush()
+				if err := n.selector.SetSource("file"); err != nil {
+					log.Println(err)
+				}
+			case "m":
+				n.router.Flush()
+				if err := n.selector.SetSource("mic"); err != nil {
+					log.Println(err)
 				}
 			case "i":
-				player.SetVolume(player.Volume() + 0.5)
+				speaker.SetVolume(speaker.Volume() + 0.5)
 			case "d":
-				player.SetVolume(player.Volume() - 0.5)
+				speaker.SetVolume(speaker.Volume() - 0.5)
 			}
-		case msg := <-n.play:
-			if n.isPlaying {
-				continue
-			}
-			n.Enqueue(msg)
-		case <-finish:
-			n.Flush()
-			n.isPlaying = false
-			rec.Start()
 		case sig := <-osSignals:
 			if sig == os.Interrupt {
 				// TBD: close also router (and all sinks)
-				rec.Close()
+				mic.Close()
+				wavRec.Close()
 				return
 			}
 		}
 	}
 }
 
-func (n *natsServer) PlayAudio(msgs []audio.AudioMsg, finishCh chan<- bool) chan struct{} {
-	fmt.Println("playing sound")
-
-	stopCh := make(chan struct{})
-
-	// play the audio in a seperate go routine which allows us to
-	// cancel at any time by closing the stopCh
-	// the closure of finishCh signals that the playing has finished
-	go func() {
-		defer func() { finishCh <- true }()
-		for i := 0; i < len(msgs); i++ {
-			select {
-			case <-stopCh:
-				return
-			default:
-				token := n.Router.Enqueue(msgs[i])
-				token.Wait()
-			}
-		}
-	}()
-
-	return stopCh
-}
-
 type natsServer struct {
-	router.Router
+	router    audio.Router
+	selector  audio.Selector
 	isPlaying bool
 	play      chan audio.AudioMsg
 }
 
 func (n *natsServer) recCb(data audio.AudioMsg) {
-	n.play <- data
+	token := n.router.Enqueue(data)
+	token.Wait()
+	if data.EOF {
+		// switch back to default source
+		n.router.Flush()
+		if err := n.selector.SetSource("mic"); err != nil {
+			log.Println(err)
+		}
+	}
 }
 
 // // GetOpusApplication returns the integer representation of a

@@ -4,14 +4,16 @@ import (
 	"sync"
 )
 
+type OnDataCb func(AudioMsg)
+
 // Source is the interface which is implemented by an audio source. This
 // could be streaming data received from a network connection, a local
-// audio source (e.g. microphone) or a audio read from a local file.
+// audio source (e.g. microphone) or a local file.
 type Source interface {
 	Start() error
 	Stop() error
 	Close() error
-	// read callback when data available
+	SetCb(OnDataCb)
 }
 
 // Sink is the interface which is implemented by an audio sink. This could
@@ -43,9 +45,8 @@ func NewToken() Token {
 type AudioMsg struct {
 	Data       []float32
 	Samplerate float64
-	// Bitdepth   int
-	Channels int
-	Frames   int // Number of Frames in the buffer
-	IsStream bool
-	EOF      bool // End of File
+	Channels   int
+	Frames     int // Number of Frames in the buffer
+	IsStream   bool
+	EOF        bool // End of File
 }

@@ -1,12 +1,8 @@
 package audio
 
-import (
-	"fmt"
-
-	"github.com/gordonklaus/portaudio"
-)
-
-func adjustChannels(iChs, oChs int, audioFrames []float32) []float32 {
+// AdjustChannels is a helper function which will either add or
+// remove a channel (e.g. converting from Mono to Stereo or vice versa).
+func AdjustChannels(iChs, oChs int, audioFrames []float32) []float32 {
 	// mono -> stereo
 	if iChs == 1 && oChs == 2 {
 		res := make([]float32, 0, len(audioFrames)*2)
@@ -27,20 +23,10 @@ func adjustChannels(iChs, oChs int, audioFrames []float32) []float32 {
 	return res
 }
 
-func adjustVolume(volume float32, audioFrames []float32) {
-	for i := 0; i < len(audioFrames); i++ {
-		audioFrames[i] *= volume
+// AdjustVolume adjusts the volume in all the audio frames within
+// an audio buffer
+func AdjustVolume(volume float32, aBuffer []float32) {
+	for i := 0; i < len(aBuffer); i++ {
+		aBuffer[i] *= volume
 	}
-}
-
-// getPaDevice checks if the Audio Devices actually exist and
-// then returns it
-func getPaDevice(name string) (*portaudio.DeviceInfo, error) {
-	devices, _ := portaudio.Devices()
-	for _, device := range devices {
-		if device.Name == name {
-			return device, nil
-		}
-	}
-	return nil, fmt.Errorf("unknown audio device %s", name)
 }
