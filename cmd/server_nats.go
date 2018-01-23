@@ -213,7 +213,7 @@ type natsServer struct {
 }
 
 func (n *natsServer) recCb(data audio.AudioMsg) {
-	token := n.router.Enqueue(data)
+	token := n.router.Write(data)
 	token.Wait()
 	if data.EOF {
 		// switch back to default source
@@ -268,18 +268,4 @@ func (n *natsServer) recCb(data audio.AudioMsg) {
 // 	}
 // 	errMsg := fmt.Sprintf("unknown codec: %s", codec)
 // 	return 0, errors.New(errMsg)
-// }
-
-// var bitMapToInt32 = map[int32]float32{
-// 	8:  255,
-// 	12: 4095,
-// 	16: 32767,
-// 	32: 2147483647,
-// }
-
-// var bitMapToFloat32 = map[int]float32{
-// 	8:  256,
-// 	12: 4096,
-// 	16: 32768,
-// 	32: 2147483648,
 // }

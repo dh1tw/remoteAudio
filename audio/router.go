@@ -11,7 +11,7 @@ type Router interface {
 	Sink(string) (Sink, error)
 	// Sinks() map[string]Sink
 	EnableSink(string, bool) error
-	Enqueue(AudioMsg) Token
+	Write(AudioMsg) Token
 	Flush()
 }
 
@@ -34,7 +34,7 @@ func NewRouter() (Router, error) {
 	return r, nil
 }
 
-func (r *router) Enqueue(msg AudioMsg) Token {
+func (r *router) Write(msg AudioMsg) Token {
 
 	token := NewToken()
 
@@ -45,7 +45,7 @@ func (r *router) Enqueue(msg AudioMsg) Token {
 		if !sink.active {
 			continue
 		}
-		sink.Enqueue(msg, token)
+		sink.Write(msg, token)
 	}
 
 	return token

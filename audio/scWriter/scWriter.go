@@ -196,11 +196,11 @@ func (p *ScWriter) Volume() float32 {
 	return p.volume
 }
 
-// Enqueue converts the frames in the audio buffer into the right format
-// and queues them for playing on the speaker. The token is used to indicate
-// if the calling application has to wait before it can enqueue the next
-// buffer (e.g. when enqueuing data from a file).
-func (p *ScWriter) Enqueue(msg audio.AudioMsg, token audio.Token) {
+// Write converts the frames in the audio buffer into the right format
+// and queues them into a ring buffer for playing on the speaker. The token is
+// used to indicate if the calling application has to wait before it can
+// enqueue the next buffer.
+func (p *ScWriter) Write(msg audio.AudioMsg, token audio.Token) {
 
 	var aData []float32
 	var err error

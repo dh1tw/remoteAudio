@@ -24,7 +24,7 @@ type Sink interface {
 	Close() error
 	SetVolume(float32)
 	Volume() float32
-	Enqueue(AudioMsg, Token)
+	Write(AudioMsg, Token)
 	Flush()
 }
 
@@ -33,11 +33,12 @@ type Sink interface {
 // can be enqueued into the sink.
 type Token struct {
 	*sync.WaitGroup
+	error
 }
 
 // NewToken is a convinience constructor for a Token.
 func NewToken() Token {
-	t := Token{&sync.WaitGroup{}}
+	t := Token{&sync.WaitGroup{}, nil}
 	return t
 }
 
