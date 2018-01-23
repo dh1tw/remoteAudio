@@ -55,7 +55,7 @@ func NewWavWriter(path string, opts ...Option) (*WavWriter, error) {
 
 	// make sure we only allow 16 & 32 bit Bitdepth (dynamic range)
 	switch w.options.BitDepth {
-	case 16, 32:
+	case 12, 16, 32:
 	default:
 		w.options.BitDepth = 16
 	}
@@ -120,6 +120,7 @@ func (w *WavWriter) Enqueue(msg audio.AudioMsg, token audio.Token) {
 
 	// max size of an audio sample converted from float32 to int16 or int32
 	const (
+		b12 int = 4096
 		b16 int = 32768
 		b32 int = 2147483648
 	)
@@ -158,6 +159,8 @@ func (w *WavWriter) Enqueue(msg audio.AudioMsg, token audio.Token) {
 	// prepare the bitdepth / dynamic range
 	var max int
 	switch w.options.BitDepth {
+	case 12:
+		max = b12
 	case 32:
 		max = b32
 	default:

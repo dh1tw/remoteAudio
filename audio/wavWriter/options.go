@@ -34,7 +34,7 @@ func Samplerate(s float64) Option {
 }
 
 // BitDepth is a functional option to set the bit depth with which the audio
-// will be written to file. The Bitdepth (16/32 bit) defines the dynamic range
+// will be written to file. The Bitdepth (12/16/32 bit) defines the dynamic range
 // of the audio. For most usecases 16 bit (default) is the way to go. The
 // higher the bitDepth, the larger the recordings are.
 func BitDepth(b int) Option {
