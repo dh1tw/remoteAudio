@@ -17,7 +17,7 @@ type ScReader struct {
 	options    Options
 	deviceInfo *pa.DeviceInfo
 	stream     *pa.Stream
-	cb         func(audio.AudioMsg)
+	cb         func(audio.Msg)
 }
 
 // NewScReader returns a soundcard reader which steams audio
@@ -106,7 +106,7 @@ func (r *ScReader) paReadCb(in []float32,
 		buf[i] = v
 	}
 
-	msg := audio.AudioMsg{
+	msg := audio.Msg{
 		Data:       buf,
 		Samplerate: r.options.Samplerate,
 		Channels:   r.options.Channels,

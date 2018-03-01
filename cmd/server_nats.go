@@ -44,7 +44,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	} else {
 		if strings.Contains(err.Error(), "Not Found in") {
-			fmt.Println("no config file f ound")
+			fmt.Println("no config file found")
 		} else {
 			fmt.Println("Error parsing config file", viper.ConfigFileUsed())
 			fmt.Println(err)
@@ -89,12 +89,12 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	portaudio.Initialize()
 	defer portaudio.Terminate()
 
-	r, err := audio.NewRouter()
+	r, err := audio.NewDefaultRouter()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	s, err := audio.NewSelector()
+	s, err := audio.NewDefaultSelector()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	wavRec, err := wavWriter.NewWavWriter("test_rec.wav",
 		wavWriter.BitDepth(8),
 		wavWriter.Channels(1),
-		wavWriter.Samplerate(4000))
+		wavWriter.Samplerate(22000))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -209,11 +209,14 @@ type natsServer struct {
 	router    audio.Router
 	selector  audio.Selector
 	isPlaying bool
-	play      chan audio.AudioMsg
+	play      chan audio.Msg
 }
 
-func (n *natsServer) recCb(data audio.AudioMsg) {
+func (n *natsServer) recCb(data audio.Msg) {
 	token := n.router.Write(data)
+	if token.Error != nil {
+		// handle Error -> remove source
+	}
 	token.Wait()
 	if data.EOF {
 		// switch back to default source

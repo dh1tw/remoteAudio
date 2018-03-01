@@ -1,10 +1,10 @@
 package audio
 
-import (
-	"sync"
-)
+import "sync"
 
-type OnDataCb func(AudioMsg)
+// OnDataCb is a callback function which will be called by an audio source
+// when new data is available
+type OnDataCb func(Msg)
 
 // Source is the interface which is implemented by an audio source. This
 // could be streaming data received from a network connection, a local
@@ -24,7 +24,7 @@ type Sink interface {
 	Close() error
 	SetVolume(float32)
 	Volume() float32
-	Write(AudioMsg, Token)
+	Write(Msg, Token) error
 	Flush()
 }
 
@@ -33,17 +33,10 @@ type Sink interface {
 // can be enqueued into the sink.
 type Token struct {
 	*sync.WaitGroup
-	error
 }
 
-// NewToken is a convinience constructor for a Token.
-func NewToken() Token {
-	t := Token{&sync.WaitGroup{}, nil}
-	return t
-}
-
-// AudioMsg contains an audio buffer with it's metadata
-type AudioMsg struct {
+// Msg contains an audio buffer with it's metadata.
+type Msg struct {
 	Data       []float32
 	Samplerate float64
 	Channels   int

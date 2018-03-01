@@ -200,7 +200,7 @@ func (p *ScWriter) Volume() float32 {
 // and queues them into a ring buffer for playing on the speaker. The token is
 // used to indicate if the calling application has to wait before it can
 // enqueue the next buffer.
-func (p *ScWriter) Write(msg audio.AudioMsg, token audio.Token) {
+func (p *ScWriter) Write(msg audio.Msg, token audio.Token) error {
 
 	var aData []float32
 	var err error
@@ -221,8 +221,7 @@ func (p *ScWriter) Write(msg audio.AudioMsg, token audio.Token) {
 		}
 		aData, err = p.src.Process(aData, p.src.ratio, false)
 		if err != nil {
-			log.Println(err)
-			return
+			return err
 		}
 	}
 
@@ -247,7 +246,7 @@ func (p *ScWriter) Write(msg audio.AudioMsg, token audio.Token) {
 	// then stash it for the next time and return
 	if len(aData) < expBufferSize {
 		p.stash = aData
-		return
+		return nil
 	}
 
 	// slice of audio buffers which will be enqueued into the ring buffer
@@ -326,12 +325,12 @@ func (p *ScWriter) Write(msg audio.AudioMsg, token audio.Token) {
 
 			token.Done()
 		}()
-		return
+		return nil
 	}
 
 	p.enqueue(bData, msg.EOF)
 
-	return
+	return nil
 }
 
 func (p *ScWriter) enqueue(bData [][]float32, EOF bool) {

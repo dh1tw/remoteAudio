@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+// Selector manages several audio sources.
 type Selector interface {
 	AddSource(string, Source)
 	RemoveSource(string) error
@@ -12,7 +13,8 @@ type Selector interface {
 	SetCb(OnDataCb)
 }
 
-type selector struct {
+// DefaultSelector is the default implementation of an audio Selector.
+type DefaultSelector struct {
 	sync.Mutex
 	sources map[string]*source
 	cb      OnDataCb
@@ -23,22 +25,26 @@ type source struct {
 	active bool
 }
 
-func NewSelector() (Selector, error) {
+// NewDefaultSelector returns an initialized, but empty DefaultSelector.
+func NewDefaultSelector() (*DefaultSelector, error) {
 
-	s := &selector{
+	s := &DefaultSelector{
 		sources: make(map[string]*source),
 	}
 
 	return s, nil
 }
 
-func (s *selector) AddSource(name string, src Source) {
+// AddSource adds an audio device which implements the audio.Source interface
+// to the Selector.
+func (s *DefaultSelector) AddSource(name string, src Source) {
 	s.Lock()
 	defer s.Unlock()
 	s.sources[name] = &source{src, false}
 }
 
-func (s *selector) RemoveSource(name string) error {
+// RemoveSource removes an audio Source from the Selector.
+func (s *DefaultSelector) RemoveSource(name string) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -49,7 +55,8 @@ func (s *selector) RemoveSource(name string) error {
 	return nil
 }
 
-func (s *selector) SetSource(name string) error {
+// SetSource selects the active source.
+func (s *DefaultSelector) SetSource(name string) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -74,6 +81,8 @@ func (s *selector) SetSource(name string) error {
 	return nil
 }
 
-func (s *selector) SetCb(cb OnDataCb) {
+// SetCb sets the callback function will will be executed when new audio
+// msgs are available from the selected source.
+func (s *DefaultSelector) SetCb(cb OnDataCb) {
 	s.cb = cb
 }

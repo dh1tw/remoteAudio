@@ -113,7 +113,7 @@ func (w *WavWriter) Volume() float32 {
 // and Samplerate will be adjusted, if necessary. In case an buffer can not be
 // written immediately, the Token will be incremented. The calling application
 // will have to wait until the token is done.
-func (w *WavWriter) Write(msg audio.AudioMsg, token audio.Token) {
+func (w *WavWriter) Write(msg audio.Msg, token audio.Token) error {
 
 	var aData []float32
 	var err error
@@ -144,8 +144,7 @@ func (w *WavWriter) Write(msg audio.AudioMsg, token audio.Token) {
 		}
 		aData, err = w.src.Process(aData, w.src.ratio, false)
 		if err != nil {
-			log.Println(err)
-			return
+			return err
 		}
 	}
 
@@ -181,6 +180,8 @@ func (w *WavWriter) Write(msg audio.AudioMsg, token audio.Token) {
 	if err := w.encoder.Write(&buf); err != nil {
 		log.Println(err)
 	}
+
+	return nil
 }
 
 // Flush is not implemented
