@@ -67,6 +67,8 @@ func (pbr *PbReader) Close() error {
 }
 
 func (pbr *PbReader) SetCb(cb audio.OnDataCb) {
+	pbr.Lock()
+	defer pbr.Unlock()
 	pbr.options.Callback = cb
 }
 
@@ -100,10 +102,6 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 	if msg.Codec.String() != pbr.options.Decoder.Name() {
 		return fmt.Errorf("unknown codec %v", msg.Codec.String())
 	}
-
-	// fmt.Println("Samplerate:", msg.SamplingRate)
-	// fmt.Println("Channels:", msg.Channels.String())
-	// fmt.Println("FrameLength:", msg.FrameLength)
 
 	buf := make([]float32, msg.FrameLength)
 
