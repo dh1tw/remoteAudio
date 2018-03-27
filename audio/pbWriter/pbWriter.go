@@ -17,6 +17,7 @@ type PbWriter struct {
 	sync.RWMutex
 	options Options
 	enabled bool
+	buffer  []byte
 	cb      func([]byte)
 }
 
@@ -28,7 +29,8 @@ func NewPbWriter(cb func([]byte), opts ...Option) (*PbWriter, error) {
 			Channels:   2,
 			Samplerate: 48000,
 		},
-		cb: cb,
+		buffer: make([]byte, 10000),
+		cb:     cb,
 	}
 
 	for _, option := range opts {
@@ -82,9 +84,7 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 
 	// check if channels, Frames number, Samplerate correspond with codec
 
-	buf := make([]byte, 100000)
-
-	num, err := pbw.options.Encoder.Encode(audioMsg.Data, buf)
+	num, err := pbw.options.Encoder.Encode(audioMsg.Data, pbw.buffer)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -98,7 +98,7 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 	}
 
 	msg := sbAudio.Frame{
-		Data:         buf[:num],
+		Data:         pbw.buffer[:num],
 		Channels:     channels,
 		BitDepth:     16,
 		Codec:        sbAudio.Codec_opus,
