@@ -14,7 +14,7 @@ type OpusEncoder struct {
 }
 
 // NewOpusEncoder is the constructor method for an Opus encoder.
-func NewOpusEncoder(opts ...Option) (*OpusEncoder, error) {
+func NewEncoder(opts ...Option) (*OpusEncoder, error) {
 
 	oEnc := &OpusEncoder{
 		name: "opus",

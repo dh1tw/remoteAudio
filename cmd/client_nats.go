@@ -17,6 +17,7 @@ import (
 	"github.com/dh1tw/remoteAudio/audio/scWriter"
 	"github.com/dh1tw/remoteAudio/audio/wavReader"
 	"github.com/dh1tw/remoteAudio/audio/wavWriter"
+	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	"github.com/gordonklaus/portaudio"
 	"github.com/nats-io/go-nats"
 	"github.com/spf13/cobra"
@@ -88,6 +89,10 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	iSamplerate := viper.GetFloat64("input-device.samplerate")
 	iLatency := viper.GetDuration("input-device.latency")
 	iChannels := viper.GetInt("input-device.channels")
+
+	opusBitrate := viper.GetInt("opus.bitrate")
+	opusComplexity := viper.GetInt("opus.complexity")
+	// opusMaxBandwidth := viper.GetString("opus.max-bandwidth")
 
 	portaudio.Initialize()
 	defer portaudio.Terminate()
@@ -171,7 +176,19 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	pbw, err := pbWriter.NewPbWriter(cb)
+	opusEncoder, err := opus.NewEncoder(
+		opus.Bitrate(opusBitrate),
+		opus.Complexity(opusComplexity),
+		opus.Channels(iChannels),
+		opus.Samplerate(iSamplerate),
+		// opus.MaxBandwidth(opusMaxBandwidth),
+	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pbw, err := pbWriter.NewPbWriter(cb, pbWriter.Encoder(opusEncoder))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -6,9 +6,9 @@ import (
 
 	"github.com/dh1tw/remoteAudio/audio"
 	"github.com/dh1tw/remoteAudio/audiocodec"
+	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 )
 
@@ -22,18 +22,27 @@ type PbWriter struct {
 
 func NewPbWriter(cb func([]byte), opts ...Option) (*PbWriter, error) {
 
-	enc, err := opus.NewOpusEncoder()
+	pbw := &PbWriter{
+		options: Options{
+			DeviceName: "ProtoBufReader",
+			Channels:   2,
+			Samplerate: 48000,
+		},
+		cb: cb,
+	}
+
+	for _, option := range opts {
+		option(&pbw.options)
+	}
+
+	encChannels := opus.Channels(pbw.options.Channels)
+	encSR := opus.Samplerate(pbw.options.Samplerate)
+	enc, err := opus.NewEncoder(encChannels, encSR)
 	if err != nil {
 		return nil, err
 	}
 
-	pbw := &PbWriter{
-		encoder: enc,
-		options: Options{
-			DeviceName: "ProtoBufReader",
-		},
-		cb: cb,
-	}
+	pbw.options.Encoder = enc
 
 	return pbw, nil
 }

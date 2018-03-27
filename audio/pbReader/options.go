@@ -16,14 +16,6 @@ type Options struct {
 	Callback   audio.OnDataCb
 }
 
-// DeviceName is a functional option to specify the name of the
-// Audio device
-func DeviceName(name string) Option {
-	return func(args *Options) {
-		args.DeviceName = name
-	}
-}
-
 // Channels is a functional option to set the amount of channels to be used
 // with the audio device. Typically this is either Mono (1) or Stereo (2).
 // Make sure that your audio device supports the specified amount of channels.
@@ -39,5 +31,13 @@ func Channels(chs int) Option {
 func Samplerate(s float64) Option {
 	return func(args *Options) {
 		args.Samplerate = s
+	}
+}
+
+// Decoder is a functional option to set a specific decoder. By default,
+// the opus decoder is used.
+func Decoder(dec audiocodec.Decoder) Option {
+	return func(args *Options) {
+		args.Decoder = dec
 	}
 }
