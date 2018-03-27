@@ -1,17 +1,12 @@
 package audiocodec
 
-type Audiocodec interface {
-	Name() string
-	Options() Options
-}
-
 type Encoder interface {
-	Audiocodec
+	Name() string
 	Encode(interface{}, []byte) (int, error) // typically float32 input
 }
 
 type Decoder interface {
-	Audiocodec
+	Name() string
 	Decode([]byte, []float32, ...Options) (int, error) //float32 output
 }
 

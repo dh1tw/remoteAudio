@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/dh1tw/remoteAudio/audiocodec"
+
 	"github.com/dh1tw/remoteAudio/audio"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
@@ -16,22 +18,33 @@ import (
 type PbReader struct {
 	sync.RWMutex
 	options Options
+	decoder audiocodec.Decoder
 	enabled bool
 }
 
 func NewPbReader(opts ...Option) (*PbReader, error) {
 
-	dec, err := opus.NewOpusDecoder()
+	pbr := &PbReader{
+		options: Options{
+			DeviceName: "ProtoBufReader",
+			Channels:   1,
+			Samplerate: 48000,
+		},
+	}
+
+	for _, option := range opts {
+		option(&pbr.options)
+	}
+
+	decChannels := opus.Channels(pbr.options.Channels)
+	decSR := opus.Samplerate(pbr.options.Samplerate)
+
+	dec, err := opus.NewOpusDecoder(decChannels, decSR)
 	if err != nil {
 		return nil, err
 	}
 
-	pbr := &PbReader{
-		options: Options{
-			DeviceName: "ProtoBufReader",
-			Decoder:    dec,
-		},
-	}
+	pbr.decoder = dec
 
 	return pbr, nil
 }
@@ -80,6 +93,10 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 		return fmt.Errorf("unknown codec %v", msg.Codec.String())
 	}
 
+	fmt.Println("Samplerate:", msg.SamplingRate)
+	fmt.Println("Channels:", msg.Channels.String())
+	fmt.Println("FrameLength:", msg.FrameLength)
+
 	buf := make([]float32, msg.FrameLength)
 
 	num, err := pbr.options.Decoder.Decode(msg.Data, buf)
@@ -88,12 +105,12 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 	}
 
 	audioMsg := audio.Msg{
-		Channels:   pbr.options.Decoder.Options().Channels,
+		Channels:   pbr.options.Channels,
 		Data:       buf,
 		EOF:        false,
 		Frames:     num,
 		IsStream:   true,
-		Samplerate: float64(pbr.options.Decoder.Options().Samplerate),
+		Samplerate: pbr.options.Samplerate,
 	}
 
 	pbr.options.Callback(audioMsg)

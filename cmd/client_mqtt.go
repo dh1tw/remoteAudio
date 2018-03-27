@@ -9,7 +9,7 @@ package cmd
 
 // 	"github.com/cskr/pubsub"
 // 	"github.com/dh1tw/remoteAudio/audio"
-// 	"github.com/dh1tw/remoteAudio/comms"
+// 	"github.com/dh1tw/remoteAudio/"
 // 	"github.com/dh1tw/remoteAudio/events"
 // 	"github.com/dh1tw/remoteAudio/utils"
 // 	"github.com/dh1tw/remoteAudio/webserver"
