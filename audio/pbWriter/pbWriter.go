@@ -1,11 +1,12 @@
 package pbWriter
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/dh1tw/remoteAudio/audio"
-	"github.com/dh1tw/remoteAudio/audiocodec"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	"github.com/gogo/protobuf/proto"
 
@@ -16,7 +17,6 @@ type PbWriter struct {
 	sync.RWMutex
 	options Options
 	enabled bool
-	encoder audiocodec.Encoder
 	cb      func([]byte)
 }
 
@@ -35,14 +35,16 @@ func NewPbWriter(cb func([]byte), opts ...Option) (*PbWriter, error) {
 		option(&pbw.options)
 	}
 
-	encChannels := opus.Channels(pbw.options.Channels)
-	encSR := opus.Samplerate(pbw.options.Samplerate)
-	enc, err := opus.NewEncoder(encChannels, encSR)
-	if err != nil {
-		return nil, err
+	// if no encoder set, create the default encoder
+	if pbw.options.Encoder == nil {
+		encChannels := opus.Channels(pbw.options.Channels)
+		encSR := opus.Samplerate(pbw.options.Samplerate)
+		enc, err := opus.NewEncoder(encChannels, encSR)
+		if err != nil {
+			return nil, err
+		}
+		pbw.options.Encoder = enc
 	}
-
-	pbw.options.Encoder = enc
 
 	return pbw, nil
 }
@@ -73,22 +75,35 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 		return nil
 	}
 
+	if pbw.options.Encoder == nil {
+		log.Println("no encoder set")
+		return errors.New("no encoder set")
+	}
+
 	// check if channels, Frames number, Samplerate correspond with codec
 
 	buf := make([]byte, 100000)
 
-	num, err := pbw.encoder.Encode(audioMsg.Data, buf)
+	num, err := pbw.options.Encoder.Encode(audioMsg.Data, buf)
 	if err != nil {
 		fmt.Println(err)
 	}
 
+	channels := sbAudio.Channels_unknown
+	switch audioMsg.Channels {
+	case 1:
+		channels = sbAudio.Channels_mono
+	case 2:
+		channels = sbAudio.Channels_stereo
+	}
+
 	msg := sbAudio.Frame{
 		Data:         buf[:num],
-		Channels:     sbAudio.Channels_stereo,
+		Channels:     channels,
 		BitDepth:     16,
 		Codec:        sbAudio.Codec_opus,
 		FrameLength:  int32(audioMsg.Frames),
-		SamplingRate: int32(audioMsg.Samplerate),
+		SamplingRate: int32(pbw.options.Samplerate),
 		UserId:       "dh1tw",
 	}
 

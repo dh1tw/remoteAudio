@@ -11,7 +11,6 @@ import (
 	// _ "net/http/pprof"
 
 	"github.com/dh1tw/remoteAudio/audio"
-	"github.com/dh1tw/remoteAudio/audio/pbReader"
 	"github.com/dh1tw/remoteAudio/audio/pbWriter"
 	"github.com/dh1tw/remoteAudio/audio/scReader"
 	"github.com/dh1tw/remoteAudio/audio/scWriter"
@@ -152,11 +151,6 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	pbr, err := pbReader.NewPbReader()
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	nc, err := nats.Connect("nats://192.168.1.237:4222")
 	if err != nil {
 		log.Fatal(err)
@@ -195,7 +189,6 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	n.selector.AddSource("mic", mic)
 	n.selector.AddSource("file", wav)
-	n.selector.AddSource("pbreader", pbr)
 
 	n.router.AddSink("pbwriter", pbw, false)
 
@@ -239,11 +232,6 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 			case "m":
 				n.router.Flush()
 				if err := n.selector.SetSource("mic"); err != nil {
-					log.Println(err)
-				}
-			case "p":
-				n.router.Flush()
-				if err := n.selector.SetSource("pbreader"); err != nil {
 					log.Println(err)
 				}
 			case "q":
