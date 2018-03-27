@@ -89,7 +89,6 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 	}
 
 	pbw.cb(data)
-	fmt.Println(data)
 
 	return nil
 }
