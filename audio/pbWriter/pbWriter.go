@@ -84,35 +84,38 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 
 	// check if channels, Frames number, Samplerate correspond with codec
 
-	num, err := pbw.options.Encoder.Encode(audioMsg.Data, pbw.buffer)
-	if err != nil {
-		fmt.Println(err)
-	}
+	go func() {
+		num, err := pbw.options.Encoder.Encode(audioMsg.Data, pbw.buffer)
+		if err != nil {
+			fmt.Println(err)
+		}
 
-	channels := sbAudio.Channels_unknown
-	switch audioMsg.Channels {
-	case 1:
-		channels = sbAudio.Channels_mono
-	case 2:
-		channels = sbAudio.Channels_stereo
-	}
+		channels := sbAudio.Channels_unknown
+		switch audioMsg.Channels {
+		case 1:
+			channels = sbAudio.Channels_mono
+		case 2:
+			channels = sbAudio.Channels_stereo
+		}
 
-	msg := sbAudio.Frame{
-		Data:         pbw.buffer[:num],
-		Channels:     channels,
-		BitDepth:     16,
-		Codec:        sbAudio.Codec_opus,
-		FrameLength:  int32(audioMsg.Frames),
-		SamplingRate: int32(pbw.options.Samplerate),
-		UserId:       "dh1tw",
-	}
+		msg := sbAudio.Frame{
+			Data:         pbw.buffer[:num],
+			Channels:     channels,
+			BitDepth:     16,
+			Codec:        sbAudio.Codec_opus,
+			FrameLength:  int32(audioMsg.Frames),
+			SamplingRate: int32(pbw.options.Samplerate),
+			UserId:       "dh1tw",
+		}
 
-	data, err := proto.Marshal(&msg)
-	if err != nil {
-		return err
-	}
+		data, err := proto.Marshal(&msg)
+		if err != nil {
+			log.Println(err)
+			// return err
+		}
 
-	pbw.cb(data)
+		pbw.cb(data)
+	}()
 
 	return nil
 }
