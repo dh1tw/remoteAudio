@@ -115,7 +115,7 @@ func (r *ScReader) paReadCb(in []float32,
 	}
 
 	// execute the callback for further processing
-	r.cb(msg)
+	go r.cb(msg)
 }
 
 // Start will start streaming audio from a local soundcard device.

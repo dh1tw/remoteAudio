@@ -152,7 +152,8 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	nc, err := nats.Connect("nats://192.168.1.237:4222")
+	// nc, err := nats.Connect("nats://192.168.1.237:4222")
+	nc, err := nats.Connect("nats://195.201.117.206:4222")
 	if err != nil {
 		log.Fatal(err)
 	}

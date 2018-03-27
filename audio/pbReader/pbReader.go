@@ -101,9 +101,9 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 		return fmt.Errorf("unknown codec %v", msg.Codec.String())
 	}
 
-	fmt.Println("Samplerate:", msg.SamplingRate)
-	fmt.Println("Channels:", msg.Channels.String())
-	fmt.Println("FrameLength:", msg.FrameLength)
+	// fmt.Println("Samplerate:", msg.SamplingRate)
+	// fmt.Println("Channels:", msg.Channels.String())
+	// fmt.Println("FrameLength:", msg.FrameLength)
 
 	buf := make([]float32, msg.FrameLength)
 
