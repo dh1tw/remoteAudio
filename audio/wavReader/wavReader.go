@@ -15,7 +15,7 @@ import (
 type WavReader struct {
 	sync.RWMutex
 	options   Options
-	buffer    []audio.AudioMsg
+	buffer    []audio.Msg
 	cb        audio.OnDataCb
 	isPlaying bool
 }
@@ -37,7 +37,7 @@ func NewWavReader(file string, opts ...Option) (*WavReader, error) {
 	}
 
 	w := WavReader{
-		buffer: []audio.AudioMsg{},
+		buffer: []audio.Msg{},
 		options: Options{
 			FramesPerBuffer: DefaultFramesPerBuffer,
 		},
@@ -66,7 +66,7 @@ func NewWavReader(file string, opts ...Option) (*WavReader, error) {
 			buf.Data = buf.Data[:n]
 		}
 
-		msg := audio.AudioMsg{
+		msg := audio.Msg{
 			Data:       buf.AsFloat32Buffer().Data,
 			Channels:   buf.Format.NumChannels,
 			Samplerate: float64(buf.Format.SampleRate),

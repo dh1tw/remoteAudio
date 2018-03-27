@@ -24,23 +24,23 @@ import (
 )
 
 // serverMqttCmd represents the mqtt command
-var natsServerCmd = &cobra.Command{
-	Use:   "natsserver",
-	Short: "nats server",
-	Long:  `nats server`,
-	Run:   natsAudioServer,
+var natsClientCmd = &cobra.Command{
+	Use:   "natsclient",
+	Short: "nats client",
+	Long:  `nats client`,
+	Run:   natsAudioClient,
 }
 
 func init() {
-	serverCmd.AddCommand(natsServerCmd)
-	natsServerCmd.Flags().StringP("broker-url", "u", "localhost", "Broker URL")
-	natsServerCmd.Flags().IntP("broker-port", "p", 4222, "Broker Port")
-	natsServerCmd.Flags().StringP("password", "P", "", "NATS Password")
-	natsServerCmd.Flags().StringP("username", "U", "", "NATS Username")
-	natsServerCmd.Flags().StringP("radio", "Y", "myradio", "Radio ID")
+	serverCmd.AddCommand(natsClientCmd)
+	natsClientCmd.Flags().StringP("broker-url", "u", "localhost", "Broker URL")
+	natsClientCmd.Flags().IntP("broker-port", "p", 4222, "Broker Port")
+	natsClientCmd.Flags().StringP("password", "P", "", "NATS Password")
+	natsClientCmd.Flags().StringP("username", "U", "", "NATS Username")
+	natsClientCmd.Flags().StringP("radio", "Y", "myradio", "Radio ID")
 }
 
-func natsAudioServer(cmd *cobra.Command, args []string) {
+func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	// Try to read config file
 	if err := viper.ReadInConfig(); err == nil {
@@ -102,7 +102,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	n := &natsServer{
+	n := &natsClient{
 		router:   r,
 		selector: s,
 	}
@@ -157,15 +157,18 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	nc.Subscribe("foo", func(m *nats.Msg) {
-		err := pbr.Enqueue(m.Data)
+	// nc.Subscribe("foo", func(m *nats.Msg) {
+	// 	err := pbr.Enqueue(m.Data)
+	// 	if err != nil {
+	// 		log.Println(err)
+	// 	}
+	// })
+
+	cb := func(data []byte) {
+		err := nc.Publish("foo", data)
 		if err != nil {
 			log.Println(err)
 		}
-	})
-
-	cb := func(data []byte) {
-		pbr.Enqueue(data)
 	}
 
 	pbw, err := pbWriter.NewPbWriter(cb)
@@ -247,14 +250,14 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	}
 }
 
-type natsServer struct {
+type natsClient struct {
 	router    audio.Router
 	selector  audio.Selector
 	isPlaying bool
 	play      chan audio.Msg
 }
 
-func (n *natsServer) recCb(data audio.Msg) {
+func (n *natsClient) recCb(data audio.Msg) {
 	token := n.router.Write(data)
 	if token.Error != nil {
 		// handle Error -> remove source

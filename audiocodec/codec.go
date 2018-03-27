@@ -7,18 +7,18 @@ type Audiocodec interface {
 
 type Encoder interface {
 	Audiocodec
-	Encode(interface{}) ([]byte, error) // typically float32 input
+	Encode(interface{}, []byte) (int, error) // typically float32 input
 }
 
 type Decoder interface {
 	Audiocodec
-	Decode(interface{}, interface{}, ...Options) error //float32 output
+	Decode([]byte, []float32, ...Options) (int, error) //float32 output
 }
 
-type Option func(*Option)
+type Option func(*Options)
 
 type Options struct {
-	Samplingrate int
-	Channels     int
-	Bitdepth     int
+	Samplerate int
+	Channels   int
+	Bitdepth   int
 }
