@@ -122,7 +122,7 @@ func (w *WavWriter) Write(msg audio.Msg, token audio.Token) error {
 	const (
 		b12 int = 4096
 		b16 int = 32768
-		b32 int = 2147483648
+		// b32 int = 2147483648 //to large on 32bit ARM
 	)
 
 	// if necessary adjust the amount of audio channels
@@ -160,8 +160,8 @@ func (w *WavWriter) Write(msg audio.Msg, token audio.Token) error {
 	switch w.options.BitDepth {
 	case 12:
 		max = b12
-	case 32:
-		max = b32
+	// case 32:
+	// 	max = b32
 	default:
 		max = b16
 	}
