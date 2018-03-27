@@ -80,7 +80,7 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 		return fmt.Errorf("unknown codec %v", msg.Codec.String())
 	}
 
-	buf := make([]float32, 0, msg.FrameLength)
+	buf := make([]float32, msg.FrameLength)
 
 	num, err := pbr.options.Decoder.Decode(msg.Data, buf)
 	if err != nil {
