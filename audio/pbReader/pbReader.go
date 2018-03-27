@@ -1,10 +1,10 @@
 package pbReader
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"sync"
-
-	"github.com/dh1tw/remoteAudio/audiocodec"
 
 	"github.com/dh1tw/remoteAudio/audio"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
@@ -18,7 +18,6 @@ import (
 type PbReader struct {
 	sync.RWMutex
 	options Options
-	decoder audiocodec.Decoder
 	enabled bool
 }
 
@@ -44,7 +43,7 @@ func NewPbReader(opts ...Option) (*PbReader, error) {
 		return nil, err
 	}
 
-	pbr.decoder = dec
+	pbr.options.Decoder = dec
 
 	return pbr, nil
 }
@@ -80,6 +79,15 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 	}
 
 	if !pbr.enabled {
+		return nil
+	}
+
+	if pbr.options.Decoder == nil {
+		return errors.New("no decoder set")
+	}
+
+	if len(data) == 0 {
+		log.Println("incoming audio frame empty")
 		return nil
 	}
 
