@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
+	ringBuffer "github.com/dh1tw/golang-ring"
 	"github.com/dh1tw/gosamplerate"
 	"github.com/dh1tw/remoteAudio/audio"
 	pa "github.com/gordonklaus/portaudio"
-	ringBuffer "github.com/zfjagann/golang-ring"
 )
 
 // ScWriter implements the audio.Sink interface and is used to write (play)
