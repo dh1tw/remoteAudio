@@ -133,8 +133,8 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 
 	var aData []float32
 
-	// fmt.Println("audioMsg channels", audioMsg.Channels)
-	// fmt.Println("options channels", pbw.options.Channels)
+	fmt.Println("audioMsg channels", audioMsg.Channels)
+	fmt.Println("options channels", pbw.options.Channels)
 
 	// if necessary adjust the amount of audio channels
 	if audioMsg.Channels != pbw.options.Channels {
@@ -158,8 +158,8 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 
 		var err error
 
-		// fmt.Println("audioMsg Samplerate:", audioMsg.Samplerate)
-		// fmt.Println("options Samplerate:", pbw.options.Samplerate)
+		fmt.Println("audioMsg Samplerate:", audioMsg.Samplerate)
+		fmt.Println("options Samplerate:", pbw.options.Samplerate)
 
 		if audioMsg.Samplerate != pbw.options.Samplerate {
 			if pbw.src.samplerate != audioMsg.Samplerate {
