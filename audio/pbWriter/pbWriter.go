@@ -42,7 +42,7 @@ func NewPbWriter(cb func([]byte), opts ...Option) (*PbWriter, error) {
 	pbw := &PbWriter{
 		options: Options{
 			DeviceName: "ProtoBufReader",
-			Channels:   2,
+			Channels:   1,
 			Samplerate: 48000,
 		},
 		buffer: make([]byte, 10000),
@@ -133,6 +133,9 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 
 	var aData []float32
 
+	// fmt.Println("audioMsg channels", audioMsg.Channels)
+	// fmt.Println("options channels", pbw.options.Channels)
+
 	// if necessary adjust the amount of audio channels
 	if audioMsg.Channels != pbw.options.Channels {
 		aData = audio.AdjustChannels(audioMsg.Channels,
@@ -142,7 +145,7 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 	}
 
 	channels := sbAudio.Channels_unknown
-	switch audioMsg.Channels {
+	switch pbw.options.Channels {
 	case 1:
 		channels = sbAudio.Channels_mono
 	case 2:
@@ -154,6 +157,9 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 	go func() {
 
 		var err error
+
+		// fmt.Println("audioMsg Samplerate:", audioMsg.Samplerate)
+		// fmt.Println("options Samplerate:", pbw.options.Samplerate)
 
 		if audioMsg.Samplerate != pbw.options.Samplerate {
 			if pbw.src.samplerate != audioMsg.Samplerate {
@@ -170,7 +176,7 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 
 		num, err := pbw.options.Encoder.Encode(aData, pbw.buffer)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 
 		msg := sbAudio.Frame{
