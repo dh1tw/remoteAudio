@@ -229,7 +229,7 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 		if len(aData) > 0 {
 			pbw.stash = aData
 		}
-		fmt.Println("stashing:", len(pbw.stash))
+		// fmt.Println("stashing:", len(pbw.stash))
 
 		for _, frame := range bData {
 			num, err := pbw.options.Encoder.Encode(frame, pbw.buffer)
@@ -237,9 +237,9 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 				log.Println(err)
 			}
 
-			if num > 90 {
-				fmt.Println("num:", num)
-			}
+			// if num > 90 {
+			// 	fmt.Println("num:", num)
+			// }
 
 			msg := sbAudio.Frame{
 				Data:         pbw.buffer[:num],
