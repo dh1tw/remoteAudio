@@ -12,7 +12,6 @@ import (
 
 	"github.com/dh1tw/remoteAudio/audio"
 	"github.com/dh1tw/remoteAudio/audio/pbReader"
-	"github.com/dh1tw/remoteAudio/audio/pbWriter"
 	"github.com/dh1tw/remoteAudio/audio/scReader"
 	"github.com/dh1tw/remoteAudio/audio/scWriter"
 	"github.com/dh1tw/remoteAudio/audio/wavReader"
@@ -165,20 +164,9 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		}
 	})
 
-	cb := func(data []byte) {
-		pbr.Enqueue(data)
-	}
-
-	pbw, err := pbWriter.NewPbWriter(cb)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	n.selector.AddSource("mic", mic)
 	n.selector.AddSource("file", wav)
 	n.selector.AddSource("pbreader", pbr)
-
-	n.router.AddSink("pbwriter", pbw, false)
 
 	// Channel to handle OS signals
 	osSignals := make(chan os.Signal, 1)
@@ -225,11 +213,6 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 			case "p":
 				n.router.Flush()
 				if err := n.selector.SetSource("pbreader"); err != nil {
-					log.Println(err)
-				}
-			case "q":
-				n.router.Flush()
-				if err := n.router.EnableSink("pbwriter", true); err != nil {
 					log.Println(err)
 				}
 			case "i":
