@@ -112,13 +112,6 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 		return fmt.Errorf("unknown codec %v", msg.Codec.String())
 	}
 
-	// buf := make([]float32, msg.FrameLength*int32(pbr.options.Channels))
-
-	// fmt.Println("FrameLength:", msg.FrameLength)
-	// fmt.Println("Channels:", msg.Channels.String())
-	// fmt.Println("Samplerate:", msg.SamplingRate)
-	// fmt.Printf("len: %v\n", len(msg.Data))
-
 	buf := make([]float32, msg.FrameLength*2, 5000)
 
 	num, err := pbr.options.Decoder.Decode(msg.Data, buf)
@@ -126,8 +119,8 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 		return err
 	}
 
-	// fmt.Println("size:", num)
-
+	// pack the data into an audio.Msg which is used for further internal
+	// processing
 	audioMsg := audio.Msg{
 		Channels:   pbr.options.Channels,
 		Data:       buf,
