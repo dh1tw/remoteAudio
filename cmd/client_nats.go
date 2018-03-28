@@ -226,12 +226,14 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	nc.fromRadioSources.SetCb(nc.toRxSinksCb)
 	// start streaming to the network immediately
 	nc.fromRadioSinks.EnableSink("toNetwork", true)
+	nc.fromRadioSources.SetSource("fromNetwork")
 
 	// set callback to process audio to be send to the radio
 	nc.toRadioSources.SetCb(nc.toTxSinksCb)
 
 	// stream immediately audio from the network to the radio
-	nc.toRadioSources.SetSource("fromNetwork")
+	nc.toRadioSources.SetSource("toRadioAudio")
+	nc.toRadioSinks.EnableSink("toNetwork", true)
 
 	keyb := make(chan string, 10)
 

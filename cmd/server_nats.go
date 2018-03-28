@@ -145,7 +145,6 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	// 	log.Fatal(err)
 	// }
 
-	ns.toRadioSinks.AddSink("toRadioAudio", toRadioAudio, false)
 	// ns.txRouter.AddSink("wavFile", wavRec, false)
 
 	wav, err := wavReader.NewWavReader("test.wav")
@@ -213,10 +212,11 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	}
 
 	ns.fromRadioSources.AddSource("fromRadioAudio", fromRadioAudio)
-	ns.fromRadioSinks.AddSink("toNetwork", toNetwork, true)
+	ns.fromRadioSinks.AddSink("toNetwork", toNetwork, false)
 
 	ns.toRadioSources.AddSource("file", wav)
 	ns.toRadioSources.AddSource("fromNetwork", fromNetwork)
+	ns.toRadioSinks.AddSink("toRadioAudio", toRadioAudio, false)
 
 	// Channel to handle OS signals
 	osSignals := make(chan os.Signal, 1)
@@ -224,16 +224,17 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	//subscribe to os.Interrupt (CTRL-C signal)
 	signal.Notify(osSignals, os.Interrupt)
 
-	// set callback to process audio fro
+	// set callback to process audio from the network
 	ns.fromRadioSources.SetCb(ns.toRxSinksCb)
 	// start streaming to the network immediately
 	ns.fromRadioSinks.EnableSink("toNetwork", true)
+	ns.fromRadioSources.SetSource("fromRadioAudio")
 
 	// set callback to process audio to be send to the radio
 	ns.toRadioSources.SetCb(ns.toTxSinksCb)
-
 	// stream immediately audio from the network to the radio
 	ns.toRadioSources.SetSource("fromNetwork")
+	ns.toRadioSinks.EnableSink("toRadioAudio", true)
 
 	keyb := make(chan string, 10)
 
