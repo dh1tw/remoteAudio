@@ -213,6 +213,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	nc.fromRadioSources.AddSource("fromNetwork", fromNetwork)
 	nc.fromRadioSinks.AddSink("fromRadioAudio", fromRadioAudio, false)
 
+	nc.toRadioSources.AddSource("file", wav)
 	nc.toRadioSources.AddSource("toRadioAudio", toRadioAudio)
 	nc.toRadioSinks.AddSink("toNetwork", toNetwork, false)
 
@@ -225,7 +226,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	// set callback to process audio fro
 	nc.fromRadioSources.SetCb(nc.toRxSinksCb)
 	// start streaming to the network immediately
-	nc.fromRadioSinks.EnableSink("toNetwork", true)
+	nc.fromRadioSinks.EnableSink("fromRadioAudio", true)
 	nc.fromRadioSources.SetSource("fromNetwork")
 
 	// set callback to process audio to be send to the radio
@@ -262,6 +263,11 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 				if err := nc.fromRadioSources.SetSource("file"); err != nil {
 					log.Println(err)
 				}
+				nc.toRadioSinks.Flush()
+				if err := nc.toRadioSources.SetSource("file"); err != nil {
+					log.Println(err)
+				}
+
 			case "m":
 				nc.toRadioSinks.Flush()
 				if err := nc.fromRadioSources.SetSource("fromNetwork"); err != nil {
@@ -301,7 +307,7 @@ func (nc *natsClient) toRxSinksCb(data audio.Msg) {
 	if data.EOF {
 		// switch back to default source
 		nc.fromRadioSinks.Flush()
-		if err := nc.fromRadioSources.SetSource("toNetwork"); err != nil {
+		if err := nc.fromRadioSources.SetSource("fromNetwork"); err != nil {
 			log.Println(err)
 		}
 	}
@@ -316,7 +322,7 @@ func (nc *natsClient) toTxSinksCb(data audio.Msg) {
 	if data.EOF {
 		// switch back to default source
 		nc.toRadioSinks.Flush()
-		if err := nc.toRadioSources.SetSource("fromNetwork"); err != nil {
+		if err := nc.toRadioSources.SetSource("toRadioAudio"); err != nil {
 			log.Println(err)
 		}
 	}
