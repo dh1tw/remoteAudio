@@ -23,7 +23,9 @@ type PbWriter struct {
 	enabled bool
 	buffer  []byte
 	cb      func([]byte)
+	stash   []float32
 	src     src
+	volume  float32
 }
 
 // src contains a samplerate converter and its needed variables
@@ -41,12 +43,14 @@ func NewPbWriter(cb func([]byte), opts ...Option) (*PbWriter, error) {
 
 	pbw := &PbWriter{
 		options: Options{
-			DeviceName: "ProtoBufReader",
-			Channels:   1,
-			Samplerate: 48000,
+			DeviceName:      "ProtoBufReader",
+			Channels:        1,
+			Samplerate:      48000,
+			FramesPerBuffer: 960,
 		},
 		buffer: make([]byte, 10000),
 		cb:     cb,
+		volume: 1,
 	}
 
 	for _, option := range opts {
@@ -133,8 +137,9 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 
 	var aData []float32
 
-	fmt.Println("audioMsg channels", audioMsg.Channels)
-	fmt.Println("options channels", pbw.options.Channels)
+	// fmt.Println("audioMsg channels", audioMsg.Channels)
+	// fmt.Println("options channels", pbw.options.Channels)
+	// fmt.Println("len before", len(audioMsg.Data))
 
 	// if necessary adjust the amount of audio channels
 	if audioMsg.Channels != pbw.options.Channels {
@@ -143,6 +148,7 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 	} else {
 		aData = audioMsg.Data
 	}
+	// fmt.Println("len after", len(aData))
 
 	channels := sbAudio.Channels_unknown
 	switch pbw.options.Channels {
@@ -156,46 +162,104 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 	// launched in a separate go routine.
 	go func() {
 
-		var err error
+		// var err error
 
-		fmt.Println("audioMsg Samplerate:", audioMsg.Samplerate)
-		fmt.Println("options Samplerate:", pbw.options.Samplerate)
+		// fmt.Println("audioMsg Samplerate:", audioMsg.Samplerate)
+		// fmt.Println("options Samplerate:", pbw.options.Samplerate)
 
-		if audioMsg.Samplerate != pbw.options.Samplerate {
-			if pbw.src.samplerate != audioMsg.Samplerate {
-				pbw.src.Reset()
-				pbw.src.samplerate = audioMsg.Samplerate
-				pbw.src.ratio = pbw.options.Samplerate / audioMsg.Samplerate
+		// if audioMsg.Samplerate != pbw.options.Samplerate {
+		// 	if pbw.src.samplerate != audioMsg.Samplerate {
+		// 		pbw.src.Reset()
+		// 		pbw.src.samplerate = audioMsg.Samplerate
+		// 		pbw.src.ratio = pbw.options.Samplerate / audioMsg.Samplerate
+		// 	}
+		// 	aData, err = pbw.src.Process(aData, pbw.src.ratio, false)
+		// 	if err != nil {
+		// 		log.Println(err)
+		// 		return
+		// 	}
+		// }
+
+		// audio buffer size we want to push into the opus encuder
+		// opus only allows certain buffer sizes (2,5ms, 5ms, 10ms...etc)
+		expBufferSize := pbw.options.Channels * pbw.options.FramesPerBuffer
+		// fmt.Println("exp Buffer size:", expBufferSize)
+
+		// if there is data stashed from previous calles, get it and prepend it
+		// to the data received
+		if len(pbw.stash) > 0 {
+			aData = append(pbw.stash, aData...)
+			pbw.stash = pbw.stash[:0] // empty
+		}
+
+		if audioMsg.EOF {
+			// get the stuff from the stash
+			fmt.Println("EOF!!!")
+			fmt.Println("stash size:", len(pbw.stash))
+		}
+
+		// if the audio buffer size is actually smaller than the one we need,
+		// then stash it for the next time and return
+		if len(aData) < expBufferSize {
+			pbw.stash = aData
+			return
+		}
+
+		// slice of audio buffers which will be send
+		var bData [][]float32
+
+		// if the aData contains multiples of the expected buffer size,
+		// then we chop it into (several) buffers
+		if len(aData) >= expBufferSize {
+			pbw.Lock()
+			vol := pbw.volume
+			pbw.Unlock()
+
+			for len(aData) >= expBufferSize {
+				if vol != 1 {
+					// if necessary, adjust the volume
+					audio.AdjustVolume(vol, aData[:expBufferSize])
+				}
+				bData = append(bData, aData[:expBufferSize])
+				aData = aData[expBufferSize:]
 			}
-			aData, err = pbw.src.Process(aData, pbw.src.ratio, false)
+		}
+
+		// stash the left over
+		if len(aData) > 0 {
+			pbw.stash = aData
+		}
+		fmt.Println("stashing:", len(pbw.stash))
+
+		for _, frame := range bData {
+			num, err := pbw.options.Encoder.Encode(frame, pbw.buffer)
 			if err != nil {
 				log.Println(err)
-				return
 			}
+
+			if num > 90 {
+				fmt.Println("num:", num)
+			}
+
+			msg := sbAudio.Frame{
+				Data:         pbw.buffer[:num],
+				Channels:     channels,
+				BitDepth:     16,
+				Codec:        sbAudio.Codec_opus,
+				FrameLength:  int32(pbw.options.FramesPerBuffer),
+				SamplingRate: int32(pbw.options.Samplerate),
+				UserId:       "dh1tw",
+			}
+
+			data, err := proto.Marshal(&msg)
+			if err != nil {
+				log.Println(err)
+				// return err
+			}
+
+			pbw.cb(data)
 		}
 
-		num, err := pbw.options.Encoder.Encode(aData, pbw.buffer)
-		if err != nil {
-			log.Println(err)
-		}
-
-		msg := sbAudio.Frame{
-			Data:         pbw.buffer[:num],
-			Channels:     channels,
-			BitDepth:     16,
-			Codec:        sbAudio.Codec_opus,
-			FrameLength:  int32(audioMsg.Frames),
-			SamplingRate: int32(pbw.options.Samplerate),
-			UserId:       "dh1tw",
-		}
-
-		data, err := proto.Marshal(&msg)
-		if err != nil {
-			log.Println(err)
-			// return err
-		}
-
-		pbw.cb(data)
 	}()
 
 	return nil

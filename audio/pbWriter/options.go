@@ -8,10 +8,11 @@ import (
 type Option func(*Options)
 
 type Options struct {
-	DeviceName string
-	Encoder    audiocodec.Encoder
-	Channels   int
-	Samplerate float64
+	DeviceName      string
+	Encoder         audiocodec.Encoder
+	Channels        int
+	Samplerate      float64
+	FramesPerBuffer int
 }
 
 // Channels is a functional option to set the amount of channels to be used
@@ -29,6 +30,16 @@ func Channels(chs int) Option {
 func Samplerate(s float64) Option {
 	return func(args *Options) {
 		args.Samplerate = s
+	}
+}
+
+// FramesPerBuffer is a functional option which sets the amount of sample frames
+// our audio device will request / provide when executing the callback.
+// Example: A buffer with 960 frames at 48000kHz / stereo contains
+// 1920 samples and results in 20ms Audio.
+func FramesPerBuffer(s int) Option {
+	return func(args *Options) {
+		args.FramesPerBuffer = s
 	}
 }
 

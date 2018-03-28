@@ -183,7 +183,12 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	pbw, err := pbWriter.NewPbWriter(cb, pbWriter.Encoder(opusEncoder))
+	pbw, err := pbWriter.NewPbWriter(cb,
+		pbWriter.Encoder(opusEncoder),
+		pbWriter.Samplerate(iSamplerate),
+		pbWriter.Channels(iChannels),
+		pbWriter.FramesPerBuffer(audioFramesPerBuffer),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
