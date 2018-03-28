@@ -53,9 +53,9 @@ func NewWavWriter(path string, opts ...Option) (*WavWriter, error) {
 		o(&w.options)
 	}
 
-	// make sure we only allow 16 & 32 bit Bitdepth (dynamic range)
+	// make sure we only allow 12 / 16 bit Bitdepth (dynamic range)
 	switch w.options.BitDepth {
-	case 12, 16, 32:
+	case 12, 16:
 	default:
 		w.options.BitDepth = 16
 	}
@@ -64,7 +64,7 @@ func NewWavWriter(path string, opts ...Option) (*WavWriter, error) {
 	srConv, err := gosamplerate.New(gosamplerate.SRC_SINC_FASTEST,
 		w.options.Channels, 65536)
 	if err != nil {
-		return nil, fmt.Errorf("player: %v", err)
+		return nil, fmt.Errorf("WavWriter samplerate converter: %v", err)
 	}
 	w.src = src{
 		Src:        srConv,
