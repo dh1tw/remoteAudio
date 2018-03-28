@@ -114,10 +114,10 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 
 	// buf := make([]float32, msg.FrameLength*int32(pbr.options.Channels))
 
-	fmt.Println("FrameLength:", msg.FrameLength)
-	fmt.Println("Channels:", msg.Channels.String())
-	fmt.Println("Samplerate:", msg.SamplingRate)
-	fmt.Printf("len: %v\n", len(msg.Data))
+	// fmt.Println("FrameLength:", msg.FrameLength)
+	// fmt.Println("Channels:", msg.Channels.String())
+	// fmt.Println("Samplerate:", msg.SamplingRate)
+	// fmt.Printf("len: %v\n", len(msg.Data))
 
 	buf := make([]float32, msg.FrameLength*2, 5000)
 
@@ -126,7 +126,7 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 		return err
 	}
 
-	fmt.Println("size:", num)
+	// fmt.Println("size:", num)
 
 	audioMsg := audio.Msg{
 		Channels:   pbr.options.Channels,
