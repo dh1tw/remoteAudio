@@ -104,14 +104,18 @@ func (pbw *PbWriter) Close() error {
 	return nil
 }
 
-// SetVolume is not implemented for this Sink
+// SetVolume sets the volume for this sink
 func (pbw *PbWriter) SetVolume(vol float32) {
-
+	pbw.Lock()
+	defer pbw.Unlock()
+	pbw.volume = vol
 }
 
-// Volume is not implemented for this Sink
+// Volume returns the volume for this sink
 func (pbw *PbWriter) Volume() float32 {
-	return 1
+	pbw.RLock()
+	defer pbw.RUnlock()
+	return pbw.volume
 }
 
 // Write is called to encode audio.Msg with a specified audio codec into
@@ -137,10 +141,6 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 
 	var aData []float32
 
-	// fmt.Println("audioMsg channels", audioMsg.Channels)
-	// fmt.Println("options channels", pbw.options.Channels)
-	// fmt.Println("len before", len(audioMsg.Data))
-
 	// if necessary adjust the amount of audio channels
 	if audioMsg.Channels != pbw.options.Channels {
 		aData = audio.AdjustChannels(audioMsg.Channels,
@@ -148,7 +148,6 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 	} else {
 		aData = audioMsg.Data
 	}
-	// fmt.Println("len after", len(aData))
 
 	channels := sbAudio.Channels_unknown
 	switch pbw.options.Channels {
@@ -162,23 +161,25 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 	// launched in a separate go routine.
 	go func() {
 
-		// var err error
+		// TBD: Protection via MUTEX?
+
+		var err error
 
 		// fmt.Println("audioMsg Samplerate:", audioMsg.Samplerate)
 		// fmt.Println("options Samplerate:", pbw.options.Samplerate)
 
-		// if audioMsg.Samplerate != pbw.options.Samplerate {
-		// 	if pbw.src.samplerate != audioMsg.Samplerate {
-		// 		pbw.src.Reset()
-		// 		pbw.src.samplerate = audioMsg.Samplerate
-		// 		pbw.src.ratio = pbw.options.Samplerate / audioMsg.Samplerate
-		// 	}
-		// 	aData, err = pbw.src.Process(aData, pbw.src.ratio, false)
-		// 	if err != nil {
-		// 		log.Println(err)
-		// 		return
-		// 	}
-		// }
+		if audioMsg.Samplerate != pbw.options.Samplerate {
+			if pbw.src.samplerate != audioMsg.Samplerate {
+				pbw.src.Reset()
+				pbw.src.samplerate = audioMsg.Samplerate
+				pbw.src.ratio = pbw.options.Samplerate / audioMsg.Samplerate
+			}
+			aData, err = pbw.src.Process(aData, pbw.src.ratio, false)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+		}
 
 		// audio buffer size we want to push into the opus encuder
 		// opus only allows certain buffer sizes (2,5ms, 5ms, 10ms...etc)
@@ -229,17 +230,12 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 		if len(aData) > 0 {
 			pbw.stash = aData
 		}
-		// fmt.Println("stashing:", len(pbw.stash))
 
 		for _, frame := range bData {
 			num, err := pbw.options.Encoder.Encode(frame, pbw.buffer)
 			if err != nil {
 				log.Println(err)
 			}
-
-			// if num > 90 {
-			// 	fmt.Println("num:", num)
-			// }
 
 			msg := sbAudio.Frame{
 				Data:         pbw.buffer[:num],
@@ -254,7 +250,7 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 			data, err := proto.Marshal(&msg)
 			if err != nil {
 				log.Println(err)
-				// return err
+				return
 			}
 
 			pbw.cb(data)
