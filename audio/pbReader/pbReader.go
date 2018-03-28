@@ -21,6 +21,7 @@ type PbReader struct {
 	enabled bool
 }
 
+// NewPbReader is the constructor for a PbReader object.
 func NewPbReader(opts ...Option) (*PbReader, error) {
 
 	pbr := &PbReader{
@@ -35,15 +36,18 @@ func NewPbReader(opts ...Option) (*PbReader, error) {
 		option(&pbr.options)
 	}
 
-	decChannels := opus.Channels(pbr.options.Channels)
-	decSR := opus.Samplerate(pbr.options.Samplerate)
+	// if no decoder was passed in as a function we create
+	// our default opus decoder
+	if pbr.options.Decoder == nil {
+		decChannels := opus.Channels(pbr.options.Channels)
+		decSR := opus.Samplerate(pbr.options.Samplerate)
 
-	dec, err := opus.NewOpusDecoder(decChannels, decSR)
-	if err != nil {
-		return nil, err
+		dec, err := opus.NewOpusDecoder(decChannels, decSR)
+		if err != nil {
+			return nil, err
+		}
+		pbr.options.Decoder = dec
 	}
-
-	pbr.options.Decoder = dec
 
 	return pbr, nil
 }
@@ -116,7 +120,7 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 		EOF:        false,
 		Frames:     num,
 		IsStream:   true,
-		Samplerate: pbr.options.Samplerate,
+		Samplerate: pbr.options.Samplerate, // we want 48kHz for internal processing
 	}
 
 	pbr.options.Callback(audioMsg)
