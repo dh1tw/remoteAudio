@@ -2,12 +2,13 @@ package audio
 
 import (
 	"fmt"
+	"log"
 	"sync"
 )
 
 // Router manages several audio sinks.
 type Router interface {
-	AddSink(string, Sink, bool)
+	AddSink(string, Sink, bool) error
 	RemoveSink(string) error
 	Sink(string) (Sink, error)
 	// Sinks() map[string]Sink
@@ -50,8 +51,10 @@ func (r *DefaultRouter) Write(msg Msg) SinkErrors {
 			continue
 		}
 		err := sink.Write(msg)
+		// fmt.Println("writing to sink:", sinkName)
 		// do smth with err!!!
 		if err != nil {
+			log.Println(err)
 			// TBD: remove source (?)
 			sErr := &SinkError{
 				Sink:  sink,
@@ -66,10 +69,15 @@ func (r *DefaultRouter) Write(msg Msg) SinkErrors {
 
 // AddSink adds an audio device which satisfies the Sink interface. When marked
 // as active, incoming audio Msgs will be written to this device.
-func (r *DefaultRouter) AddSink(name string, s Sink, active bool) {
+func (r *DefaultRouter) AddSink(name string, s Sink, active bool) error {
 	r.Lock()
 	defer r.Unlock()
 	r.sinks[name] = &sink{s, active}
+	if active {
+		return s.Start()
+	}
+
+	return nil
 }
 
 // RemoveSink removes an audio sink.
