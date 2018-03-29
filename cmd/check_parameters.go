@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/dh1tw/remoteAudio/utils"
 	"github.com/spf13/viper"
+	"gopkg.in/hraban/opus.v2"
 )
 
 func checkAudioParameterValues() bool {
@@ -118,4 +120,37 @@ type parmError struct {
 
 func (p *parmError) String() {
 	fmt.Printf("%v: %v\n", p.parm, p.msg)
+}
+
+// GetOpusApplication returns the integer representation of a
+// Opus application value string (typically read from application settings)
+func GetOpusApplication(app string) (opus.Application, error) {
+	switch app {
+	case "audio":
+		return opus.AppAudio, nil
+	case "restricted_lowdelay":
+		return opus.AppRestrictedLowdelay, nil
+	case "voip":
+		return opus.AppVoIP, nil
+	}
+	return 0, errors.New("unknown opus application value")
+}
+
+// GetOpusMaxBandwith returns the integer representation of an
+// Opus max bandwitdh value string (typically read from application settings)
+func GetOpusMaxBandwith(maxBw string) (opus.Bandwidth, error) {
+	switch strings.ToLower(maxBw) {
+	case "narrowband":
+		return opus.Narrowband, nil
+	case "mediumband":
+		return opus.Mediumband, nil
+	case "wideband":
+		return opus.Wideband, nil
+	case "superwideband":
+		return opus.SuperWideband, nil
+	case "fullband":
+		return opus.Fullband, nil
+	}
+
+	return 0, errors.New("unknown opus max bandwidth value")
 }
