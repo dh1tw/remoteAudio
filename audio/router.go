@@ -120,10 +120,10 @@ func (r *DefaultRouter) EnableSink(name string, active bool) error {
 func (r *DefaultRouter) Flush() {
 	r.RLock()
 	defer r.RUnlock()
-	for sinkName, s := range r.sinks {
+	for _, s := range r.sinks {
 		s.Flush()
 		if s.active {
-			fmt.Println("flushing", sinkName)
+			// fmt.Println("flushing", sinkName)
 		}
 	}
 }

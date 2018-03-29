@@ -2,7 +2,6 @@ package wavReader
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -132,9 +131,9 @@ func (w *WavReader) play(audioMsgs []audio.Msg, stopCh chan struct{}, cb audio.O
 		}
 
 	}
-	close(stopCh)
 	w.Lock()
 	defer w.Unlock()
+	// close(stopCh)
 	w.isPlaying = false
 }
 
@@ -144,7 +143,7 @@ func (w *WavReader) Stop() error {
 	defer w.Unlock()
 
 	if w.isPlaying {
-		fmt.Println("is still playing")
+		// fmt.Println("is still playing")
 		close(w.stopPlayCh)
 	}
 	w.isPlaying = false
