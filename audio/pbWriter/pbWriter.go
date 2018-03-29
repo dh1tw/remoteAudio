@@ -106,10 +106,16 @@ func (pbw *PbWriter) Close() error {
 }
 
 // SetVolume sets the volume for this sink
-func (pbw *PbWriter) SetVolume(vol float32) {
+func (pbw *PbWriter) SetVolume(v float32) {
 	pbw.Lock()
 	defer pbw.Unlock()
-	pbw.volume = vol
+	if v < 0 {
+		pbw.volume = 0
+	} else if v > 1 {
+		pbw.volume = 1
+	} else {
+		pbw.volume = v
+	}
 }
 
 // Volume returns the volume for this sink

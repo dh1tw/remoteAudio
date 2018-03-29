@@ -133,6 +133,7 @@ func (p *ScWriter) playCb(in []float32,
 
 	if data == nil {
 		// fill with silence
+		fmt.Println("silence")
 		for i := 0; i < len(in); i++ {
 			in[i] = 0
 		}
@@ -184,9 +185,11 @@ func (p *ScWriter) SetVolume(v float32) {
 	defer p.Unlock()
 	if v < 0 {
 		p.volume = 0
-		return
+	} else if v > 1 {
+		p.volume = 1
+	} else {
+		p.volume = v
 	}
-	p.volume = v
 }
 
 // Volume returns the current volume.

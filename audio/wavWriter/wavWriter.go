@@ -96,10 +96,16 @@ func (w *WavWriter) Close() error {
 }
 
 // SetVolume sets the volume for all incoming audio frames.
-func (w *WavWriter) SetVolume(volume float32) {
+func (w *WavWriter) SetVolume(v float32) {
 	w.Lock()
 	defer w.Unlock()
-	w.volume = volume
+	if v < 0 {
+		w.volume = 0
+	} else if v > 1 {
+		w.volume = 1
+	} else {
+		w.volume = v
+	}
 }
 
 // Volume returns the current volume.
@@ -168,7 +174,7 @@ func (w *WavWriter) Write(msg audio.Msg) error {
 		f := int(frame * float32(max))
 		if f > max-1 {
 			buf.Data = append(buf.Data, max)
-		} else if f < -32768 {
+		} else if f < -max {
 			buf.Data = append(buf.Data, -max)
 		} else {
 			buf.Data = append(buf.Data, f)
@@ -178,6 +184,8 @@ func (w *WavWriter) Write(msg audio.Msg) error {
 	if err := w.encoder.Write(&buf); err != nil {
 		log.Println(err)
 	}
+
+	fmt.Printf("writing %v samples\n", w.encoder.WrittenBytes)
 
 	return nil
 }
