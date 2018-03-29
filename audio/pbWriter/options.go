@@ -13,6 +13,7 @@ type Options struct {
 	Channels        int
 	Samplerate      float64
 	FramesPerBuffer int
+	UserID          string
 }
 
 // Channels is a functional option to set the amount of channels to be used
@@ -48,5 +49,13 @@ func FramesPerBuffer(s int) Option {
 func Encoder(enc audiocodec.Encoder) Option {
 	return func(args *Options) {
 		args.Encoder = enc
+	}
+}
+
+// UserID is a functional option to set the UserID. All serialized protobufs
+// contain the UserID to mark their origin.
+func UserID(s string) Option {
+	return func(args *Options) {
+		args.UserID = s
 	}
 }

@@ -47,6 +47,7 @@ func NewPbWriter(cb func([]byte), opts ...Option) (*PbWriter, error) {
 			Channels:        1,
 			Samplerate:      48000,
 			FramesPerBuffer: 960,
+			UserID:          "myCallsign",
 		},
 		buffer: make([]byte, 10000),
 		cb:     cb,
@@ -131,42 +132,30 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg) error {
 	}
 
 	if pbw.cb == nil {
-		return nil
+		return errors.New("PbWriter no callback set")
 	}
 
 	if pbw.options.Encoder == nil {
-		log.Println("no encoder set")
 		return errors.New("no encoder set")
-	}
-
-	var aData []float32
-
-	// if necessary adjust the amount of audio channels
-	if audioMsg.Channels != pbw.options.Channels {
-		aData = audio.AdjustChannels(audioMsg.Channels,
-			pbw.options.Channels, audioMsg.Data)
-	} else {
-		aData = audioMsg.Data
-	}
-
-	channels := sbAudio.Channels_unknown
-	switch pbw.options.Channels {
-	case 1:
-		channels = sbAudio.Channels_mono
-	case 2:
-		channels = sbAudio.Channels_stereo
 	}
 
 	// The resampling and encoding can be quite expensive (e.g. with opus). Therefore it is
 	// launched in a separate go routine.
 	go func() {
 
-		// TBD: Protection via MUTEX?
+		pbw.Lock()
+		defer pbw.Unlock()
 
+		var aData []float32
 		var err error
 
-		// fmt.Println("audioMsg Samplerate:", audioMsg.Samplerate)
-		// fmt.Println("options Samplerate:", pbw.options.Samplerate)
+		// if necessary adjust the amount of audio channels
+		if audioMsg.Channels != pbw.options.Channels {
+			aData = audio.AdjustChannels(audioMsg.Channels,
+				pbw.options.Channels, audioMsg.Data)
+		} else {
+			aData = audioMsg.Data
+		}
 
 		if audioMsg.Samplerate != pbw.options.Samplerate {
 			if pbw.src.samplerate != audioMsg.Samplerate {
@@ -184,7 +173,6 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg) error {
 		// audio buffer size we want to push into the opus encuder
 		// opus only allows certain buffer sizes (2,5ms, 5ms, 10ms...etc)
 		expBufferSize := pbw.options.Channels * pbw.options.FramesPerBuffer
-		// fmt.Println("exp Buffer size:", expBufferSize)
 
 		// if there is data stashed from previous calles, get it and prepend it
 		// to the data received
@@ -212,9 +200,7 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg) error {
 		// if the aData contains multiples of the expected buffer size,
 		// then we chop it into (several) buffers
 		if len(aData) >= expBufferSize {
-			pbw.Lock()
 			vol := pbw.volume
-			pbw.Unlock()
 
 			for len(aData) >= expBufferSize {
 				if vol != 1 {
@@ -229,7 +215,14 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg) error {
 		// stash the left over
 		if len(aData) > 0 {
 			pbw.stash = aData
-			// fmt.Println("stash:", len(pbw.stash))
+		}
+
+		channels := sbAudio.Channels_unknown
+		switch pbw.options.Channels {
+		case 1:
+			channels = sbAudio.Channels_mono
+		case 2:
+			channels = sbAudio.Channels_stereo
 		}
 
 		for _, frame := range bData {
@@ -245,7 +238,7 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg) error {
 				Codec:        sbAudio.Codec_opus,
 				FrameLength:  int32(pbw.options.FramesPerBuffer),
 				SamplingRate: int32(pbw.options.Samplerate),
-				UserId:       "dh1tw",
+				UserId:       pbw.options.UserID,
 			}
 
 			data, err := proto.Marshal(&msg)

@@ -2,6 +2,8 @@ package wavReader
 
 import (
 	"errors"
+	"fmt"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -15,10 +17,11 @@ import (
 // audio frames from a wav source (e.g. file).
 type WavReader struct {
 	sync.RWMutex
-	options   Options
-	buffer    []audio.Msg
-	cb        audio.OnDataCb
-	isPlaying bool
+	options    Options
+	buffer     []audio.Msg
+	cb         audio.OnDataCb
+	isPlaying  bool
+	stopPlayCh chan struct{}
 }
 
 // NewWavReader reads a wav file from disk into memory and returns a
@@ -83,6 +86,8 @@ func NewWavReader(file string, opts ...Option) (*WavReader, error) {
 
 // SetCb sets the callback which will be executed to provide audio buffers.
 func (w *WavReader) SetCb(cb audio.OnDataCb) {
+	w.Lock()
+	defer w.Unlock()
 	w.cb = cb
 }
 
@@ -90,33 +95,60 @@ func (w *WavReader) SetCb(cb audio.OnDataCb) {
 // set callback function.
 func (w *WavReader) Start() error {
 
+	w.Lock()
+	defer w.Unlock()
+
 	if w.isPlaying {
 		return nil
 	}
 
-	w.isPlaying = true
+	w.stopPlayCh = make(chan struct{})
 
-	// TBD use mutex!
-	go func() {
-		for _, msg := range w.buffer {
-			// calculate duration in milliseconds of one frame. If they are
-			// stereo the channels are interleaved. The duration is shorted
-			// by 5ms to avoid empty buffers.
-			duration := (msg.Frames/msg.Channels)/int(msg.Samplerate/1000) - 5
-			if w.cb != nil && w.isPlaying {
-				w.cb(msg)
-				time.Sleep(time.Duration(duration) * time.Millisecond)
-			}
-		}
-		w.isPlaying = false
-	}()
+	go w.play(w.buffer, w.stopPlayCh, w.cb)
+	w.isPlaying = true
 
 	return nil
 }
 
+func (w *WavReader) play(audioMsgs []audio.Msg, stopCh chan struct{}, cb audio.OnDataCb) {
+
+	if cb == nil {
+		log.Println("wavReader callback not set")
+		return
+	}
+
+	for _, msg := range audioMsgs {
+
+		// calculate duration in milliseconds of one frame. If they are
+		// stereo the channels are interleaved. The duration is shorted
+		// by 5ms to avoid empty buffers.
+		duration := (msg.Frames/msg.Channels)/int(msg.Samplerate/1000) - 5
+
+		select {
+		case <-stopCh:
+			return
+		case <-time.After(time.Duration(duration) * time.Millisecond):
+			cb(msg)
+		}
+
+	}
+	close(stopCh)
+	w.Lock()
+	defer w.Unlock()
+	w.isPlaying = false
+}
+
 // Stop cancels sending audio through the callback.
 func (w *WavReader) Stop() error {
+	w.Lock()
+	defer w.Unlock()
+
+	if w.isPlaying {
+		fmt.Println("is still playing")
+		close(w.stopPlayCh)
+	}
 	w.isPlaying = false
+
 	return nil
 }
 
