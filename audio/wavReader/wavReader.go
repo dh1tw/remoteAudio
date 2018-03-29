@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/dh1tw/remoteAudio/audio"
 	ga "github.com/go-audio/audio"
@@ -98,8 +99,13 @@ func (w *WavReader) Start() error {
 	// TBD use mutex!
 	go func() {
 		for _, msg := range w.buffer {
+			// calculate duration in milliseconds of one frame. If they are
+			// stereo the channels are interleaved. The duration is shorted
+			// by 5ms to avoid empty buffers.
+			duration := (msg.Frames/msg.Channels)/int(msg.Samplerate/1000) - 5
 			if w.cb != nil && w.isPlaying {
 				w.cb(msg)
+				time.Sleep(time.Duration(duration) * time.Millisecond)
 			}
 		}
 		w.isPlaying = false

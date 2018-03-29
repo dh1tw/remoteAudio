@@ -124,7 +124,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		toRadioSinks:     toRadioSinks,
 	}
 
-	fromRadioAudio, err := scWriter.NewScWriter(
+	speaker, err := scWriter.NewScWriter(
 		scWriter.DeviceName(oDeviceName),
 		scWriter.Channels(oChannels),
 		scWriter.Samplerate(oSamplerate),
@@ -150,8 +150,12 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	wav2, err := wavReader.NewWavReader("test.wav")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	toRadioAudio, err := scReader.NewScReader(
+	mic, err := scReader.NewScReader(
 		scReader.Callback(nc.toTxSinksCb),
 		scReader.DeviceName(iDeviceName),
 		scReader.Channels(iChannels),
@@ -211,10 +215,10 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	nc.fromRadioSources.AddSource("file", wav)
 	nc.fromRadioSources.AddSource("fromNetwork", fromNetwork)
-	nc.fromRadioSinks.AddSink("fromRadioAudio", fromRadioAudio, false)
+	nc.fromRadioSinks.AddSink("speaker", speaker, false)
 
-	nc.toRadioSources.AddSource("file", wav)
-	nc.toRadioSources.AddSource("toRadioAudio", toRadioAudio)
+	nc.toRadioSources.AddSource("file", wav2)
+	nc.toRadioSources.AddSource("mic", mic)
 	nc.toRadioSinks.AddSink("toNetwork", toNetwork, false)
 
 	// Channel to handle OS signals
@@ -226,15 +230,13 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	// set callback to process audio fro
 	nc.fromRadioSources.SetCb(nc.toRxSinksCb)
 	// start streaming to the network immediately
-	nc.fromRadioSinks.EnableSink("fromRadioAudio", true)
+	nc.fromRadioSinks.EnableSink("speaker", true)
 	nc.fromRadioSources.SetSource("fromNetwork")
 
 	// set callback to process audio to be send to the radio
 	nc.toRadioSources.SetCb(nc.toTxSinksCb)
-
-	// stream immediately audio from the network to the radio
-	nc.toRadioSources.SetSource("toRadioAudio")
 	nc.toRadioSinks.EnableSink("toNetwork", true)
+	nc.toRadioSources.SetSource("mic")
 
 	keyb := make(chan string, 10)
 
@@ -267,22 +269,25 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 				if err := nc.toRadioSources.SetSource("file"); err != nil {
 					log.Println(err)
 				}
-
 			case "m":
-				nc.toRadioSinks.Flush()
+				nc.fromRadioSinks.Flush()
 				if err := nc.fromRadioSources.SetSource("fromNetwork"); err != nil {
 					log.Println(err)
 				}
+				nc.toRadioSinks.Flush()
+				if err := nc.toRadioSources.SetSource("mic"); err != nil {
+					log.Println(err)
+				}
 			case "i":
-				fromRadioAudio.SetVolume(fromRadioAudio.Volume() + 0.5)
+				speaker.SetVolume(speaker.Volume() + 0.5)
 			case "d":
-				fromRadioAudio.SetVolume(fromRadioAudio.Volume() - 0.5)
+				speaker.SetVolume(speaker.Volume() - 0.5)
 			}
 		case sig := <-osSignals:
 			if sig == os.Interrupt {
 				// TBD: close also router (and all sinks)
-				toRadioAudio.Close()
-				fromRadioAudio.Close()
+				mic.Close()
+				speaker.Close()
 				return
 			}
 		}
@@ -295,15 +300,13 @@ type natsClient struct {
 	toRadioSinks     audio.Router   //tx path
 	toRadioSources   audio.Selector //tx path
 	isPlaying        bool
-	play             chan audio.Msg
 }
 
 func (nc *natsClient) toRxSinksCb(data audio.Msg) {
-	token := nc.fromRadioSinks.Write(data)
-	if token.Error != nil {
+	err := nc.fromRadioSinks.Write(data)
+	if err != nil {
 		// handle Error -> remove source
 	}
-	token.Wait()
 	if data.EOF {
 		// switch back to default source
 		nc.fromRadioSinks.Flush()
@@ -314,15 +317,14 @@ func (nc *natsClient) toRxSinksCb(data audio.Msg) {
 }
 
 func (nc *natsClient) toTxSinksCb(data audio.Msg) {
-	token := nc.toRadioSinks.Write(data)
-	if token.Error != nil {
+	err := nc.toRadioSinks.Write(data)
+	if err != nil {
 		// handle Error -> remove source
 	}
-	token.Wait()
 	if data.EOF {
 		// switch back to default source
 		nc.toRadioSinks.Flush()
-		if err := nc.toRadioSources.SetSource("toRadioAudio"); err != nil {
+		if err := nc.toRadioSources.SetSource("mic"); err != nil {
 			log.Println(err)
 		}
 	}

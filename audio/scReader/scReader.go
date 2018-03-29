@@ -111,7 +111,6 @@ func (r *ScReader) paReadCb(in []float32,
 		Samplerate: r.options.Samplerate,
 		Channels:   r.options.Channels,
 		Frames:     r.options.FramesPerBuffer,
-		IsStream:   true,
 	}
 
 	// execute the callback for further processing

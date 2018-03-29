@@ -24,7 +24,7 @@ type Sink interface {
 	Close() error
 	SetVolume(float32)
 	Volume() float32
-	Write(Msg, Token) error
+	Write(Msg) error
 	Flush()
 }
 
@@ -40,7 +40,6 @@ type Msg struct {
 	Data       []float32
 	Samplerate float64
 	Channels   int
-	Frames     int // Number of Frames in the buffer
-	IsStream   bool
+	Frames     int  // Number of Frames in the buffer
 	EOF        bool // End of File
 }

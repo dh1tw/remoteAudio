@@ -290,15 +290,13 @@ type natsServer struct {
 	toRadioSinks     audio.Router   //tx path
 	toRadioSources   audio.Selector //tx path
 	isPlaying        bool
-	play             chan audio.Msg
 }
 
 func (ns *natsServer) toRxSinksCb(data audio.Msg) {
-	token := ns.fromRadioSinks.Write(data)
-	if token.Error != nil {
+	err := ns.fromRadioSinks.Write(data)
+	if err != nil {
 		// handle Error -> remove source
 	}
-	token.Wait()
 	if data.EOF {
 		// switch back to default source
 		ns.fromRadioSinks.Flush()
@@ -309,11 +307,10 @@ func (ns *natsServer) toRxSinksCb(data audio.Msg) {
 }
 
 func (ns *natsServer) toTxSinksCb(data audio.Msg) {
-	token := ns.toRadioSinks.Write(data)
-	if token.Error != nil {
+	err := ns.toRadioSinks.Write(data)
+	if err != nil {
 		// handle Error -> remove source
 	}
-	token.Wait()
 	if data.EOF {
 		// switch back to default source
 		ns.toRadioSinks.Flush()

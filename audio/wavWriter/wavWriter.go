@@ -110,10 +110,8 @@ func (w *WavWriter) Volume() float32 {
 }
 
 // Write enqueues audio buffers to be written into the wav file. Channels
-// and Samplerate will be adjusted, if necessary. In case an buffer can not be
-// written immediately, the Token will be incremented. The calling application
-// will have to wait until the token is done.
-func (w *WavWriter) Write(msg audio.Msg, token audio.Token) error {
+// and Samplerate will be adjusted, if necessary.
+func (w *WavWriter) Write(msg audio.Msg) error {
 
 	var aData []float32
 	var err error

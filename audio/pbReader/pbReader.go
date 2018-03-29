@@ -126,7 +126,6 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 		Data:       buf,
 		EOF:        false,
 		Frames:     num,
-		IsStream:   true,
 		Samplerate: pbr.options.Samplerate, // we want 48kHz for internal processing
 	}
 

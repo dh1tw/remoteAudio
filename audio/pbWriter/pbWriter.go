@@ -121,7 +121,7 @@ func (pbw *PbWriter) Volume() float32 {
 // Write is called to encode audio.Msg with a specified audio codec into
 // protobufs. The Token is not used. On success the protobuf ([]byte) will
 // be returned in a callback.
-func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
+func (pbw *PbWriter) Write(audioMsg audio.Msg) error {
 
 	pbw.Lock()
 	defer pbw.Unlock()
@@ -229,6 +229,7 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 		// stash the left over
 		if len(aData) > 0 {
 			pbw.stash = aData
+			// fmt.Println("stash:", len(pbw.stash))
 		}
 
 		for _, frame := range bData {
@@ -252,7 +253,6 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 				log.Println(err)
 				return
 			}
-
 			pbw.cb(data)
 		}
 
@@ -261,7 +261,10 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg, token audio.Token) error {
 	return nil
 }
 
-// Flush is not implemented
+// Flush clears all internal buffers
 func (pbw *PbWriter) Flush() {
+	pbw.Lock()
+	defer pbw.Unlock()
 
+	pbw.stash = []float32{}
 }

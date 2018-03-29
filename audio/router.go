@@ -12,7 +12,7 @@ type Router interface {
 	Sink(string) (Sink, error)
 	// Sinks() map[string]Sink
 	EnableSink(string, bool) error
-	Write(Msg) WriteToken
+	Write(Msg) SinkErrors
 	Flush()
 }
 
@@ -38,9 +38,7 @@ func NewDefaultRouter() (*DefaultRouter, error) {
 }
 
 // Write will write the Msg to all enabled audio sinks.
-func (r *DefaultRouter) Write(msg Msg) WriteToken {
-
-	token := Token{&sync.WaitGroup{}}
+func (r *DefaultRouter) Write(msg Msg) SinkErrors {
 
 	r.RLock()
 	defer r.RUnlock()
@@ -51,7 +49,7 @@ func (r *DefaultRouter) Write(msg Msg) WriteToken {
 		if !sink.active {
 			continue
 		}
-		err := sink.Write(msg, token)
+		err := sink.Write(msg)
 		// do smth with err!!!
 		if err != nil {
 			// TBD: remove source (?)
@@ -63,7 +61,7 @@ func (r *DefaultRouter) Write(msg Msg) WriteToken {
 		}
 	}
 
-	return WriteToken{token, sinkErrors}
+	return sinkErrors
 }
 
 // AddSink adds an audio device which satisfies the Sink interface. When marked
@@ -122,20 +120,12 @@ func (r *DefaultRouter) EnableSink(name string, active bool) error {
 func (r *DefaultRouter) Flush() {
 	r.RLock()
 	defer r.RUnlock()
-	for _, s := range r.sinks {
+	for sinkName, s := range r.sinks {
+		s.Flush()
 		if s.active {
-			s.Flush()
+			fmt.Println("flushing", sinkName)
 		}
 	}
-}
-
-// WriteToken contains a sync.Waitgroup and is used with an audio sink. The
-// token will indicate the application to wait until further audio buffers
-// can be enqueued into the sink. In case writing to one or more sources
-// resulted in an error, err will be != nil.
-type WriteToken struct {
-	Token
-	Error []*SinkError
 }
 
 // SinkError is an Error which is used when data could not be written to
@@ -144,3 +134,5 @@ type SinkError struct {
 	Sink  Sink
 	Error error
 }
+
+type SinkErrors []*SinkError
