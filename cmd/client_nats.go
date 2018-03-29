@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 
 	// _ "net/http/pprof"
@@ -16,6 +17,7 @@ import (
 	"github.com/dh1tw/remoteAudio/audio/scReader"
 	"github.com/dh1tw/remoteAudio/audio/scWriter"
 	"github.com/dh1tw/remoteAudio/audio/wavReader"
+	"github.com/dh1tw/remoteAudio/audio/wavWriter"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	"github.com/gordonklaus/portaudio"
 	"github.com/nats-io/go-nats"
@@ -92,6 +94,11 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	opusBitrate := viper.GetInt("opus.bitrate")
 	opusComplexity := viper.GetInt("opus.complexity")
 
+	natsUsername := viper.GetString("nats.username")
+	natsPassword := viper.GetString("nats.password")
+	natsBrokerURL := viper.GetString("nats.broker-url")
+	natsBrokerPort := viper.GetInt("nats.broker-port")
+
 	portaudio.Initialize()
 	defer portaudio.Terminate()
 
@@ -136,15 +143,13 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	// wavRec, err := wavWriter.NewWavWriter("test_rec.wav",
-	// 	wavWriter.BitDepth(8),
-	// 	wavWriter.Channels(1),
-	// 	wavWriter.Samplerate(22000))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// nc.txRouter.AddSink("wavFile", wavRec, false)
+	wavRec, err := wavWriter.NewWavWriter("test_rec1.wav",
+		wavWriter.BitDepth(16),
+		wavWriter.Channels(1),
+		wavWriter.Samplerate(22050))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	wav, err := wavReader.NewWavReader("test.wav")
 	if err != nil {
@@ -172,7 +177,8 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	natsc, err := nats.Connect("nats://195.201.117.206:4222")
+	natsc, err := nats.Connect("nats://"+natsBrokerURL+":"+strconv.Itoa(natsBrokerPort),
+		nats.UserInfo(natsUsername, natsPassword))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -208,6 +214,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		pbWriter.Samplerate(iSamplerate),
 		pbWriter.Channels(iChannels),
 		pbWriter.FramesPerBuffer(audioFramesPerBuffer),
+		pbWriter.UserID(natsUsername),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -216,6 +223,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	nc.fromRadioSources.AddSource("file", wav)
 	nc.fromRadioSources.AddSource("fromNetwork", fromNetwork)
 	nc.fromRadioSinks.AddSink("speaker", speaker, false)
+	nc.fromRadioSinks.AddSink("wavFile", wavRec, false)
 
 	nc.toRadioSources.AddSource("file", wav2)
 	nc.toRadioSources.AddSource("mic", mic)
@@ -252,14 +260,14 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		select {
 		case input := <-keyb:
 			switch input {
-			// case "a":
-			// 	if err := n.router.EnableSink("wavFile", true); err != nil {
-			// 		log.Println(err)
-			// 	}
-			// case "b":
-			// 	if err := n.router.EnableSink("wavFile", false); err != nil {
-			// 		log.Println(err)
-			// 	}
+			case "a":
+				if err := nc.fromRadioSinks.EnableSink("wavFile", true); err != nil {
+					log.Println(err)
+				}
+			case "b":
+				if err := nc.fromRadioSinks.EnableSink("wavFile", false); err != nil {
+					log.Println(err)
+				}
 			case "f":
 				nc.fromRadioSinks.Flush()
 				if err := nc.fromRadioSources.SetSource("file"); err != nil {
