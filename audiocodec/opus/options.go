@@ -36,18 +36,18 @@ func Samplerate(s float64) Option {
 // Application is a functional option through which the Encoder profile
 // can be selected. By default, RestrictedLowdelay is set. Check the opus
 // documentation to learn more about the different profiles.
-func Application(a int) Option {
+func Application(a opus.Application) Option {
 	return func(args *Options) {
-		args.Application = opus.Application(a)
+		args.Application = a
 	}
 }
 
 // MaxBandwidth is a functional option to set the maximum bandpass that the
 // encoder can select. Check the opus documentation to learn more about the
 // available bandwidths. By default Wideband (8kHz) is selected.
-func MaxBandwidth(maxBw int) Option {
+func MaxBandwidth(maxBw opus.Bandwidth) Option {
 	return func(args *Options) {
-		args.MaxBandwidth = opus.Bandwidth(maxBw)
+		args.MaxBandwidth = maxBw
 	}
 }
 
