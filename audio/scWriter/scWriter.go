@@ -56,7 +56,7 @@ func NewScWriter(opts ...Option) (*ScWriter, error) {
 		},
 		deviceInfo: info,
 		ring:       ringBuffer.Ring{},
-		volume:     1.0,
+		volume:     0.7,
 	}
 
 	for _, option := range opts {
@@ -133,7 +133,7 @@ func (p *ScWriter) playCb(in []float32,
 
 	if data == nil {
 		// fill with silence
-		fmt.Println("silence")
+		// fmt.Println("silence")
 		for i := 0; i < len(in); i++ {
 			in[i] = 0
 		}

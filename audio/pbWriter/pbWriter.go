@@ -51,7 +51,7 @@ func NewPbWriter(cb func([]byte), opts ...Option) (*PbWriter, error) {
 		},
 		buffer: make([]byte, 10000),
 		cb:     cb,
-		volume: 1,
+		volume: 0.7,
 	}
 
 	for _, option := range opts {
