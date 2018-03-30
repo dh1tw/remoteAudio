@@ -10,7 +10,7 @@ import (
 type Router interface {
 	AddSink(string, Sink, bool) error
 	RemoveSink(string) error
-	Sink(string) (Sink, error)
+	Sink(string) (Sink, bool, error)
 	// Sinks() map[string]Sink
 	EnableSink(string, bool) error
 	Write(Msg) SinkErrors
@@ -91,15 +91,16 @@ func (r *DefaultRouter) RemoveSink(name string) error {
 	return nil
 }
 
-// Sink returns the requested audio Sink from the router.
-func (r *DefaultRouter) Sink(name string) (Sink, error) {
+// Sink returns the requested audio sink from the router. The boolean
+// return parameter indicates if the sink is currently active.
+func (r *DefaultRouter) Sink(name string) (Sink, bool, error) {
 	r.RLock()
 	defer r.RUnlock()
 	s, ok := r.sinks[name]
 	if !ok {
-		return nil, fmt.Errorf("unknown sink %s", name)
+		return nil, false, fmt.Errorf("unknown sink %s", name)
 	}
-	return s, nil
+	return s, s.active, nil
 }
 
 // func (r *DefaultRouter) Sinks() map[string]Sink {
