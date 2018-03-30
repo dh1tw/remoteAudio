@@ -144,7 +144,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	}
 
 	// subscribe to the audio topic and enqueue the raw data into the pbReader
-	natsc.Subscribe("fromRadio", func(m *nats.Msg) {
+	natsc.Subscribe("toRadio", func(m *nats.Msg) {
 		err := fromNetwork.Enqueue(m.Data)
 		if err != nil {
 			log.Println(err)
