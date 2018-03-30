@@ -202,14 +202,11 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	//subscribe to os.Interrupt (CTRL-C signal)
 	signal.Notify(osSignals, os.Interrupt)
 
-	// set callback to process audio fro
-	rx.Sources.SetCb(rx.FromSourcesToSinksCb)
 	// start streaming to the network immediately
 	rx.Sinks.EnableSink("speaker", true)
 	rx.Sources.SetSource("fromNetwork")
 
 	// set callback to process audio to be send to the radio
-	tx.Sources.SetCb(tx.FromSourcesToSinksCb)
 	tx.Sinks.EnableSink("toNetwork", true)
 	tx.Sources.SetSource("mic")
 

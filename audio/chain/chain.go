@@ -29,6 +29,8 @@ func NewChain(opts ...Option) (*Chain, error) {
 	}
 	nc.Sources = fromRadioSources
 
+	nc.Sources.SetCb(nc.DefaultSourceToSinkCb)
+
 	return nc, nil
 }
 
@@ -40,7 +42,7 @@ func (nc *Chain) StopTx() error {
 	return nc.Sinks.EnableSink(nc.defaultSink, false)
 }
 
-func (nc *Chain) FromSourcesToSinksCb(data audio.Msg) {
+func (nc *Chain) DefaultSourceToSinkCb(data audio.Msg) {
 	err := nc.Sinks.Write(data)
 	if err != nil {
 		// handle Error -> remove source
