@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -11,13 +10,11 @@ import (
 
 	// _ "net/http/pprof"
 
-	"github.com/dh1tw/remoteAudio/audio"
+	"github.com/dh1tw/remoteAudio/audio/chain"
 	"github.com/dh1tw/remoteAudio/audio/pbReader"
 	"github.com/dh1tw/remoteAudio/audio/pbWriter"
 	"github.com/dh1tw/remoteAudio/audio/scReader"
 	"github.com/dh1tw/remoteAudio/audio/scWriter"
-	"github.com/dh1tw/remoteAudio/audio/wavReader"
-	"github.com/dh1tw/remoteAudio/audio/wavWriter"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	"github.com/gordonklaus/portaudio"
 	"github.com/nats-io/go-nats"
@@ -77,7 +74,6 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	// viper settings need to be copied in local variables
 	// since viper lookups allocate of each lookup a copy
 	// and are quite inperformant
-
 	audioFramesPerBuffer := viper.GetInt("audio.frame-length")
 
 	oDeviceName := viper.GetString("output-device.device-name")
@@ -93,6 +89,14 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	opusBitrate := viper.GetInt("opus.bitrate")
 	opusComplexity := viper.GetInt("opus.complexity")
+	opusApplication, err := GetOpusApplication(viper.GetString("opus.application"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	opusMaxBandwidth, err := GetOpusMaxBandwith(viper.GetString("opus.max-bandwidth"))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	natsUsername := viper.GetString("nats.username")
 	natsPassword := viper.GetString("nats.password")
@@ -101,35 +105,6 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	portaudio.Initialize()
 	defer portaudio.Terminate()
-
-	// Setup receiving path
-	fromRadioSinks, err := audio.NewDefaultRouter()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fromRadioSources, err := audio.NewDefaultSelector()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Setup transmitting path
-	toRadioSinks, err := audio.NewDefaultRouter()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	toRadioSources, err := audio.NewDefaultSelector()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	nc := &natsClient{
-		fromRadioSources: fromRadioSources,
-		fromRadioSinks:   fromRadioSinks,
-		toRadioSources:   toRadioSources,
-		toRadioSinks:     toRadioSinks,
-	}
 
 	speaker, err := scWriter.NewScWriter(
 		scWriter.DeviceName(oDeviceName),
@@ -143,25 +118,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	wavRec, err := wavWriter.NewWavWriter("test_rec1.wav",
-		wavWriter.BitDepth(16),
-		wavWriter.Channels(1),
-		wavWriter.Samplerate(22050))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	wav, err := wavReader.NewWavReader("test.wav")
-	if err != nil {
-		log.Fatal(err)
-	}
-	wav2, err := wavReader.NewWavReader("test.wav")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	mic, err := scReader.NewScReader(
-		scReader.Callback(nc.toTxSinksCb),
 		scReader.DeviceName(iDeviceName),
 		scReader.Channels(iChannels),
 		scReader.Samplerate(iSamplerate),
@@ -206,7 +163,8 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		opus.Complexity(opusComplexity),
 		opus.Channels(iChannels),
 		opus.Samplerate(iSamplerate),
-		// opus.MaxBandwidth(opusMaxBandwidth),
+		opus.Application(opusApplication),
+		opus.MaxBandwidth(opusMaxBandwidth),
 	)
 
 	toNetwork, err := pbWriter.NewPbWriter(toWireCb,
@@ -220,14 +178,23 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	nc.fromRadioSources.AddSource("file", wav)
-	nc.fromRadioSources.AddSource("fromNetwork", fromNetwork)
-	nc.fromRadioSinks.AddSink("speaker", speaker, false)
-	nc.fromRadioSinks.AddSink("wavFile", wavRec, false)
+	rx, err := chain.NewChain(chain.DefaultSource("fromNetwork"),
+		chain.DefaultSink("speaker"))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	nc.toRadioSources.AddSource("file", wav2)
-	nc.toRadioSources.AddSource("mic", mic)
-	nc.toRadioSinks.AddSink("toNetwork", toNetwork, false)
+	tx, err := chain.NewChain(chain.DefaultSource("mic"),
+		chain.DefaultSink("toNetwork"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rx.Sources.AddSource("fromNetwork", fromNetwork)
+	rx.Sinks.AddSink("speaker", speaker, false)
+
+	tx.Sources.AddSource("mic", mic)
+	tx.Sinks.AddSink("toNetwork", toNetwork, false)
 
 	// Channel to handle OS signals
 	osSignals := make(chan os.Signal, 1)
@@ -236,61 +203,20 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	signal.Notify(osSignals, os.Interrupt)
 
 	// set callback to process audio fro
-	nc.fromRadioSources.SetCb(nc.toRxSinksCb)
+	rx.Sources.SetCb(rx.FromSourcesToSinksCb)
 	// start streaming to the network immediately
-	nc.fromRadioSinks.EnableSink("speaker", true)
-	nc.fromRadioSources.SetSource("fromNetwork")
+	rx.Sinks.EnableSink("speaker", true)
+	rx.Sources.SetSource("fromNetwork")
 
 	// set callback to process audio to be send to the radio
-	nc.toRadioSources.SetCb(nc.toTxSinksCb)
-	nc.toRadioSinks.EnableSink("toNetwork", true)
-	nc.toRadioSources.SetSource("mic")
+	tx.Sources.SetCb(tx.FromSourcesToSinksCb)
+	tx.Sinks.EnableSink("toNetwork", true)
+	tx.Sources.SetSource("mic")
 
-	keyb := make(chan string, 10)
-
-	go func() {
-		for {
-			reader := bufio.NewReader(os.Stdin)
-			text, _ := reader.ReadString('\n')
-			keyb <- strings.TrimSuffix(text, "\n")
-		}
-	}()
+	// go nc.restServer()
 
 	for {
 		select {
-		case input := <-keyb:
-			switch input {
-			case "a":
-				if err := nc.fromRadioSinks.EnableSink("wavFile", true); err != nil {
-					log.Println(err)
-				}
-			case "b":
-				if err := nc.fromRadioSinks.EnableSink("wavFile", false); err != nil {
-					log.Println(err)
-				}
-			case "f":
-				nc.fromRadioSinks.Flush()
-				if err := nc.fromRadioSources.SetSource("file"); err != nil {
-					log.Println(err)
-				}
-				nc.toRadioSinks.Flush()
-				if err := nc.toRadioSources.SetSource("file"); err != nil {
-					log.Println(err)
-				}
-			case "m":
-				nc.fromRadioSinks.Flush()
-				if err := nc.fromRadioSources.SetSource("fromNetwork"); err != nil {
-					log.Println(err)
-				}
-				nc.toRadioSinks.Flush()
-				if err := nc.toRadioSources.SetSource("mic"); err != nil {
-					log.Println(err)
-				}
-			case "i":
-				speaker.SetVolume(speaker.Volume() + 0.5)
-			case "d":
-				speaker.SetVolume(speaker.Volume() - 0.5)
-			}
 		case sig := <-osSignals:
 			if sig == os.Interrupt {
 				// TBD: close also router (and all sinks)
@@ -301,75 +227,6 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		}
 	}
 }
-
-type natsClient struct {
-	fromRadioSinks   audio.Router   //rx path
-	fromRadioSources audio.Selector //rx path
-	toRadioSinks     audio.Router   //tx path
-	toRadioSources   audio.Selector //tx path
-	isPlaying        bool
-}
-
-func (nc *natsClient) toRxSinksCb(data audio.Msg) {
-	err := nc.fromRadioSinks.Write(data)
-	if err != nil {
-		// handle Error -> remove source
-	}
-	if data.EOF {
-		// switch back to default source
-		nc.fromRadioSinks.Flush()
-		if err := nc.fromRadioSources.SetSource("fromNetwork"); err != nil {
-			log.Println(err)
-		}
-	}
-}
-
-func (nc *natsClient) toTxSinksCb(data audio.Msg) {
-	err := nc.toRadioSinks.Write(data)
-	if err != nil {
-		// handle Error -> remove source
-	}
-	if data.EOF {
-		// switch back to default source
-		nc.toRadioSinks.Flush()
-		if err := nc.toRadioSources.SetSource("mic"); err != nil {
-			log.Println(err)
-		}
-	}
-}
-
-// // GetOpusApplication returns the integer representation of a
-// // Opus application value string (typically read from application settings)
-// func GetOpusApplication(app string) (opus.Application, error) {
-// 	switch app {
-// 	case "audio":
-// 		return opus.AppAudio, nil
-// 	case "restricted_lowdelay":
-// 		return opus.AppRestrictedLowdelay, nil
-// 	case "voip":
-// 		return opus.AppVoIP, nil
-// 	}
-// 	return 0, errors.New("unknown opus application value")
-// }
-
-// // GetOpusMaxBandwith returns the integer representation of an
-// // Opus max bandwitdh value string (typically read from application settings)
-// func GetOpusMaxBandwith(maxBw string) (opus.Bandwidth, error) {
-// 	switch strings.ToLower(maxBw) {
-// 	case "narrowband":
-// 		return opus.Narrowband, nil
-// 	case "mediumband":
-// 		return opus.Mediumband, nil
-// 	case "wideband":
-// 		return opus.Wideband, nil
-// 	case "superwideband":
-// 		return opus.SuperWideband, nil
-// 	case "fullband":
-// 		return opus.Fullband, nil
-// 	}
-
-// 	return 0, errors.New("unknown opus max bandwidth value")
-// }
 
 // // GetCodec return the integer representation of a string containing the
 // // name of an audio codec

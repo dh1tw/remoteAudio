@@ -5,11 +5,13 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 
 	// _ "net/http/pprof"
 
 	"github.com/dh1tw/remoteAudio/audio"
+	"github.com/dh1tw/remoteAudio/audio/chain"
 	"github.com/dh1tw/remoteAudio/audio/pbReader"
 	"github.com/dh1tw/remoteAudio/audio/pbWriter"
 	"github.com/dh1tw/remoteAudio/audio/scReader"
@@ -90,40 +92,24 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 
 	opusBitrate := viper.GetInt("opus.bitrate")
 	opusComplexity := viper.GetInt("opus.complexity")
+	opusApplication, err := GetOpusApplication(viper.GetString("opus.application"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	opusMaxBandwidth, err := GetOpusMaxBandwith(viper.GetString("opus.max-bandwidth"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	natsUsername := viper.GetString("nats.username")
+	natsPassword := viper.GetString("nats.password")
+	natsBrokerURL := viper.GetString("nats.broker-url")
+	natsBrokerPort := viper.GetInt("nats.broker-port")
 
 	portaudio.Initialize()
 	defer portaudio.Terminate()
 
-	// Setup receiving path
-	fromRadioSinks, err := audio.NewDefaultRouter()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fromRadioSources, err := audio.NewDefaultSelector()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Setup transmitting path
-	toRadioSinks, err := audio.NewDefaultRouter()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	toRadioSources, err := audio.NewDefaultSelector()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ns := &natsServer{
-		fromRadioSources: fromRadioSources,
-		fromRadioSinks:   fromRadioSinks,
-		toRadioSources:   toRadioSources,
-		toRadioSinks:     toRadioSinks,
-	}
-
-	toRadioAudio, err := scWriter.NewScWriter(
+	mic, err := scWriter.NewScWriter(
 		scWriter.DeviceName(oDeviceName),
 		scWriter.Channels(oChannels),
 		scWriter.Samplerate(oSamplerate),
@@ -135,8 +121,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	fromRadioAudio, err := scReader.NewScReader(
-		scReader.Callback(ns.toTxSinksCb),
+	radioAudio, err := scReader.NewScReader(
 		scReader.DeviceName(iDeviceName),
 		scReader.Channels(iChannels),
 		scReader.Samplerate(iSamplerate),
@@ -152,14 +137,14 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	// nc, err := nats.Connect("nats://192.168.1.237:4222")
-	nc, err := nats.Connect("nats://195.201.117.206:4222")
+	natsc, err := nats.Connect("nats://"+natsBrokerURL+":"+strconv.Itoa(natsBrokerPort),
+		nats.UserInfo(natsUsername, natsPassword))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// subscribe to the audio topic and enqueue the raw data into the pbReader
-	nc.Subscribe("toRadio", func(m *nats.Msg) {
+	natsc.Subscribe("fromRadio", func(m *nats.Msg) {
 		err := fromNetwork.Enqueue(m.Data)
 		if err != nil {
 			log.Println(err)
@@ -169,7 +154,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	// Callback which is called by pbWriter to push the audio
 	// packets to the network
 	toWireCb := func(data []byte) {
-		err := nc.Publish("fromRadio", data)
+		err := natsc.Publish("fromRadio", data)
 		if err != nil {
 			log.Println(err)
 		}
@@ -181,7 +166,8 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		opus.Complexity(opusComplexity),
 		opus.Channels(iChannels),
 		opus.Samplerate(iSamplerate),
-		// opus.MaxBandwidth(opusMaxBandwidth),
+		opus.Application(opusApplication),
+		opus.MaxBandwidth(opusMaxBandwidth),
 	)
 
 	toNetwork, err := pbWriter.NewPbWriter(toWireCb,
@@ -194,11 +180,23 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	ns.fromRadioSources.AddSource("fromRadioAudio", fromRadioAudio)
-	ns.fromRadioSinks.AddSink("toNetwork", toNetwork, false)
+	rx, err := chain.NewChain(chain.DefaultSource("radioAudio"),
+		chain.DefaultSink("toNetwork"))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	ns.toRadioSources.AddSource("fromNetwork", fromNetwork)
-	ns.toRadioSinks.AddSink("toRadioAudio", toRadioAudio, false)
+	tx, err := chain.NewChain(chain.DefaultSource("fromNetwork"),
+		chain.DefaultSink("mic"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tx.Sources.AddSource("fromNetwork", fromNetwork)
+	tx.Sinks.AddSink("mic", mic, false)
+
+	rx.Sources.AddSource("radioAudio", radioAudio)
+	rx.Sinks.AddSink("toNetwork", toNetwork, false)
 
 	// Channel to handle OS signals
 	osSignals := make(chan os.Signal, 1)
@@ -207,24 +205,24 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	signal.Notify(osSignals, os.Interrupt)
 
 	// set callback to process audio from the network
-	ns.fromRadioSources.SetCb(ns.toRxSinksCb)
+	rx.Sources.SetCb(rx.FromSourcesToSinksCb)
 	// start streaming to the network immediately
-	ns.fromRadioSinks.EnableSink("toNetwork", true)
-	ns.fromRadioSources.SetSource("fromRadioAudio")
+	rx.Sinks.EnableSink("toNetwork", true)
+	rx.Sources.SetSource("radioAudio")
 
 	// set callback to process audio to be send to the radio
-	ns.toRadioSources.SetCb(ns.toTxSinksCb)
+	tx.Sources.SetCb(tx.FromSourcesToSinksCb)
 	// stream immediately audio from the network to the radio
-	ns.toRadioSources.SetSource("fromNetwork")
-	ns.toRadioSinks.EnableSink("toRadioAudio", true)
+	tx.Sources.SetSource("fromNetwork")
+	tx.Sinks.EnableSink("mic", true)
 
 	for {
 		select {
 		case sig := <-osSignals:
 			if sig == os.Interrupt {
 				// TBD: close also router (and all sinks)
-				toRadioAudio.Close()
-				fromRadioAudio.Close()
+				mic.Close()
+				radioAudio.Close()
 				return
 			}
 		}
