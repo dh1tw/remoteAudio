@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -15,7 +14,6 @@ import (
 	"github.com/dh1tw/remoteAudio/audio/pbWriter"
 	"github.com/dh1tw/remoteAudio/audio/scReader"
 	"github.com/dh1tw/remoteAudio/audio/scWriter"
-	"github.com/dh1tw/remoteAudio/audio/wavReader"
 	// "github.com/dh1tw/remoteAudio/audio/wavWriter"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	"github.com/gordonklaus/portaudio"
@@ -137,21 +135,6 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	// wavRec, err := wavWriter.NewWavWriter("test_rec.wav",
-	// 	wavWriter.BitDepth(8),
-	// 	wavWriter.Channels(1),
-	// 	wavWriter.Samplerate(22000))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// ns.txRouter.AddSink("wavFile", wavRec, false)
-
-	wav, err := wavReader.NewWavReader("test.wav")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	fromRadioAudio, err := scReader.NewScReader(
 		scReader.Callback(ns.toTxSinksCb),
 		scReader.DeviceName(iDeviceName),
@@ -214,7 +197,6 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	ns.fromRadioSources.AddSource("fromRadioAudio", fromRadioAudio)
 	ns.fromRadioSinks.AddSink("toNetwork", toNetwork, false)
 
-	ns.toRadioSources.AddSource("file", wav)
 	ns.toRadioSources.AddSource("fromNetwork", fromNetwork)
 	ns.toRadioSinks.AddSink("toRadioAudio", toRadioAudio, false)
 
@@ -236,43 +218,8 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	ns.toRadioSources.SetSource("fromNetwork")
 	ns.toRadioSinks.EnableSink("toRadioAudio", true)
 
-	keyb := make(chan string, 10)
-
-	go func() {
-		for {
-			reader := bufio.NewReader(os.Stdin)
-			text, _ := reader.ReadString('\n')
-			keyb <- strings.TrimSuffix(text, "\n")
-		}
-	}()
-
 	for {
 		select {
-		case input := <-keyb:
-			switch input {
-			// case "a":
-			// 	if err := n.router.EnableSink("wavFile", true); err != nil {
-			// 		log.Println(err)
-			// 	}
-			// case "b":
-			// 	if err := n.router.EnableSink("wavFile", false); err != nil {
-			// 		log.Println(err)
-			// 	}
-			case "f":
-				ns.toRadioSinks.Flush()
-				if err := ns.toRadioSources.SetSource("file"); err != nil {
-					log.Println(err)
-				}
-			case "m":
-				ns.toRadioSinks.Flush()
-				if err := ns.toRadioSources.SetSource("fromNetwork"); err != nil {
-					log.Println(err)
-				}
-			case "i":
-				toRadioAudio.SetVolume(toRadioAudio.Volume() + 0.5)
-			case "d":
-				toRadioAudio.SetVolume(toRadioAudio.Volume() - 0.5)
-			}
 		case sig := <-osSignals:
 			if sig == os.Interrupt {
 				// TBD: close also router (and all sinks)
