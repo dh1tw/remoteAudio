@@ -6,3 +6,4 @@ launch.json
 remoteAudio
 *.wav
 *.exe
+/webserver/rice-box.go
