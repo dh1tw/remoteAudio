@@ -1,283 +1,187 @@
 package webserver
 
-// import (
-// 	"encoding/json"
-// 	"fmt"
-// 	"log"
-// 	"math"
-// 	"net/http"
-// 	"strings"
-// 	"sync"
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"sync"
 
-// 	rice "github.com/GeertJohan/go.rice"
-// 	"github.com/cskr/pubsub"
-// 	"github.com/dh1tw/remoteAudio/comms"
-// 	"github.com/dh1tw/remoteAudio/events"
-// 	"github.com/gorilla/websocket"
-// )
+	rice "github.com/GeertJohan/go.rice"
+	"github.com/cskr/pubsub"
+	"github.com/dh1tw/remoteAudio/audio/chain"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
+)
 
-// var upgrader = websocket.Upgrader{}
+type WebServerSettings struct {
+	Events  *pubsub.PubSub
+	Address string
+	Port    int
+}
 
-// type Hub struct {
-// 	muClients    sync.Mutex
-// 	clients      map[*Client]bool
-// 	broadcast    chan []byte
-// 	addClient    chan *Client
-// 	removeClient chan *Client
-// 	events       *pubsub.PubSub
-// 	muAppState   sync.RWMutex
-// 	appState     ApplicationState
-// }
+// wsClient contains a Websocket client
+type wsClient struct {
+	removeClient chan<- *wsClient
+	ws           *websocket.Conn
+	send         chan []byte
+}
 
-// var hub = Hub{
-// 	broadcast:    make(chan []byte),
-// 	addClient:    make(chan *Client),
-// 	removeClient: make(chan *Client),
-// 	muClients:    sync.Mutex{},
-// 	clients:      make(map[*Client]bool),
-// 	events:       nil,
-// 	muAppState:   sync.RWMutex{},
-// 	appState:     ApplicationState{},
-// }
+type ApplicationState struct {
+	RxOn        bool   `json:"rx_on"`
+	TxOn        bool   `json:"tx_on"`
+	RxVolume    int    `json:"rx_volume"`
+	TxVolume    int    `json:"tx_volume"`
+	TxUser      string `json:"tx_user"`
+	Connected   bool   `json:"connected"`
+	RadioOnline bool   `json:"radio_online"`
+	Latency     int    `json:"latency"`
+}
 
-// type WebServerSettings struct {
-// 	Events  *pubsub.PubSub
-// 	Address string
-// 	Port    int
-// }
+var upgrader = websocket.Upgrader{}
 
-// type ApplicationState struct {
-// 	ConnectionStatus *bool    `json:"connectionStatus, omitempty"`
-// 	ServerOnline     *bool    `json:"serverOnline, omitempty"`
-// 	ServerAudioOn    *bool    `json:"serverAudioOn, omitempty"`
-// 	TxUser           *string  `json:"txUser, omitempty"`
-// 	Tx               *bool    `json:"tx, omitempty"`
-// 	Latency          *int64   `json:"latency, omitempty"`
-// 	Volume           *float32 `json:"volume, omitempty"`
-// }
+type WebServer struct {
+	sync.RWMutex
+	url            string
+	port           int
+	wsClients      map[*wsClient]bool
+	addWsClient    chan *wsClient
+	removeWsClient chan *wsClient
+	Tx             *chain.Chain
+	Rx             *chain.Chain
+	appState       ApplicationState
+}
+type AudioControlState struct {
+	On *bool `json:"on"`
+}
 
-// type ClientMessage struct {
-// 	RequestServerAudioOn *bool    `json:"serverAudioOn, omitempty"`
-// 	SetPtt               *bool    `json:"ptt, omitempty"`
-// 	SetVolume            *float32 `json:"volume, omitempty"`
-// }
+type AudioControlVolume struct {
+	Volume *int `json:"volume"`
+}
 
-// func (hub *Hub) sendMsg() {
-// 	hub.muAppState.RLock()
-// 	data, err := json.Marshal(hub.appState)
-// 	if err != nil {
-// 		log.Println(err)
-// 	}
-// 	hub.muAppState.RUnlock()
-// 	hub.muClients.Lock()
+func NewWebServer(url string, port int, remoteRxOn bool, rx, tx *chain.Chain) (*WebServer, error) {
 
-// 	for client := range hub.clients {
+	speaker, _, err := rx.Sinks.Sink("speaker")
+	if err != nil {
+		return nil, fmt.Errorf("unable to find speaker sink")
+	}
+	speakerVol := int(speaker.Volume() * 100)
 
-// 		client.send <- data
-// 	}
-// 	hub.muClients.Unlock()
-// }
+	toNetwork, txOn, err := tx.Sinks.Sink("toNetwork")
+	if err != nil {
+		return nil, fmt.Errorf("unable to find protobuf serializer")
+	}
+	txVolume := int(toNetwork.Volume() * 100)
 
-// // Update
-// func sendLatency(latency int64) {
+	web := &WebServer{
+		url:            url,
+		port:           port,
+		Tx:             tx,
+		Rx:             rx,
+		wsClients:      make(map[*wsClient]bool),
+		addWsClient:    make(chan *wsClient),
+		removeWsClient: make(chan *wsClient),
+		appState: ApplicationState{
+			RxVolume:    speakerVol,
+			TxVolume:    txVolume,
+			TxOn:        txOn,
+			RxOn:        remoteRxOn,
+			Connected:   true,
+			RadioOnline: true,
+		},
+	}
 
-// 	msg := ApplicationState{}
-// 	msg.Latency = &latency
-// 	data, err := json.Marshal(msg)
-// 	if err != nil {
-// 		log.Println(err)
-// 	}
+	return web, nil
+}
 
-// 	for client := range hub.clients {
-// 		client.send <- data
-// 	}
-// }
+func (web *WebServer) Start() {
+	box, err := rice.FindBox("../html")
+	if err != nil {
+		log.Println("box not found")
+	}
+	// box := rice.MustFindBox("../html")
+	fileServer := http.FileServer(box.HTTPBox())
 
-// func (hub *Hub) handleClientMsg(data []byte) {
-// 	msg := ClientMessage{}
-// 	err := json.Unmarshal(data, &msg)
+	router := mux.NewRouter().StrictSlash(true)
+	// router.HandleFunc("/audio/rx/state", web.rxStateHdlr)
+	router.HandleFunc("/api/rx/volume", web.rxVolumeHdlr)
+	router.HandleFunc("/api/tx/state", web.txStateHdlr)
+	router.HandleFunc("/api/tx/volume", web.txVolumeHdlr)
+	router.HandleFunc("/ws", web.webSocketHdlr)
+	router.HandleFunc("/", IndexHdlr)
+	router.PathPrefix("/").Handler(fileServer)
 
-// 	if err != nil {
-// 		log.Println("Webserver: unable to unmarshal ClientMessage", string(data))
-// 		return
-// 	}
+	serverURL := fmt.Sprintf("%s:%d", web.url, web.port)
 
-// 	if msg.SetPtt != nil {
-// 		hub.events.Pub(*msg.SetPtt, events.RecordAudioOn)
-// 		hub.sendMsg()
-// 	}
+	log.Println("Webserver listening on", serverURL)
 
-// 	if msg.RequestServerAudioOn != nil {
-// 		hub.events.Pub(*msg.RequestServerAudioOn, events.RequestServerAudioOn)
-// 		hub.sendMsg()
-// 	}
+	go func() {
+		log.Fatal(http.ListenAndServe(serverURL, router))
+	}()
 
-// 	if msg.SetVolume != nil {
-// 		hub.events.Pub(float32(math.Pow(float64(*msg.SetVolume), 3)), events.SetVolume)
-// 		hub.muAppState.Lock()
-// 		hub.appState.Volume = msg.SetVolume
-// 		hub.muAppState.Unlock()
-// 	}
-// }
+	for {
+		select {
+		case wsClient := <-web.addWsClient:
+			log.Println("WebSocket client connected from", wsClient.ws.RemoteAddr())
+			web.Lock()
+			web.wsClients[wsClient] = true
+			web.Unlock()
+			web.updateWsClients()
 
-// func (hub *Hub) start() {
+		case wsClient := <-web.removeWsClient:
+			log.Println("WebSocket client disconnected", wsClient.ws.RemoteAddr())
+			web.Lock()
+			if _, ok := web.wsClients[wsClient]; ok {
+				delete(web.wsClients, wsClient)
+				close(wsClient.send)
+			}
+			web.Unlock()
+		}
+	}
+}
 
-// 	connectionStatusCh := hub.events.Sub(events.MqttConnStatus)
-// 	serverAudioOnCh := hub.events.Sub(events.ServerAudioOn)
-// 	serverOnlineCh := hub.events.Sub(events.ServerOnline)
-// 	txCh := hub.events.Sub(events.RecordAudioOn)
-// 	txUserCh := hub.events.Sub(events.TxUser)
-// 	pingCh := hub.events.Sub(events.Ping)
+func (web *WebServer) updateWsClients() {
+	web.Lock()
+	defer web.Unlock()
+	data, err := json.Marshal(web.appState)
+	if err != nil {
+		log.Println(err)
+	}
+	for client := range web.wsClients {
+		client.send <- data
+	}
+}
 
-// 	hub.appState.Volume = func() *float32 { var vol float32 = 1.0; return &vol }()
+func (c *wsClient) write() {
+	defer func() {
+		c.ws.Close()
+	}()
 
-// 	for {
-// 		select {
-// 		case ev := <-serverAudioOnCh:
-// 			state := ev.(bool)
-// 			hub.muAppState.Lock()
-// 			hub.appState.ServerAudioOn = &state
-// 			hub.muAppState.Unlock()
-// 			hub.sendMsg()
+	for {
+		select {
+		case message, ok := <-c.send:
+			if !ok {
+				c.ws.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+			if err := c.ws.WriteMessage(websocket.TextMessage, message); err != nil {
+				log.Println(err)
+			}
+		}
+	}
+}
 
-// 		case ev := <-serverOnlineCh:
-// 			state := ev.(bool)
-// 			hub.muAppState.Lock()
-// 			hub.appState.ServerOnline = &state
-// 			hub.muAppState.Unlock()
-// 			hub.sendMsg()
+func (c *wsClient) read() {
+	defer func() {
+		c.removeClient <- c
+		c.ws.Close()
+	}()
 
-// 		case ev := <-txCh:
-// 			state := ev.(bool)
-// 			hub.muAppState.Lock()
-// 			hub.appState.Tx = &state
-// 			hub.muAppState.Unlock()
-// 			hub.sendMsg()
-
-// 		case ev := <-txUserCh:
-// 			txUser := ev.(string)
-// 			hub.muAppState.Lock()
-// 			hub.appState.TxUser = &txUser
-// 			hub.muAppState.Unlock()
-// 			hub.sendMsg()
-
-// 		case ev := <-pingCh:
-// 			ping := ev.(int64) / 2000000 // milliseconds (one way latency)
-// 			sendLatency(ping)
-
-// 		case ev := <-connectionStatusCh:
-// 			cs := ev.(int)
-// 			hub.muAppState.Lock()
-// 			if cs == comms.CONNECTED {
-// 				hub.appState.ConnectionStatus = func() *bool { b := true; return &b }()
-// 			} else {
-// 				hub.appState.ConnectionStatus = func() *bool { b := false; return &b }()
-// 			}
-// 			hub.muAppState.Unlock()
-// 			hub.sendMsg()
-
-// 		case client := <-hub.addClient:
-// 			log.Println("WebSocket connected")
-// 			hub.muClients.Lock()
-// 			hub.clients[client] = true
-// 			hub.muClients.Unlock()
-// 			hub.sendMsg() // should be send only to connecting client
-
-// 		case client := <-hub.removeClient:
-// 			log.Println("WebSocket disconnected")
-// 			hub.muClients.Lock()
-// 			if _, ok := hub.clients[client]; ok {
-// 				delete(hub.clients, client)
-// 				close(client.send)
-// 			}
-// 			hub.muClients.Unlock()
-
-// 		}
-// 	}
-// }
-
-// type Client struct {
-// 	ws   *websocket.Conn
-// 	send chan []byte
-// }
-
-// func (c *Client) write() {
-// 	defer func() {
-// 		c.ws.Close()
-// 	}()
-
-// 	for {
-// 		select {
-// 		case message, ok := <-c.send:
-// 			if !ok {
-// 				c.ws.WriteMessage(websocket.CloseMessage, []byte{})
-// 				return
-// 			}
-// 			c.ws.WriteMessage(websocket.TextMessage, message)
-// 		}
-// 	}
-// }
-
-// func (c *Client) read() {
-// 	defer func() {
-// 		hub.removeClient <- c
-// 		c.ws.Close()
-// 	}()
-
-// 	for {
-// 		_, data, err := c.ws.ReadMessage()
-// 		if err != nil {
-// 			break
-// 		}
-// 		hub.handleClientMsg(data)
-// 	}
-// }
-
-// func wsPage(res http.ResponseWriter, req *http.Request) {
-// 	conn, err := upgrader.Upgrade(res, req, nil)
-
-// 	if err != nil {
-// 		http.NotFound(res, req)
-// 		return
-// 	}
-
-// 	client := &Client{
-// 		ws:   conn,
-// 		send: make(chan []byte),
-// 	}
-
-// 	hub.addClient <- client
-
-// 	go client.write()
-// 	go client.read()
-// }
-
-// func homePage(res http.ResponseWriter, req *http.Request) {
-// 	http.ServeFile(res, req, "html/index.html")
-// }
-
-// func noDirListing(h http.Handler) http.HandlerFunc {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		if strings.HasSuffix(r.URL.Path, "/") {
-// 			http.NotFound(w, r)
-// 			return
-// 		}
-// 		h.ServeHTTP(w, r)
-// 	})
-// }
-
-// func Webserver(s WebServerSettings) {
-
-// 	hub.events = s.Events
-// 	serverURL := fmt.Sprintf("%s:%d", s.Address, s.Port)
-
-// 	go hub.start()
-// 	box := rice.MustFindBox("../html")
-// 	fileServer := http.FileServer(box.HTTPBox())
-
-// 	http.Handle("/", fileServer)
-// 	http.HandleFunc("/ws", wsPage)
-
-// 	log.Println("Webserver listening on", serverURL)
-// 	http.ListenAndServe(serverURL, nil)
-// }
+	for {
+		// ignore received messages
+		_, _, err := c.ws.ReadMessage()
+		if err != nil {
+			return
+		}
+	}
+}

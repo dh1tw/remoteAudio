@@ -6,7 +6,7 @@ body {
   text-align: center;
 }
 
-#connection{
+#wsConnection{
 	bottom: 0px;
   left: 0px;
 	position: fixed;
@@ -15,8 +15,12 @@ body {
 	/*z-index: 20000000;*/
 }
 
-#connection p{
+#wsConnection p{
 	text-align: center;
 	padding-top: 10px;
 	padding-bottom: 10px;
+}
+
+.noUi-handle.noUi-active{
+	transform: none !important;
 }

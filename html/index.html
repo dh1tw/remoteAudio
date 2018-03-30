@@ -7,9 +7,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <title>RemoteAudio WebUI</title>
   <link rel="stylesheet" href="/static/css/font-awesome.min.css">
-  <link rel="stylesheet" href="/static/css/bootstrap.css">
-  <link rel="stylesheet" href="/static/css/bootstrap-material-design.css">
-  <link rel="stylesheet" href="/static/css/ripples.css">
+  <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/css/bootstrap-material-design.min.css">
+  <link rel="stylesheet" href="/static/css/ripples.min.css">
   <link rel="stylesheet" href="/static/css/nouislider.min.css">
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
@@ -32,7 +32,7 @@
           <div class="col-lg-4 col-md-4 col-sm-6">
             <div class="panel panel-primary">
               <div class="panel-heading">
-                Connections
+                Connectivity
               </div>
               <div class="panel-body">
                 <div class="list-group">
@@ -41,8 +41,8 @@
                       <i class="fa fa-wifi" aria-hidden="true"></i>
                     </div>
                     <div class="row-content">
-                      <h4 class="list-group-item-heading">MQTT Broker</h4>
-                      <h4 v-if="connectionStatus"><span class="label label-success">Connected</h4>
+                      <h4 class="list-group-item-heading">Connection</h4>
+                      <h4 v-if="connectionState"><span class="label label-success">Connected</h4>
                       <h4 v-else><span class="label label-danger">Disconnected</h4>
                     </div>
                   </div>
@@ -52,11 +52,11 @@
                       <i class="fa fa-wifi" aria-hidden="true"></i>
                     </div>
                     <div class="row-content">
-                      <h4 class="list-group-item-heading">Server Status</h4>
-                      <h4 v-if="serverOnline"><span class="label label-success">Online</h4>
+                      <h4 class="list-group-item-heading">Radio</h4>
+                      <h4 v-if="radioState"><span class="label label-success">Online</h4>
                       <h4 v-else><span class="label label-danger">Offline</h4>
                     </div>
-                  </div>                  
+                  </div>
                 </div>
               </div>
             </div>
@@ -67,12 +67,12 @@
               <div class="panel-body">
                 <div class="list-group">
                   <div class="list-group-item">
-                    <button class="btn btn-default btn-raised" v-bind:class="{'btn-success': serverAudioOn}" @click="sendRequestServerAudioOn"><i class="fa fa-volume-up" aria-hidden="true"></i> RX Audio</button>
+                    <button class="btn btn-default btn-raised" v-bind:class="{'btn-success': rxOn}" @click="sendRxOn"><i class="fa fa-volume-up" aria-hidden="true"></i> RX Audio</button>
                   </div>
                   <hr>
                   <h4 class="list-group-item-heading">Volume</h4>
                   <div class="list-group-item">
-                    <div id="volumeSlider" class="slider shor"></div>
+                    <div id="rxVolumeSlider" class="slider"></div>
                   </div>
                 </div>
               </div>
@@ -84,7 +84,12 @@
               <div class="panel-body">
                 <div class="list-group">
                   <div class="list-group-item">
-                    <button class="btn btn-default btn-raised" v-bind:class="{'btn-danger': tx}" @click="sendPtt"><i class="fa fa-microphone" aria-hidden="true"></i> TX Audio</button>
+                    <button class="btn btn-default btn-raised" v-bind:class="{'btn-danger': txOn}" @click="sendTxOn"><i class="fa fa-microphone" aria-hidden="true"></i> TX Audio</button>
+                  </div>
+                  <hr>
+                  <h4 class="list-group-item-heading">Volume</h4>
+                  <div class="list-group-item">
+                    <div id="txVolumeSlider" class="slider"></div>
                   </div>
                 </div>
               </div>
@@ -124,7 +129,7 @@
                       <div class="row-content">
                         <h4 class="list-group-item-heading">DH1TW</h4>
                       </div>
-                    </div>                  
+                    </div>
                   </div>
                 </div>
               </div>
@@ -134,23 +139,24 @@
         <!--<p> Tx User: {{txUser}} </p>-->
       </div>
     </div>
-    <div id="connection">
-      <p id="connected" class="bg-success" v-bind:class="{'hidden': hideConnectionMsg}" v-if="connected">
-        <i class="fa fa-check"></i> Connected to Server
+    <div id="wsConnection">
+      <p id="wsConnected" class="bg-success" v-bind:class="{'hidden': hideWsConnectionMsg}" v-if="wsConnected">
+        <i class="fa fa-check"></i> Connected to remoteAudio Client
       </p>
-      <p id="no-connection" class="bg-danger" v-else="connected">
-        <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Connecting to Server
+      <p id="no-wsConnection" class="bg-danger" v-else="wsConnected">
+        <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Connecting to remoteAudio client
       </p>
     </div>
   </div>
   <!-- /.container -->
+  <script src="/static/js/jquery-3.3.1.min.js"></script>
   <script src="/static/js/chart.js"></script>
-  <script src="/static/js/vue.js"></script>
-  <script src="/static/js/jquery-2.2.3.min.js"></script>
+  <script src="/static/js/vue.min.js"></script>
+  <script src="/static/js/vue-resource.min.js"></script>
   <script src="/static/js/nouislider.min.js"></script>
   <script src="/static/js/bootstrap.min.js"></script>
-  <script src="/static/js/material.js"></script>
-  <script src="/static/js/ripples.js"></script>
+  <script src="/static/js/material.min.js"></script>
+  <script src="/static/js/ripples.min.js"></script>
   <script src="/static/js/reconnecting-websocket.js"></script>
   <script src="/static/js/app.js"></script>
 </body>

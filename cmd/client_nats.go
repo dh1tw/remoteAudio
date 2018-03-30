@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dh1tw/remoteAudio/webserver"
+
 	// _ "net/http/pprof"
 
 	"github.com/dh1tw/remoteAudio/audio/chain"
@@ -37,6 +39,8 @@ func init() {
 	natsClientCmd.Flags().StringP("password", "P", "", "NATS Password")
 	natsClientCmd.Flags().StringP("username", "U", "", "NATS Username")
 	natsClientCmd.Flags().StringP("radio", "Y", "myradio", "Radio ID")
+	natsClientCmd.Flags().StringP("http-host", "w", "127.0.0.1", "Host (use '0.0.0.0' to listen on all network adapters)")
+	natsClientCmd.Flags().StringP("http-port", "k", "9090", "Port to access the web interface")
 }
 
 func natsAudioClient(cmd *cobra.Command, args []string) {
@@ -65,6 +69,8 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	viper.BindPFlag("nats.password", cmd.Flags().Lookup("password"))
 	viper.BindPFlag("nats.username", cmd.Flags().Lookup("username"))
 	viper.BindPFlag("nats.radio", cmd.Flags().Lookup("radio"))
+	viper.BindPFlag("http.host", cmd.Flags().Lookup("http-host"))
+	viper.BindPFlag("http.port", cmd.Flags().Lookup("http-port"))
 
 	// profiling server
 	// go func() {
@@ -102,6 +108,9 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	natsPassword := viper.GetString("nats.password")
 	natsBrokerURL := viper.GetString("nats.broker-url")
 	natsBrokerPort := viper.GetInt("nats.broker-port")
+
+	httpHost := viper.GetString("http.host")
+	httpPort := viper.GetInt("http.port")
 
 	portaudio.Initialize()
 	defer portaudio.Terminate()
@@ -210,7 +219,14 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	tx.Sinks.EnableSink("toNetwork", true)
 	tx.Sources.SetSource("mic")
 
-	// go nc.restServer()
+	remoteRxOn := true
+
+	web, err := webserver.NewWebServer(httpHost, httpPort, remoteRxOn, rx, tx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go web.Start()
 
 	for {
 		select {

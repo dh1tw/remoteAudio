@@ -1,5 +1,6 @@
-$.material.init();
+Vue.config.devtools = true
 
+$.material.init();
 
 
 var vm = new Vue({
@@ -7,26 +8,56 @@ var vm = new Vue({
 
     data: {
         ws: null, // Our websocket
-        tx: false,
+        rxOn: false,
+        txOn: false,
         txUser: null,
-        serverOnline: false,
-        serverAudioOn: false,
-        connectionStatus: false,
-        connected: false,
-        hideConnectionMsg: false,
-        blockVolumeUpdate: false,
+        connectionState: false,
+        radioState: false,
+        blockRxVolumeUpdate: false,
+        blockTxVolumeUpdate: false,
+        wsConnected: false,
+        hideWsConnectionMsg: false,
     },
-    created: function () {
+    mounted: function () {
         var self = this;
         this.ws = new ReconnectingWebSocket('ws://' + window.location.host + '/ws');
         this.ws.addEventListener('message', function (e) {
             var msg = JSON.parse(e.data);
-            if (msg.connectionStatus !== null) {
-                self.connectionStatus = msg.connectionStatus;
+            console.log(e.data);
+
+            if (msg.rx_on !== null) {
+                self.rxOn = msg.rx_on;
             }
-            if (msg.txUser !== null) {
-                self.txUser = msg.txUser;
+
+            if (msg.tx_on !== null) {
+                self.txOn = msg.tx_on;
             }
+
+            if (msg.rx_volume !== null) {
+                // only allow updates if we are not modifying the handle
+                if (!self.blockRxVolumeUpdate) {
+                    rxVolumeSlider.noUiSlider.set(msg.rx_volume);
+                }
+            }
+
+            if (msg.tx_volume !== null) {
+                if (!self.blockTxVolumeUpdate) {
+                    txVolumeSlider.noUiSlider.set(msg.tx_volume);
+                }
+            }
+
+            if (msg.tx_user !== null) {
+                self.txUser = msg.tx_user;
+            }
+
+            if (msg.connected !== null) {
+                self.connectionState = msg.connected;
+            }
+
+            if (msg.radio_online !== null) {
+                self.radioState = msg.radio_online;
+            }
+
             if (msg.latency !== null) {
                 if (latencyChart.data.datasets[0].data.length >= 20) {
                     latencyChart.data.datasets[0].data.shift();
@@ -38,31 +69,16 @@ var vm = new Vue({
                 }
                 latencyChart.update(0.1);
             }
-            if (msg.tx !== null) {
-                self.tx = msg.tx;
-            }
-            if (msg.serverAudioOn !== null) {
-                self.serverAudioOn = msg.serverAudioOn;
-            }
-            if (msg.serverOnline !== null) {
-                self.serverOnline = msg.serverOnline;
-            }
-            if (msg.volume !== null){
-                // only allow updates if we are not modifying the handle
-                if (!self.blockVolumeUpdate){
-                    volumeSlider.noUiSlider.set(msg.volume);
-                }
-            }
         });
         this.ws.addEventListener('open', function () {
-            self.connected = true
+            self.wsConnected = true
             setTimeout(function () {
-                self.hideConnectionMsg = true;
+                self.hideWsConnectionMsg = true;
             }, 1500)
         });
         this.ws.addEventListener('close', function () {
-            self.connected = false
-            self.hideConnectionMsg = false;
+            self.wsConnected = false
+            self.hideWsConnectionMsg = false;
         });
 
     },
@@ -70,44 +86,43 @@ var vm = new Vue({
         openWebsocket: function () {
 
         },
-        sendRequestServerAudioOn: function () {
-            this.ws.send(
+        sendRxOn: function () {
+            this.$http.put("/api/rx/state",
                 JSON.stringify({
-                    serverAudioOn: !this.serverAudioOn,
+                    on: !this.rxOn,
                 }));
         },
-        sendPtt: function () {
+        sendTxOn: function () {
             // if (this.serverAudioOn) {
-            this.ws.send(
+            this.$http.put("/api/tx/state",
                 JSON.stringify({
-                    ptt: !this.tx,
+                    on: !this.txOn,
                 }));
-            // }
         },
-        sendVolume: function (value) {
-            this.ws.send(
+        sendRxVolume: function (value) {
+            this.$http.put("/api/rx/volume",
                 JSON.stringify({
-                    volume: value,
-                })
-            )
-        }
+                    volume: Math.round(value)
+                }));
+        },
+        sendTxVolume: function (value) {
+            this.$http.put("/api/tx/volume",
+                JSON.stringify({
+                    volume: Math.round(value)
+                }));
+        },
     },
-    // watch: {
-    //     volume : function(val, oldVal){
-    //         volumeSlider.set(val);
-    //     }
-    // }
 });
 
-var volumeSlider = document.getElementById('volumeSlider');
+var rxVolumeSlider = document.getElementById('rxVolumeSlider');
+var txVolumeSlider = document.getElementById('txVolumeSlider');
 
-noUiSlider.create(volumeSlider, {
+noUiSlider.create(rxVolumeSlider, {
     start: [1],
     connect: [true, false],
-    // tooltips: [ true ],
     range: {
         'min': 0,
-        'max': 2
+        'max': 100,
     },
     pips: { // Show a scale with the slider
         mode: 'steps',
@@ -116,25 +131,53 @@ noUiSlider.create(volumeSlider, {
     }
 });
 
+noUiSlider.create(txVolumeSlider, {
+    start: [1],
+    connect: [true, false],
+    range: {
+        'min': 0,
+        'max': 100,
+    },
+    pips: { // Show a scale with the slider
+        mode: 'steps',
+        stepped: true,
+        density: 5
+    }
+});
+
+// rxVolumeSlider
 // block the Volume slider to be updated through websocket while we
 // modify the slider
 $(document).ready(function () {
-    volumeSlider.noUiSlider.on('start', function (values, handle) {
-        vm.blockVolumeUpdate = true;
+    rxVolumeSlider.noUiSlider.on('start', function (values, handle) {
+        vm.blockRxVolumeUpdate = true;
+    });
+    // send updates to server
+    rxVolumeSlider.noUiSlider.on('update', function (values, handle) {
+        if (vm.blockRxVolumeUpdate) {
+            vm.sendRxVolume(Number(values[handle]));
+        }
+    });
+    //unblock the Volume slider updates through websocket
+    rxVolumeSlider.noUiSlider.on('end', function (values, handle) {
+        vm.blockRxVolumeUpdate = false;
     });
 });
 
-// send updates to server 
+// txVolumeSlider
 $(document).ready(function () {
-    volumeSlider.noUiSlider.on('update', function (values, handle) {
-        vm.sendVolume(Number(values[handle]));
+    txVolumeSlider.noUiSlider.on('start', function (values, handle) {
+        vm.blockTxVolumeUpdate = true;
     });
-});
-
-//unblock the Volume slider updates through websocket
-$(document).ready(function () {
-    volumeSlider.noUiSlider.on('end', function (values, handle) {
-        vm.blockVolumeUpdate = false;
+    // send updates to server
+    txVolumeSlider.noUiSlider.on('update', function (values, handle) {
+        if (vm.blockTxVolumeUpdate) {
+            vm.sendTxVolume(Number(values[handle]));
+        }
+    });
+    //unblock the Volume slider updates through websocket
+    txVolumeSlider.noUiSlider.on('end', function (values, handle) {
+        vm.blockTxVolumeUpdate = false;
     });
 });
 
@@ -198,12 +241,3 @@ var latencyChart = new Chart(ctx, {
         }
     }
 });
-
-
-// socket.onopen = function (event) {
-//     console.log("Socket opened successfully");
-// }
-
-// window.onbeforeunload = function (event) {
-//     socket.close();
-// }
