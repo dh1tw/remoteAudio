@@ -41,6 +41,9 @@ func init() {
 	natsClientCmd.Flags().StringP("radio", "Y", "myradio", "Radio ID")
 	natsClientCmd.Flags().StringP("http-host", "w", "127.0.0.1", "Host (use '0.0.0.0' to listen on all network adapters)")
 	natsClientCmd.Flags().StringP("http-port", "k", "9090", "Port to access the web interface")
+	natsClientCmd.Flags().Int32("tx-volume", 70, "volume of tx audio stream on startup")
+	natsClientCmd.Flags().Int32("rx-volume", 70, "volume of tx audio stream on startup")
+	natsClientCmd.Flags().BoolP("tx-on-startup", "t", false, "start sending audio on startup")
 }
 
 func natsAudioClient(cmd *cobra.Command, args []string) {
@@ -71,6 +74,9 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	viper.BindPFlag("nats.radio", cmd.Flags().Lookup("radio"))
 	viper.BindPFlag("http.host", cmd.Flags().Lookup("http-host"))
 	viper.BindPFlag("http.port", cmd.Flags().Lookup("http-port"))
+	viper.BindPFlag("audio.rx-volume", cmd.Flags().Lookup("rx-volume"))
+	viper.BindPFlag("audio.tx-volume", cmd.Flags().Lookup("tx-volume"))
+	viper.BindPFlag("audio.tx-on-startup", cmd.Flags().Lookup("tx-on-startup"))
 
 	// profiling server
 	// go func() {
@@ -104,6 +110,10 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	rxVolume := viper.GetInt("audio.rx-volume")
+	txVolume := viper.GetInt("audio.tx-volume")
+	txOnStartup := viper.GetBool("audio.tx-on-startup")
+
 	natsUsername := viper.GetString("nats.username")
 	natsPassword := viper.GetString("nats.password")
 	natsBrokerURL := viper.GetString("nats.broker-url")
@@ -126,6 +136,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	speaker.SetVolume(float32(rxVolume) / 100)
 
 	mic, err := scReader.NewScReader(
 		scReader.DeviceName(iDeviceName),
@@ -186,6 +197,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	toNetwork.SetVolume(float32(txVolume) / 100)
 
 	rx, err := chain.NewChain(chain.DefaultSource("fromNetwork"),
 		chain.DefaultSink("speaker"))
@@ -215,8 +227,9 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	rx.Sinks.EnableSink("speaker", true)
 	rx.Sources.SetSource("fromNetwork")
 
-	// set callback to process audio to be send to the radio
-	tx.Sinks.EnableSink("toNetwork", true)
+	if txOnStartup {
+		tx.Sinks.EnableSink("toNetwork", true)
+	}
 	tx.Sources.SetSource("mic")
 
 	remoteRxOn := true
