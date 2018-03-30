@@ -23,7 +23,6 @@ var vm = new Vue({
         this.ws = new ReconnectingWebSocket('ws://' + window.location.host + '/ws');
         this.ws.addEventListener('message', function (e) {
             var msg = JSON.parse(e.data);
-            console.log(e.data);
 
             if (msg.rx_on !== null) {
                 self.rxOn = msg.rx_on;
