@@ -1,47 +1,47 @@
 platform:
   - x86
 environment:
-  global:
-    APPVEYOR_OS_NAME: windows
-    GOPATH: c:\gopath
-    CGO_ENABLED: 1
-    GOOS: windows
+  APPVEYOR_OS_NAME: windows
+  GOPATH: c:\gopath
+  CGO_ENABLED: 1
+  GOOS: windows
+  MSYS_PATH: c:\msys64
+  CGO_CFLAGS_ALLOW: -mthreads
+
   matrix:
-    #- MSYS2_ARCH: x86_64
-    #  MSYS2_BITS: 64
-    #  MSYSTEM: MSYS2
-    #  METHOD: ci
-    #- MSYS2_ARCH: i686
-    #  MSYS2_BITS: 32
-    #  MSYSTEM: MINGW32
-    #  METHOD: cross
-    # GOARCH: amd64
     - MSYS2_ARCH: i686
       MSYS2_BITS: 32
       MSYSTEM: MINGW32
-      METHOD: cross
-      MSYS2_BASEVER: 20150916
       GOARCH: 386
+    - MSYS2_ARCH: x86_64
+      MSYS2_BITS: 64
+      MSYSTEM: MINGW64
+      GOARCH: amd64
 
-cache: 
-  - 'msys2-base-%MSYS2_ARCH%-%MSYS2_BASEVER%.tar.xz'
-clone_folder: c:\gopath\src\github.com\dh1tw\remoteAudio
 clone_script:
-    - cmd: git clone --recursive -q --branch=%APPVEYOR_REPO_BRANCH% https://github.com/%APPVEYOR_REPO_NAME%.git %APPVEYOR_BUILD_FOLDER%
-    - cmd: cd %APPVEYOR_BUILD_FOLDER%
-    - cmd: git checkout -qf %APPVEYOR_REPO_COMMIT%
-    - cmd: git submodule update --init --recursive
-    - cmd: git fetch --tags
+  - cmd: SET APPVEYOR_BUILD_FOLDER=c:\gopath\src\github.com\dh1tw\remoteAudio
+  - cmd: git clone --recursive -q --branch=%APPVEYOR_REPO_BRANCH% https://github.com/%APPVEYOR_REPO_NAME%.git %APPVEYOR_BUILD_FOLDER%
+  - cmd: cd %APPVEYOR_BUILD_FOLDER%
+  - cmd: git checkout -qf %APPVEYOR_REPO_COMMIT%
+  - cmd: git submodule update --init --recursive
+  - cmd: git fetch --tags
+  - cmd: dir %APPVEYOR_BUILD_FOLDER%
+
 install:
+  - cmd: ECHO %GOPATH%
+  - cmd: ECHO %GOROOT%
+  - cmd: ECHO %GOOS%
+  - cmd: ECHO %GOARCH%
+  - cmd: ECHO %PATH%
+  - cmd: go version
+  - cmd: go env
   - .\ci\install-deps-windows.bat
-  - echo %GOOS%
-  - echo %GOARCH%
   - cmd: SET PATH=%PATH%;/c/gopath/bin;/c/gopath/bin/windows_386
+  - go get -v github.com/gogo/protobuf/protoc-gen-gofast
+  - go get -v github.com/GeertJohan/go.rice
+  - go get -v github.com/GeertJohan/go.rice/rice
   - '%MSYS_PATH%\usr\bin\bash -lc "cd /c/gopath/src/github.com/dh1tw/remoteAudio && go get -v ./..."'
-  - '%MSYS_PATH%\usr\bin\bash -lc "go get -v github.com/gogo/protobuf/protoc-gen-gofast"'
-  - '%MSYS_PATH%\usr\bin\bash -lc "go get -v github.com/GeertJohan/go.rice"'
-  - '%MSYS_PATH%\usr\bin\bash -lc "go get -v github.com/GeertJohan/go.rice/rice"'
-  
+
 build_script:
   - '%MSYS_PATH%\usr\bin\bash -lc "cd /c/gopath/src/github.com/dh1tw/remoteAudio && make dist"'
 after_build:
@@ -54,7 +54,7 @@ deploy:
   provider: GitHub
   auth_token:
     secure: j2rLmFvQb9PPmy5aj0OXu2JzSyLEsusZDPMaAnmkYk+wQMjJm+xW2atWuvGhvNZY
-  artifact: remoteAudio            # upload all NuGet packages to release assets
+  artifact: remoteAudio
   draft: false
   prerelease: false
   on:
