@@ -265,3 +265,12 @@ func (pbw *PbWriter) Flush() {
 
 	pbw.stash = []float32{}
 }
+
+// SetToWireCb allows to set a callback which will be called whenever
+// the data has been serialized and is ready to be send on the wire.
+func (pbw *PbWriter) SetToWireCb(cb func([]byte)) {
+	pbw.Lock()
+	defer pbw.Unlock()
+
+	pbw.options.ToWireCb = cb
+}
