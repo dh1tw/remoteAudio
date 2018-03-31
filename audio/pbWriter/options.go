@@ -14,6 +14,7 @@ type Options struct {
 	Samplerate      float64
 	FramesPerBuffer int
 	UserID          string
+	ToWireCb        func([]byte)
 }
 
 // Channels is a functional option to set the amount of channels to be used
@@ -57,5 +58,13 @@ func Encoder(enc audiocodec.Encoder) Option {
 func UserID(s string) Option {
 	return func(args *Options) {
 		args.UserID = s
+	}
+}
+
+// ToWireCb is a functional option to set the callback which will be executed
+// when data has been serialized and is ready to be send to the network.
+func ToWireCb(cb func([]byte)) Option {
+	return func(args *Options) {
+		args.ToWireCb = cb
 	}
 }

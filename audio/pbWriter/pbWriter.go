@@ -22,7 +22,6 @@ type PbWriter struct {
 	options Options
 	enabled bool
 	buffer  []byte
-	cb      func([]byte)
 	stash   []float32
 	src     src
 	volume  float32
@@ -35,11 +34,11 @@ type src struct {
 	ratio      float64
 }
 
-// NewPbWriter is the constructor for a ProtoBufWriter. It has to be given
-// a Callback which will be called when an audio.Msg has been encoded into a
-// protobuf byte slice. Additional functional options can be passed in (e.g. the
-// audio codec to be used).
-func NewPbWriter(cb func([]byte), opts ...Option) (*PbWriter, error) {
+// NewPbWriter is the constructor for a ProtoBufWriter. The ToWireCb callback will
+// be executed when an audio.Msg has been encoded into a protobuf byte slice and
+// ready to be send to the network. Additional functional options can be passed
+// in (e.g. the audio codec to be used).
+func NewPbWriter(opts ...Option) (*PbWriter, error) {
 
 	pbw := &PbWriter{
 		options: Options{
@@ -50,7 +49,6 @@ func NewPbWriter(cb func([]byte), opts ...Option) (*PbWriter, error) {
 			UserID:          "myCallsign",
 		},
 		buffer: make([]byte, 10000),
-		cb:     cb,
 		volume: 0.7,
 	}
 
@@ -137,8 +135,8 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg) error {
 		return nil
 	}
 
-	if pbw.cb == nil {
-		return errors.New("PbWriter no callback set")
+	if pbw.options.ToWireCb == nil {
+		return nil
 	}
 
 	if pbw.options.Encoder == nil {
@@ -252,7 +250,7 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg) error {
 				log.Println(err)
 				return
 			}
-			pbw.cb(data)
+			pbw.options.ToWireCb(data)
 		}
 
 	}()
