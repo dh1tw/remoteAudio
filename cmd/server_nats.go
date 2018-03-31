@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 	"strings"
 	"time"
 
@@ -253,21 +252,6 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	// initalize our service
 	rs.Init()
 
-	// Channel to handle OS signals
-	osSignals := make(chan os.Signal, 1)
-
-	//subscribe to os.Interrupt (CTRL-C signal)
-	signal.Notify(osSignals, os.Interrupt)
-
-	if streamOnStartup {
-		rx.Sinks.EnableSink("toNetwork", true)
-	}
-	rx.Sources.SetSource("radioAudio")
-
-	// stream immediately audio from the network to the radio
-	tx.Sources.SetSource("fromNetwork")
-	tx.Sinks.EnableSink("mic", true)
-
 	if err := br.Connect(); err != nil {
 		log.Fatal("broker:", err)
 	}
@@ -283,6 +267,16 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	// register our Rotator RPC handler
 	sbAudio.RegisterServerHandler(rs.Server(), ns)
 	ns.initialized = true
+
+	if streamOnStartup {
+		rx.Sinks.EnableSink("toNetwork", true)
+		ns.rxOn = true
+	}
+	rx.Sources.SetSource("radioAudio")
+
+	// stream immediately audio from the network to the radio
+	tx.Sources.SetSource("fromNetwork")
+	tx.Sinks.EnableSink("mic", true)
 
 	if err := rs.Run(); err != nil {
 		log.Println(err)
@@ -386,20 +380,46 @@ func (ns *natsServer) GetCapabilities(ctx context.Context, in *sbAudio.None, out
 }
 
 func (ns *natsServer) GetState(ctx context.Context, in *sbAudio.None, out *sbAudio.State) error {
-	out.RxOn = ns.rxOn
-	out.TxUser = ns.txUser
+	rxOn, txUser, err := ns.getState()
+	if err != nil {
+		return err
+	}
+	out.RxOn = rxOn
+	out.TxUser = txUser
 	return nil
 }
 
 func (ns *natsServer) StartStream(ctx context.Context, in, out *sbAudio.None) error {
-	return ns.rx.Sinks.EnableSink("toNetwork", true)
+	if err := ns.rx.Sinks.EnableSink("toNetwork", true); err != nil {
+		return fmt.Errorf("StartStream: %v", err)
+	}
+	ns.rxOn = true
+	if err := ns.sendState(); err != nil {
+		return fmt.Errorf("StartStream (send_state): %v", err)
+	}
+	return nil
 }
 
 func (ns *natsServer) StopStream(ctx context.Context, in, out *sbAudio.None) error {
-	return ns.rx.Sinks.EnableSink("toNetwork", false)
+	if err := ns.rx.Sinks.EnableSink("toNetwork", false); err != nil {
+		return fmt.Errorf("StopStream: %v", err)
+	}
+	ns.rxOn = false
+	if err := ns.sendState(); err != nil {
+		return fmt.Errorf("StopStream (send_state): %v", err)
+	}
+	return nil
 }
 
 func (ns *natsServer) Ping(ctx context.Context, in, out *sbAudio.PingPong) error {
 	out = in
 	return nil
+}
+
+func (ns *natsServer) getState() (bool, string, error) {
+	_, rxOn, err := ns.rx.Sinks.Sink("toNetwork")
+	if err != nil {
+		return false, "", err
+	}
+	return rxOn, "dummyUser", nil
 }
