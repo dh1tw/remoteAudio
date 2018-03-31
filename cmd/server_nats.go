@@ -39,6 +39,7 @@ func init() {
 	natsServerCmd.Flags().StringP("password", "P", "", "NATS Password")
 	natsServerCmd.Flags().StringP("username", "U", "", "NATS Username")
 	natsServerCmd.Flags().StringP("radio", "Y", "myradio", "Radio ID")
+	natsClientCmd.Flags().BoolP("stream-on-startup", "t", false, "start streaming audio on startup")
 }
 
 func natsAudioServer(cmd *cobra.Command, args []string) {
@@ -67,6 +68,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	viper.BindPFlag("nats.password", cmd.Flags().Lookup("password"))
 	viper.BindPFlag("nats.username", cmd.Flags().Lookup("username"))
 	viper.BindPFlag("nats.radio", cmd.Flags().Lookup("radio"))
+	viper.BindPFlag("audio.stream-on-startup", cmd.Flags().Lookup("stream-on-startup"))
 
 	// profiling server
 	// go func() {
@@ -100,6 +102,8 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	streamOnStartup := viper.GetBool("audio.stream-on-startup")
 
 	natsUsername := viper.GetString("nats.username")
 	natsPassword := viper.GetString("nats.password")
@@ -204,8 +208,9 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	//subscribe to os.Interrupt (CTRL-C signal)
 	signal.Notify(osSignals, os.Interrupt)
 
-	// start streaming to the network immediately
-	rx.Sinks.EnableSink("toNetwork", true)
+	if streamOnStartup {
+		rx.Sinks.EnableSink("toNetwork", true)
+	}
 	rx.Sources.SetSource("radioAudio")
 
 	// stream immediately audio from the network to the radio

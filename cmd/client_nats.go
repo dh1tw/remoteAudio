@@ -42,8 +42,8 @@ func init() {
 	natsClientCmd.Flags().StringP("http-host", "w", "127.0.0.1", "Host (use '0.0.0.0' to listen on all network adapters)")
 	natsClientCmd.Flags().StringP("http-port", "k", "9090", "Port to access the web interface")
 	natsClientCmd.Flags().Int32("tx-volume", 70, "volume of tx audio stream on startup")
-	natsClientCmd.Flags().Int32("rx-volume", 70, "volume of tx audio stream on startup")
-	natsClientCmd.Flags().BoolP("tx-on-startup", "t", false, "start sending audio on startup")
+	natsClientCmd.Flags().Int32("rx-volume", 70, "volume of rx audio stream on startup")
+	natsClientCmd.Flags().BoolP("stream-on-startup", "t", false, "start sending audio on startup")
 }
 
 func natsAudioClient(cmd *cobra.Command, args []string) {
@@ -76,7 +76,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	viper.BindPFlag("http.port", cmd.Flags().Lookup("http-port"))
 	viper.BindPFlag("audio.rx-volume", cmd.Flags().Lookup("rx-volume"))
 	viper.BindPFlag("audio.tx-volume", cmd.Flags().Lookup("tx-volume"))
-	viper.BindPFlag("audio.tx-on-startup", cmd.Flags().Lookup("tx-on-startup"))
+	viper.BindPFlag("audio.stream-on-startup", cmd.Flags().Lookup("stream-on-startup"))
 
 	// profiling server
 	// go func() {
@@ -112,7 +112,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	rxVolume := viper.GetInt("audio.rx-volume")
 	txVolume := viper.GetInt("audio.tx-volume")
-	txOnStartup := viper.GetBool("audio.tx-on-startup")
+	streamOnStartup := viper.GetBool("audio.stream-on-startup")
 
 	natsUsername := viper.GetString("nats.username")
 	natsPassword := viper.GetString("nats.password")
@@ -227,7 +227,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	rx.Sinks.EnableSink("speaker", true)
 	rx.Sources.SetSource("fromNetwork")
 
-	if txOnStartup {
+	if streamOnStartup {
 		tx.Sinks.EnableSink("toNetwork", true)
 	}
 	tx.Sources.SetSource("mic")

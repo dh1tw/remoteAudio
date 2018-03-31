@@ -25,12 +25,12 @@ max-bandwidth = "wideband"
 
 [audio]
 codec = "opus"
-rx-buffer-length = 10
+rx-buffer-length = 10 # 10x10ms (@framesize=480 & samplerate=48kHz)
 # opus does not accept arbitrary frame length! Check OPUS documentation
-frame-length = 960  #20ms @ 48kHz (should work for most cases)
+frame-length = 480  #10ms @ 48kHz (should work for most cases)
 tx-volume = 70
 rx-volume = 70
-tx-on-startup = true
+stream-on-startup = false
 
 [http]
 host = "localhost"
