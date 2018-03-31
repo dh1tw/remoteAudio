@@ -18,6 +18,7 @@ import (
 	"github.com/dh1tw/remoteAudio/audio/scWriter"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
+	"github.com/gogo/protobuf/proto"
 	"github.com/gordonklaus/portaudio"
 	micro "github.com/micro/go-micro"
 	"github.com/micro/go-micro/broker"
@@ -174,6 +175,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	ns := &natsServer{
 		rxAudioTopic: fmt.Sprintf("%s.rx", strings.Replace(serviceName, " ", "_", -1)),
 		txAudioTopic: fmt.Sprintf("%s.tx", strings.Replace(serviceName, " ", "_", -1)),
+		stateTopic:   fmt.Sprintf("%s.state", strings.Replace(serviceName, " ", "_", -1)),
 		service:      rs,
 	}
 
@@ -299,7 +301,10 @@ type natsServer struct {
 	fromNetwork  *pbReader.PbReader
 	rxAudioTopic string
 	txAudioTopic string
+	stateTopic   string
 	initialized  bool
+	rxOn         bool
+	txUser       string
 }
 
 func (ns *natsServer) enqueueFromWire(pub broker.Publication) error {
@@ -312,6 +317,8 @@ func (ns *natsServer) enqueueFromWire(pub broker.Publication) error {
 	return ns.fromNetwork.Enqueue(pub.Message().Body)
 }
 
+// Callback which is called by pbWriter to push the audio
+// packets to the network
 func (ns *natsServer) toWireCb(data []byte) {
 
 	if !ns.initialized {
@@ -326,8 +333,6 @@ func (ns *natsServer) toWireCb(data []byte) {
 		return
 	}
 
-	// Callback which is called by pbWriter to push the audio
-	// packets to the network
 	msg := &broker.Message{
 		Body: data,
 	}
@@ -338,10 +343,51 @@ func (ns *natsServer) toWireCb(data []byte) {
 	}
 }
 
+func (ns *natsServer) sendState() error {
+
+	if !ns.initialized {
+		return nil
+	}
+
+	if ns.service == nil {
+		return nil
+	}
+
+	if ns.service.Options().Broker == nil {
+		return nil
+	}
+
+	state := sbAudio.State{
+		RxOn:   ns.rxOn,
+		TxUser: ns.txUser,
+	}
+
+	data, err := proto.Marshal(&state)
+	if err != nil {
+		return err
+	}
+
+	msg := &broker.Message{
+		Body: data,
+	}
+
+	err = ns.service.Options().Broker.Publish(ns.stateTopic, msg)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (ns *natsServer) GetCapabilities(ctx context.Context, in *sbAudio.None, out *sbAudio.Capabilities) error {
 	out.Name = ns.name
 	out.RxStreamAddress = ns.rxAudioTopic
 	out.TxStreamAddress = ns.txAudioTopic
+	return nil
+}
+
+func (ns *natsServer) GetState(ctx context.Context, in *sbAudio.None, out *sbAudio.State) error {
+	out.RxOn = ns.rxOn
+	out.TxUser = ns.txUser
 	return nil
 }
 
