@@ -9,6 +9,7 @@ all: build
 
 build:
 	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
+	protoc --proto_path=./icd --micro_out=./sb_audio ./icd/audio.proto
 	cd webserver; \
 	rice embed-go
 	go build -v -ldflags="-X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
@@ -17,6 +18,7 @@ build:
 # strip off dwraf table - used for travis CI
 dist:
 	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
+	protoc --proto_path=./icd --micro_out=./sb_audio ./icd/audio.proto
 	cd webserver; \
 	rice embed-go
 	go build -v -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
@@ -35,6 +37,7 @@ lint:
 
 install:
 	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
+	protoc --proto_path=./icd --micro_out=./sb_audio ./icd/audio.proto
 	cd webserver; \
 	rice embed-go
 	go install -v -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \

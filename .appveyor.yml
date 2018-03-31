@@ -37,9 +37,11 @@ install:
   - cmd: go env
   - .\ci\install-deps-windows.bat
   - cmd: SET PATH=%PATH%;/c/gopath/bin;/c/gopath/bin/windows_386
-  - go get -v github.com/gogo/protobuf/protoc-gen-gofast
   - go get -v github.com/GeertJohan/go.rice
   - go get -v github.com/GeertJohan/go.rice/rice
+  - go get -v github.com/gogo/protobuf/protoc-gen-gofast
+  - go get -v github.com/micro/protoc-gen-micro
+  # - TBD generate proto files!
   - '%MSYS_PATH%\usr\bin\bash -lc "cd /c/gopath/src/github.com/dh1tw/remoteAudio && go get -v ./..."'
 
 build_script:

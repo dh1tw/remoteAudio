@@ -5,10 +5,18 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dh1tw/remoteAudio/webserver"
+	"github.com/micro/go-micro/broker"
+	"github.com/micro/go-micro/client"
+	"github.com/micro/go-micro/registry"
+	"github.com/micro/go-micro/transport"
+	natsBroker "github.com/micro/go-plugins/broker/nats"
+	natsReg "github.com/micro/go-plugins/registry/nats"
+	"github.com/micro/go-plugins/selector/named"
+	natsTr "github.com/micro/go-plugins/transport/nats"
 
 	// _ "net/http/pprof"
 
@@ -19,7 +27,7 @@ import (
 	"github.com/dh1tw/remoteAudio/audio/scWriter"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	"github.com/gordonklaus/portaudio"
-	"github.com/nats-io/go-nats"
+	"github.com/nats-io/nats"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -121,9 +129,57 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	httpHost := viper.GetString("http.host")
 	httpPort := viper.GetInt("http.port")
+	natsAddr := fmt.Sprintf("nats://%s:%v", natsBrokerURL, natsBrokerPort)
 
 	portaudio.Initialize()
 	defer portaudio.Terminate()
+
+	// start from default nats config and add the common options
+	nopts := nats.GetDefaultOptions()
+	nopts.Servers = []string{natsAddr}
+	nopts.User = natsUsername
+	nopts.Password = natsPassword
+
+	disconnectedHdlr := func(conn *nats.Conn) {
+		log.Println("connection to nats broker closed")
+		// connClosed <- struct{}{}
+	}
+
+	errorHdlr := func(conn *nats.Conn, sub *nats.Subscription, err error) {
+		log.Printf("Error Handler called (%s): %s", sub.Subject, err)
+	}
+	nopts.AsyncErrorCB = errorHdlr
+
+	regNatsOpts := nopts
+	brNatsOpts := nopts
+	trNatsOpts := nopts
+	regNatsOpts.DisconnectedCB = disconnectedHdlr
+	regNatsOpts.Name = "remoteAudio.client:registry"
+	brNatsOpts.Name = "remoteAudio.client:broker"
+	trNatsOpts.Name = "remoteAudio.client:transport"
+
+	regTimeout := registry.Timeout(time.Second * 2)
+	trTimeout := transport.Timeout(time.Second * 2)
+
+	reg := natsReg.NewRegistry(natsReg.Options(regNatsOpts), regTimeout)
+	tr := natsTr.NewTransport(natsTr.Options(trNatsOpts), trTimeout)
+	br := natsBroker.NewBroker(natsBroker.Options(brNatsOpts))
+	cl := client.NewClient(
+		client.Broker(br),
+		client.Transport(tr),
+		client.Registry(reg),
+		client.PoolSize(1),
+		client.PoolTTL(time.Hour*8760), // one year - don't TTL our connection
+		client.Selector(named.NewSelector()),
+		// client.Selector(cache.NewSelector(selector.Registry(reg))),
+	)
+
+	nc := natsClient{
+		broker:       br,
+		client:       cl,
+		rxAudioTopic: fmt.Sprintf("shackbus.radio.%s.audio.rx", viper.GetString("nats.radio")),
+		txAudioTopic: fmt.Sprintf("shackbus.radio.%s.audio.tx", viper.GetString("nats.radio")),
+	}
 
 	speaker, err := scWriter.NewScWriter(
 		scWriter.DeviceName(oDeviceName),
@@ -154,29 +210,6 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	natsc, err := nats.Connect("nats://"+natsBrokerURL+":"+strconv.Itoa(natsBrokerPort),
-		nats.UserInfo(natsUsername, natsPassword))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// subscribe to the audio topic and enqueue the raw data into the pbReader
-	natsc.Subscribe("fromRadio", func(m *nats.Msg) {
-		err := fromNetwork.Enqueue(m.Data)
-		if err != nil {
-			log.Println(err)
-		}
-	})
-
-	// Callback which is called by pbWriter to push the audio
-	// packets to the network
-	toWireCb := func(data []byte) {
-		err := natsc.Publish("toRadio", data)
-		if err != nil {
-			log.Println(err)
-		}
-	}
-
 	// opus Encoder for PbWriter
 	opusEncoder, err := opus.NewEncoder(
 		opus.Bitrate(opusBitrate),
@@ -187,13 +220,15 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		opus.MaxBandwidth(opusMaxBandwidth),
 	)
 
-	toNetwork, err := pbWriter.NewPbWriter(toWireCb,
+	toNetwork, err := pbWriter.NewPbWriter(
 		pbWriter.Encoder(opusEncoder),
 		pbWriter.Samplerate(iSamplerate),
 		pbWriter.Channels(iChannels),
 		pbWriter.FramesPerBuffer(audioFramesPerBuffer),
 		pbWriter.UserID(natsUsername),
+		pbWriter.ToWireCb(nc.toWireCb),
 	)
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -217,6 +252,10 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	tx.Sources.AddSource("mic", mic)
 	tx.Sinks.AddSink("toNetwork", toNetwork, false)
 
+	nc.rx = rx
+	nc.tx = tx
+	nc.fromNetwork = fromNetwork
+
 	// Channel to handle OS signals
 	osSignals := make(chan os.Signal, 1)
 
@@ -239,7 +278,18 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	if err := br.Connect(); err != nil {
+		log.Fatal("broker:", err)
+	}
+
+	if err := cl.Init(); err != nil {
+		log.Fatal(err)
+		return
+	}
+
 	go web.Start()
+
+	nc.initialized = true
 
 	for {
 		select {
@@ -251,6 +301,44 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 				return
 			}
 		}
+	}
+}
+
+type natsClient struct {
+	client       client.Client
+	broker       broker.Broker
+	rx           *chain.Chain
+	tx           *chain.Chain
+	fromNetwork  *pbReader.PbReader
+	rxAudioTopic string
+	txAudioTopic string
+	initialized  bool
+}
+
+func (nc *natsClient) enqueueFromWire(pub broker.Publication) error {
+	if nc.fromNetwork == nil {
+		return nil
+	}
+	if !nc.initialized {
+		return nil
+	}
+	return nc.fromNetwork.Enqueue(pub.Message().Body)
+}
+
+func (nc *natsClient) toWireCb(data []byte) {
+
+	if !nc.initialized {
+		return
+	}
+
+	// Callback which is called by pbWriter to push the audio
+	// packets to the network
+	msg := &broker.Message{
+		Body: data,
+	}
+	err := nc.broker.Publish(nc.txAudioTopic, msg)
+	if err != nil {
+		log.Println(err)
 	}
 }
 
