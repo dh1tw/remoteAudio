@@ -248,6 +248,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 
 	ns.rx = rx
 	ns.tx = tx
+	ns.fromNetwork = fromNetwork
 
 	// initalize our service
 	rs.Init()
@@ -305,9 +306,11 @@ func (ns *natsServer) enqueueFromWire(pub broker.Publication) error {
 	if ns.fromNetwork == nil {
 		return nil
 	}
+
 	if !ns.initialized {
 		return nil
 	}
+
 	return ns.fromNetwork.Enqueue(pub.Message().Body)
 }
 
