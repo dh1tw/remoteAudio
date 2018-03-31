@@ -1,8 +1,9 @@
 #!/bin/bash
 
+
 env GOOS=$GIMME_OS GOARCH=$GIMME_ARCH go get github.com/gogo/protobuf/protoc-gen-gofast
-env GOOS=$GIMME_OS GOARCH=$GIMME_ARCH go get github.com/GeertJohan/go.rice/rice
 env GOOS=$GIMME_OS GOARCH=$GIMME_ARCH go get github.com/micro/protoc-gen-micro
+env GOOS=$GIMME_OS GOARCH=$GIMME_ARCH go get github.com/GeertJohan/go.rice/rice
 env GOOS=$GIMME_OS GOARCH=$GIMME_ARCH go get -d ./...
 
 if [[ $GIMME_OS == 'darwin' ]]; then
