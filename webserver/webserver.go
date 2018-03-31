@@ -9,7 +9,7 @@ import (
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/cskr/pubsub"
-	"github.com/dh1tw/remoteAudio/audio/chain"
+	"github.com/dh1tw/remoteAudio/trx"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
@@ -47,9 +47,7 @@ type WebServer struct {
 	wsClients      map[*wsClient]bool
 	addWsClient    chan *wsClient
 	removeWsClient chan *wsClient
-	Tx             *chain.Chain
-	Rx             *chain.Chain
-	appState       ApplicationState
+	trx            *trx.Trx
 }
 type AudioControlState struct {
 	On *bool `json:"on"`
@@ -59,47 +57,27 @@ type AudioControlVolume struct {
 	Volume *int `json:"volume"`
 }
 
-func NewWebServer(url string, port int, remoteRxOn bool, rx, tx *chain.Chain) (*WebServer, error) {
-
-	speaker, _, err := rx.Sinks.Sink("speaker")
-	if err != nil {
-		return nil, fmt.Errorf("unable to find speaker sink")
-	}
-	speakerVol := int(speaker.Volume() * 100)
-
-	toNetwork, txOn, err := tx.Sinks.Sink("toNetwork")
-	if err != nil {
-		return nil, fmt.Errorf("unable to find protobuf serializer")
-	}
-	txVolume := int(toNetwork.Volume() * 100)
+func NewWebServer(url string, port int, trx *trx.Trx) (*WebServer, error) {
 
 	web := &WebServer{
 		url:            url,
 		port:           port,
-		Tx:             tx,
-		Rx:             rx,
 		wsClients:      make(map[*wsClient]bool),
 		addWsClient:    make(chan *wsClient),
 		removeWsClient: make(chan *wsClient),
-		appState: ApplicationState{
-			RxVolume:    speakerVol,
-			TxVolume:    txVolume,
-			TxOn:        txOn,
-			RxOn:        remoteRxOn,
-			Connected:   true,
-			RadioOnline: true,
-		},
+		trx:            trx,
 	}
 
 	return web, nil
 }
 
 func (web *WebServer) Start() {
+
 	box, err := rice.FindBox("../html")
 	if err != nil {
-		log.Println("box not found")
+		log.Fatal("webserver: box not found")
 	}
-	// box := rice.MustFindBox("../html")
+
 	fileServer := http.FileServer(box.HTTPBox())
 
 	router := mux.NewRouter().StrictSlash(true)
@@ -141,9 +119,42 @@ func (web *WebServer) Start() {
 }
 
 func (web *WebServer) updateWsClients() {
-	web.Lock()
-	defer web.Unlock()
-	data, err := json.Marshal(web.appState)
+	web.RLock()
+	defer web.RUnlock()
+
+	rxState, err := web.trx.GetRxState()
+	if err != nil {
+		log.Println(err)
+	}
+	txState, err := web.trx.GetTxState()
+	if err != nil {
+		log.Println(err)
+	}
+
+	rxVolume, err := web.trx.GetRxVolume()
+	if err != nil {
+		log.Println(err)
+	}
+
+	txVolume, err := web.trx.GetTxVolume()
+	if err != nil {
+		log.Println(err)
+	}
+
+	txUser, err := web.trx.GetTxUser()
+	if err != nil {
+		log.Println(err)
+	}
+
+	appState := ApplicationState{
+		RxOn:     rxState,
+		TxOn:     txState,
+		RxVolume: int(rxVolume * 100),
+		TxVolume: int(txVolume * 100),
+		TxUser:   txUser,
+	}
+
+	data, err := json.Marshal(appState)
 	if err != nil {
 		log.Println(err)
 	}

@@ -31,11 +31,11 @@ func (web *WebServer) webSocketHdlr(w http.ResponseWriter, req *http.Request) {
 	web.addWsClient <- wsClient
 }
 
-func (web *WebServer) txStateHdlr(w http.ResponseWriter, req *http.Request) {
+func (web *WebServer) rxStateHdlr(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-	_, active, err := web.Tx.Sinks.Sink("toNetwork")
+	state, err := web.trx.GetRxState()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -46,7 +46,7 @@ func (web *WebServer) txStateHdlr(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
 		stateCtlMsg := &AudioControlState{
-			On: &active,
+			On: &state,
 		}
 		if err := json.NewEncoder(w).Encode(stateCtlMsg); err != nil {
 			log.Println(err)
@@ -68,14 +68,59 @@ func (web *WebServer) txStateHdlr(w http.ResponseWriter, req *http.Request) {
 			w.Write([]byte("400 - invalid Request"))
 			return
 		}
-		if web.Tx.Sinks.EnableSink("toNetwork", *stateCtlMsg.On); err != nil {
+		if err := web.trx.SetRxState(*stateCtlMsg.On); err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - unable to set tx state"))
 		}
-		web.Lock()
-		web.appState.TxOn = *stateCtlMsg.On
-		web.Unlock()
+		web.updateWsClients()
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (web *WebServer) txStateHdlr(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	state, err := web.trx.GetTxState()
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - unable to find protobuf serializer sink"))
+		return
+	}
+
+	switch req.Method {
+	case "GET":
+		stateCtlMsg := &AudioControlState{
+			On: &state,
+		}
+		if err := json.NewEncoder(w).Encode(stateCtlMsg); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - unable to encode AudioControlState msg"))
+		}
+
+	case "PUT":
+		var stateCtlMsg AudioControlState
+		dec := json.NewDecoder(req.Body)
+
+		if err := dec.Decode(&stateCtlMsg); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("400 - invalid JSON"))
+			return
+		}
+		if stateCtlMsg.On == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("400 - invalid Request"))
+			return
+		}
+		if err := web.trx.SetTxState(*stateCtlMsg.On); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - unable to set tx state"))
+		}
 		web.updateWsClients()
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -86,7 +131,7 @@ func (web *WebServer) rxVolumeHdlr(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-	speaker, _, err := web.Rx.Sinks.Sink("speaker")
+	volume, err := web.trx.GetRxVolume()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -96,7 +141,7 @@ func (web *WebServer) rxVolumeHdlr(w http.ResponseWriter, req *http.Request) {
 
 	switch req.Method {
 	case "GET":
-		vol := int(speaker.Volume() * 100)
+		vol := int(volume * 100)
 		volCtlMsg := &AudioControlVolume{
 			Volume: &vol,
 		}
@@ -120,14 +165,11 @@ func (web *WebServer) rxVolumeHdlr(w http.ResponseWriter, req *http.Request) {
 			w.Write([]byte("400 - invalid Request"))
 			return
 		}
-		if speaker.SetVolume(float32(*volCtlMsg.Volume) / 100); err != nil {
+		if web.trx.SetRxVolume(float32(*volCtlMsg.Volume) / 100); err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - unable to set rx volume"))
 		}
-		web.Lock()
-		web.appState.RxVolume = *volCtlMsg.Volume
-		web.Unlock()
 		web.updateWsClients()
 
 	default:
@@ -139,7 +181,7 @@ func (web *WebServer) txVolumeHdlr(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-	toNetwork, _, err := web.Tx.Sinks.Sink("toNetwork")
+	volume, err := web.trx.GetTxVolume()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -150,7 +192,7 @@ func (web *WebServer) txVolumeHdlr(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 
 	case "GET":
-		vol := int(toNetwork.Volume() * 100)
+		vol := int(volume * 100)
 		volCtlMsg := &AudioControlVolume{
 			Volume: &vol,
 		}
@@ -172,13 +214,10 @@ func (web *WebServer) txVolumeHdlr(w http.ResponseWriter, req *http.Request) {
 			w.Write([]byte("400 - invalid Request"))
 			return
 		}
-		if toNetwork.SetVolume(float32(*volCtlMsg.Volume) / 100); err != nil {
+		if err := web.trx.SetTxVolume(float32(*volCtlMsg.Volume) / 100); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - unable to set tx volume"))
 		}
-		web.Lock()
-		web.appState.TxVolume = *volCtlMsg.Volume
-		web.Unlock()
 		web.updateWsClients()
 
 	default:

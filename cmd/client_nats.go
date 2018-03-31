@@ -6,10 +6,12 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/dh1tw/remoteAudio/proxy"
+	"github.com/dh1tw/remoteAudio/trx"
 	"github.com/dh1tw/remoteAudio/webserver"
-	"github.com/micro/go-micro/broker"
 	"github.com/micro/go-micro/client"
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/transport"
@@ -120,12 +122,13 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	rxVolume := viper.GetInt("audio.rx-volume")
 	txVolume := viper.GetInt("audio.tx-volume")
-	streamOnStartup := viper.GetBool("audio.stream-on-startup")
+	// streamOnStartup := viper.GetBool("audio.stream-on-startup")
 
 	natsUsername := viper.GetString("nats.username")
 	natsPassword := viper.GetString("nats.password")
 	natsBrokerURL := viper.GetString("nats.broker-url")
 	natsBrokerPort := viper.GetInt("nats.broker-port")
+	radioID := viper.GetString("nasts.radio")
 
 	httpHost := viper.GetString("http.host")
 	httpPort := viper.GetInt("http.port")
@@ -158,8 +161,8 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	brNatsOpts.Name = "remoteAudio.client:broker"
 	trNatsOpts.Name = "remoteAudio.client:transport"
 
-	regTimeout := registry.Timeout(time.Second * 2)
-	trTimeout := transport.Timeout(time.Second * 2)
+	regTimeout := registry.Timeout(time.Second * 10)
+	trTimeout := transport.Timeout(time.Second * 10)
 
 	reg := natsReg.NewRegistry(natsReg.Options(regNatsOpts), regTimeout)
 	tr := natsTr.NewTransport(natsTr.Options(trNatsOpts), trTimeout)
@@ -173,13 +176,6 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		client.Selector(named.NewSelector()),
 		// client.Selector(cache.NewSelector(selector.Registry(reg))),
 	)
-
-	nc := natsClient{
-		broker:       br,
-		client:       cl,
-		rxAudioTopic: fmt.Sprintf("shackbus.radio.%s.audio.rx", viper.GetString("nats.radio")),
-		txAudioTopic: fmt.Sprintf("shackbus.radio.%s.audio.tx", viper.GetString("nats.radio")),
-	}
 
 	speaker, err := scWriter.NewScWriter(
 		scWriter.DeviceName(oDeviceName),
@@ -226,7 +222,6 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		pbWriter.Channels(iChannels),
 		pbWriter.FramesPerBuffer(audioFramesPerBuffer),
 		pbWriter.UserID(natsUsername),
-		pbWriter.ToWireCb(nc.toWireCb),
 	)
 
 	if err != nil {
@@ -248,35 +243,17 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	rx.Sources.AddSource("fromNetwork", fromNetwork)
 	rx.Sinks.AddSink("speaker", speaker, false)
-
-	tx.Sources.AddSource("mic", mic)
-	tx.Sinks.AddSink("toNetwork", toNetwork, false)
-
-	nc.rx = rx
-	nc.tx = tx
-	nc.fromNetwork = fromNetwork
-
-	// Channel to handle OS signals
-	osSignals := make(chan os.Signal, 1)
-
-	//subscribe to os.Interrupt (CTRL-C signal)
-	signal.Notify(osSignals, os.Interrupt)
-
 	// start streaming to the network immediately
 	rx.Sinks.EnableSink("speaker", true)
 	rx.Sources.SetSource("fromNetwork")
 
-	if streamOnStartup {
-		tx.Sinks.EnableSink("toNetwork", true)
-	}
+	tx.Sources.AddSource("mic", mic)
+	tx.Sinks.AddSink("toNetwork", toNetwork, false)
 	tx.Sources.SetSource("mic")
 
-	remoteRxOn := true
-
-	web, err := webserver.NewWebServer(httpHost, httpPort, remoteRxOn, rx, tx)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// if streamOnStartup {
+	// 	tx.Sinks.EnableSink("toNetwork", true)
+	// }
 
 	if err := br.Connect(); err != nil {
 		log.Fatal("broker:", err)
@@ -287,9 +264,45 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	trxOpts := trx.Options{
+		Rx:          rx,
+		Tx:          tx,
+		FromNetwork: fromNetwork,
+		ToNetwork:   toNetwork,
+	}
+
+	trx, err := trx.NewTrx(trxOpts)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// skipping discovery - loading default object
+	audioSvr, err := proxy.NewAudioServer(radioID, cl)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	trx.AddServer(audioSvr)
+
+	// nc := natsClient{
+	// 	trx:    trx,
+	// 	client: cl,
+	// 	cache: serviceCache{
+	// 		cache: make(map[string]time.Time),
+	// 	},
+	// }
+
+	web, err := webserver.NewWebServer(httpHost, httpPort, trx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	go web.Start()
 
-	nc.initialized = true
+	// Channel to handle OS signals
+	osSignals := make(chan os.Signal, 1)
+	//subscribe to os.Interrupt (CTRL-C signal)
+	signal.Notify(osSignals, os.Interrupt)
 
 	for {
 		select {
@@ -305,41 +318,83 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 }
 
 type natsClient struct {
-	client       client.Client
-	broker       broker.Broker
-	rx           *chain.Chain
-	tx           *chain.Chain
-	fromNetwork  *pbReader.PbReader
-	rxAudioTopic string
-	txAudioTopic string
-	initialized  bool
+	client client.Client
+	trx    *trx.Trx
+	cache  serviceCache
 }
 
-func (nc *natsClient) enqueueFromWire(pub broker.Publication) error {
-	if nc.fromNetwork == nil {
-		return nil
-	}
-	if !nc.initialized {
-		return nil
-	}
-	return nc.fromNetwork.Enqueue(pub.Message().Body)
+type serviceCache struct {
+	sync.Mutex
+	ttl   time.Duration
+	cache map[string]time.Time
 }
 
-func (nc *natsClient) toWireCb(data []byte) {
-
-	if !nc.initialized {
+// watchRegistry is a blocking function which continously
+// checks the registry for changes (new rotators being added/updated/removed).
+func (nc *natsClient) watchRegistry() {
+	watcher, err := nc.client.Options().Registry.Watch()
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
 		return
 	}
 
-	// Callback which is called by pbWriter to push the audio
-	// packets to the network
-	msg := &broker.Message{
-		Body: data,
+	for {
+		res, err := watcher.Next()
+		if err != nil {
+			log.Println("watch error:", err)
+		}
+
+		if !isAudioServer(res.Service.Name) {
+			continue
+		}
+
+		switch res.Action {
+
+		case "create", "update":
+			// if err := w.addRotator(res.Service.Name); err != nil {
+			// 	log.Println(err)
+			// }
+			nc.cache.Lock()
+			nc.cache.cache[res.Service.Name] = time.Now()
+			nc.cache.Unlock()
+
+		case "delete":
+			// audioServerName := nameFromFQSN(res.Service.Name)
+			// r, exists := w.Rotator(rotatorName)
+			// if !exists {
+			// 	continue
+			// }
+			// r.Close()
+
+			nc.cache.Lock()
+			delete(nc.cache.cache, res.Service.Name)
+			nc.cache.Unlock()
+		}
+
+		// nc.cache.Lock()
+		// for service, timeout := range nc.cache.cache {
+		// 	if time.Since(timeout) >= nc.cache.ttl {
+		// 		// rotatorName := nameFromFQSN(service)
+		// 		// r, exists := w.Rotator(rotatorName)
+		// 		// if !exists {
+		// 		// 	continue
+		// 		// }
+		// 		// r.Close()
+		// 		delete(nc.cache.cache, res.Service.Name)
+		// 	}
+		// }
+		// nc.cache.Unlock()
 	}
-	err := nc.broker.Publish(nc.txAudioTopic, msg)
-	if err != nil {
-		log.Println(err)
+}
+
+// isAudioServer checks a serviceName string if it is a shackbus audio Server
+func isAudioServer(serviceName string) bool {
+
+	if !strings.Contains(serviceName, "shackbus.radio.audio.") {
+		return false
 	}
+	return true
 }
 
 // // GetCodec return the integer representation of a string containing the
