@@ -41,7 +41,7 @@ install:
   - go get -v github.com/GeertJohan/go.rice/rice
   - go get -v github.com/gogo/protobuf/protoc-gen-gofast
   - go get -v github.com/micro/protoc-gen-micro
-  - cmd: ECHO Generate Protobuf & Micro adapter code
+  - cmd: ECHO Generate Protobuf and go-micro adapter code
   - '%MSYS_PATH%\usr\bin\bash -lc "cd /c/gopath/src/github.com/dh1tw/remoteAudio && protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto"'
   - '%MSYS_PATH%\usr\bin\bash -lc "cd /c/gopath/src/github.com/dh1tw/remoteAudio && protoc --proto_path=./icd --micro_out=./sb_audio ./icd/audio.proto"'
   - cmd: ECHO Get application dependencies
