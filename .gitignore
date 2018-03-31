@@ -7,3 +7,4 @@ remoteAudio
 *.wav
 *.exe
 /webserver/rice-box.go
+*.sh
