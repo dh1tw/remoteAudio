@@ -58,6 +58,10 @@ func NewAudioServer(name string, client client.Client, opts ...Option) (*AudioSe
 	return as, nil
 }
 
+func (as *AudioServer) Close() {
+	as.stateSub.Unsubscribe()
+}
+
 func (as *AudioServer) Name() string {
 	as.RLock()
 	defer as.RUnlock()

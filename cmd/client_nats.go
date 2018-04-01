@@ -128,7 +128,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	natsPassword := viper.GetString("nats.password")
 	natsBrokerURL := viper.GetString("nats.broker-url")
 	natsBrokerPort := viper.GetInt("nats.broker-port")
-	radioID := viper.GetString("nats.radio")
+	// radioID := viper.GetString("nats.radio")
 
 	httpHost := viper.GetString("http.host")
 	httpPort := viper.GetInt("http.port")
@@ -145,6 +145,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	disconnectedHdlr := func(conn *nats.Conn) {
 		log.Println("connection to nats broker closed")
+		os.Exit(1)
 		// connClosed <- struct{}{}
 	}
 
@@ -277,16 +278,16 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	// skipping discovery - loading default object
-	audioSvr, err := proxy.NewAudioServer(radioID, cl)
-	if err != nil {
-		log.Fatal(err)
-	}
-	audioSvr.Name()
-	trx.AddServer(audioSvr)
-	if err := trx.SelectServer(radioID); err != nil {
-		log.Fatal(err)
-	}
+	// // skipping discovery - loading default object
+	// audioSvr, err := proxy.NewAudioServer(radioID, cl)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// audioSvr.Name()
+	// trx.AddServer(audioSvr)
+	// if err := trx.SelectServer(radioID); err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	nc := natsClient{
 		trx:    trx,
@@ -348,6 +349,7 @@ func (nc *natsClient) watchRegistry() {
 
 	for {
 		res, err := watcher.Next()
+
 		if err != nil {
 			log.Println("watch error:", err)
 		}
@@ -359,20 +361,16 @@ func (nc *natsClient) watchRegistry() {
 		switch res.Action {
 
 		case "create", "update":
-			// if err := w.addRotator(res.Service.Name); err != nil {
-			// 	log.Println(err)
-			// }
+			if err := nc.checkAndAddServer(res.Service.Name); err != nil {
+				log.Println(err)
+			}
 			nc.cache.Lock()
 			nc.cache.cache[res.Service.Name] = time.Now()
 			nc.cache.Unlock()
 
 		case "delete":
-			// audioServerName := nameFromFQSN(res.Service.Name)
-			// r, exists := w.Rotator(rotatorName)
-			// if !exists {
-			// 	continue
-			// }
-			// r.Close()
+			asName := nameFromFQSN(res.Service.Name)
+			nc.trx.RemoveServer(asName)
 
 			nc.cache.Lock()
 			delete(nc.cache.cache, res.Service.Name)
@@ -404,6 +402,33 @@ func isAudioServer(serviceName string) bool {
 	return true
 }
 
+func (nc *natsClient) checkAndAddServer(aServerName string) error {
+
+	sName := nameFromFQSN(aServerName)
+
+	_, exists := nc.trx.Server(sName)
+	if exists {
+		return nil
+	}
+
+	audioSvr, err := proxy.NewAudioServer(sName, nc.client)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	nc.trx.AddServer(audioSvr)
+
+	// if this is the only server, then make it our default
+	// and enable it
+	if len(nc.trx.Servers()) == 1 {
+		if err := nc.trx.SelectServer(sName); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	return nil
+}
+
 // // GetCodec return the integer representation of a string containing the
 // // name of an audio codec
 // func GetCodec(codec string) (int, error) {
@@ -416,3 +441,10 @@ func isAudioServer(serviceName string) bool {
 // 	errMsg := fmt.Sprintf("unknown codec: %s", codec)
 // 	return 0, errors.New(errMsg)
 // }
+
+//extract the service's name from its fully qualified service name (FQSN)
+func nameFromFQSN(serviceName string) string {
+	splitted := strings.Split(serviceName, ".")
+	name := splitted[len(splitted)-2]
+	return strings.Replace(name, "_", " ", -1)
+}

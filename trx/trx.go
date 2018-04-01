@@ -78,20 +78,43 @@ func (x *Trx) AddServer(asvr *proxy.AudioServer) {
 		return
 	}
 	x.servers[asvr.Name()] = asvr
+	log.Println("added audio server", asvr.Name())
 }
 
-func (x *Trx) RemoveServer(asvr *proxy.AudioServer) {
+// Server returns a particular AudioServer. If no
+// AudioServer exists with that name, (nil, false) will be returned.
+func (x *Trx) Server(name string) (*proxy.AudioServer, bool) {
+	x.RLock()
+	defer x.RUnlock()
+
+	svr, ok := x.servers[name]
+	return svr, ok
+}
+
+// Servers returns a list with the names of the registered
+// audio servers.
+func (x *Trx) Servers() []string {
+	x.RLock()
+	defer x.RUnlock()
+
+	list := []string{}
+	for _, aServer := range x.servers {
+		list = append(list, aServer.Name())
+	}
+	return list
+}
+
+func (x *Trx) RemoveServer(asName string) {
 	x.Lock()
 	defer x.Unlock()
 
-	if asvr == nil {
-		return
-	}
-	_, ok := x.servers[asvr.Name()]
+	_, ok := x.servers[asName]
 	if !ok {
 		return
 	}
-	delete(x.servers, asvr.Name())
+
+	delete(x.servers, asName)
+	log.Println("removed audio server", asName)
 }
 
 func (x *Trx) SelectServer(name string) error {
