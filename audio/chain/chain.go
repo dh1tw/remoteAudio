@@ -46,6 +46,7 @@ func (nc *Chain) DefaultSourceToSinkCb(data audio.Msg) {
 	err := nc.Sinks.Write(data)
 	if err != nil {
 		// handle Error -> remove source
+		log.Println(err)
 	}
 	if data.EOF {
 		// switch back to default source
