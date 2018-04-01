@@ -379,6 +379,7 @@ func (ns *natsServer) GetCapabilities(ctx context.Context, in *sbAudio.None, out
 	out.Name = ns.name
 	out.RxStreamAddress = ns.rxAudioTopic
 	out.TxStreamAddress = ns.txAudioTopic
+	out.StateUpdatesAddress = ns.stateTopic
 	return nil
 }
 
