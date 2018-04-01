@@ -81,7 +81,7 @@ func (web *WebServer) Start() {
 	fileServer := http.FileServer(box.HTTPBox())
 
 	router := mux.NewRouter().StrictSlash(true)
-	// router.HandleFunc("/audio/rx/state", web.rxStateHdlr)
+	router.HandleFunc("/api/rx/state", web.rxStateHdlr)
 	router.HandleFunc("/api/rx/volume", web.rxVolumeHdlr)
 	router.HandleFunc("/api/tx/state", web.txStateHdlr)
 	router.HandleFunc("/api/tx/volume", web.txVolumeHdlr)
