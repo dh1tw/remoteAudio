@@ -128,7 +128,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	natsPassword := viper.GetString("nats.password")
 	natsBrokerURL := viper.GetString("nats.broker-url")
 	natsBrokerPort := viper.GetInt("nats.broker-port")
-	radioID := viper.GetString("nasts.radio")
+	radioID := viper.GetString("nats.radio")
 
 	httpHost := viper.GetString("http.host")
 	httpPort := viper.GetInt("http.port")
@@ -161,8 +161,8 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	brNatsOpts.Name = "remoteAudio.client:broker"
 	trNatsOpts.Name = "remoteAudio.client:transport"
 
-	regTimeout := registry.Timeout(time.Second * 10)
-	trTimeout := transport.Timeout(time.Second * 10)
+	regTimeout := registry.Timeout(time.Second * 3)
+	trTimeout := transport.Timeout(time.Second * 3)
 
 	reg := natsReg.NewRegistry(natsReg.Options(regNatsOpts), regTimeout)
 	tr := natsTr.NewTransport(natsTr.Options(trNatsOpts), trTimeout)
@@ -242,9 +242,9 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	}
 
 	rx.Sources.AddSource("fromNetwork", fromNetwork)
-	rx.Sinks.AddSink("speaker", speaker, false)
+	// set and enable speaker as default sink
+	rx.Sinks.AddSink("speaker", speaker, true)
 	// start streaming to the network immediately
-	rx.Sinks.EnableSink("speaker", true)
 	rx.Sources.SetSource("fromNetwork")
 
 	tx.Sources.AddSource("mic", mic)
@@ -255,13 +255,13 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	// 	tx.Sinks.EnableSink("toNetwork", true)
 	// }
 
-	if err := br.Connect(); err != nil {
-		log.Fatal("broker:", err)
-	}
-
 	if err := cl.Init(); err != nil {
 		log.Fatal(err)
 		return
+	}
+
+	if err := br.Connect(); err != nil {
+		log.Fatal("broker:", err)
 	}
 
 	trxOpts := trx.Options{
@@ -269,6 +269,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		Tx:          tx,
 		FromNetwork: fromNetwork,
 		ToNetwork:   toNetwork,
+		Broker:      br,
 	}
 
 	trx, err := trx.NewTrx(trxOpts)
@@ -281,16 +282,21 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	audioSvr.Name()
 	trx.AddServer(audioSvr)
+	if err := trx.SelectServer(radioID); err != nil {
+		log.Fatal(err)
+	}
 
-	// nc := natsClient{
-	// 	trx:    trx,
-	// 	client: cl,
-	// 	cache: serviceCache{
-	// 		cache: make(map[string]time.Time),
-	// 	},
-	// }
+	nc := natsClient{
+		trx:    trx,
+		client: cl,
+		cache: serviceCache{
+			cache: make(map[string]time.Time),
+		},
+	}
+
+	go nc.watchRegistry()
 
 	web, err := webserver.NewWebServer(httpHost, httpPort, trx)
 	if err != nil {
@@ -311,6 +317,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 				// TBD: close also router (and all sinks)
 				mic.Close()
 				speaker.Close()
+
 				return
 			}
 		}
@@ -391,7 +398,7 @@ func (nc *natsClient) watchRegistry() {
 // isAudioServer checks a serviceName string if it is a shackbus audio Server
 func isAudioServer(serviceName string) bool {
 
-	if !strings.Contains(serviceName, "shackbus.radio.audio.") {
+	if !strings.Contains(serviceName, "shackbus.radio.") {
 		return false
 	}
 	return true
