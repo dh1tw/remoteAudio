@@ -2,8 +2,11 @@ package webserver
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func IndexHdlr(w http.ResponseWriter, req *http.Request) {
@@ -29,54 +32,6 @@ func (web *WebServer) webSocketHdlr(w http.ResponseWriter, req *http.Request) {
 	go wsClient.read()
 
 	web.addWsClient <- wsClient
-}
-
-func (web *WebServer) rxStateHdlr(w http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-
-	state, err := web.trx.GetRxState()
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("500 - unable to find protobuf serializer sink"))
-		return
-	}
-
-	switch req.Method {
-	case "GET":
-		stateCtlMsg := &AudioControlState{
-			On: &state,
-		}
-		if err := json.NewEncoder(w).Encode(stateCtlMsg); err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("500 - unable to encode AudioControlState msg"))
-		}
-
-	case "PUT":
-		var stateCtlMsg AudioControlState
-		dec := json.NewDecoder(req.Body)
-
-		if err := dec.Decode(&stateCtlMsg); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("400 - invalid JSON"))
-			return
-		}
-		if stateCtlMsg.On == nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("400 - invalid Request"))
-			return
-		}
-		if err := web.trx.SetRxState(*stateCtlMsg.On); err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("500 - unable to set tx state"))
-		}
-		web.updateWsClients()
-	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
 }
 
 func (web *WebServer) txStateHdlr(w http.ResponseWriter, req *http.Request) {
@@ -222,5 +177,142 @@ func (web *WebServer) txVolumeHdlr(w http.ResponseWriter, req *http.Request) {
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (web *WebServer) serverActiveHdlr(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	vars := mux.Vars(req)
+	asName := vars["server"]
+
+	_, ok := web.trx.Server(asName)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("500 - unable to find server %s", asName)))
+	}
+
+	switch req.Method {
+	case "GET":
+		active := false
+		if web.trx.SelectedServer() == asName {
+			active = true
+		}
+		activeCtlMsg := &AudioControlActive{
+			Active: &active,
+		}
+		if err := json.NewEncoder(w).Encode(activeCtlMsg); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - unable to encode AudioControlActive msg"))
+		}
+
+	case "PUT":
+		var activeCtlMsg AudioControlActive
+		dec := json.NewDecoder(req.Body)
+
+		if err := dec.Decode(&activeCtlMsg); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("400 - invalid JSON"))
+			return
+		}
+		if activeCtlMsg.Active == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("400 - invalid Request"))
+			return
+		}
+		if err := web.trx.SelectServer(asName); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf("500 - unable to select audio server %s", asName)))
+		}
+		web.updateWsClients()
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (web *WebServer) serverStateHdlr(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	vars := mux.Vars(req)
+	asName := vars["server"]
+
+	as, ok := web.trx.Server(asName)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("500 - unable to find server %s", asName)))
+	}
+
+	switch req.Method {
+	case "GET":
+		on := as.RxOn()
+		stateCtlMsg := &AudioControlState{
+			On: &on,
+		}
+		if err := json.NewEncoder(w).Encode(stateCtlMsg); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - unable to encode AudioControlState msg"))
+		}
+
+	case "PUT":
+		var stateCtlMsg AudioControlState
+		dec := json.NewDecoder(req.Body)
+
+		if err := dec.Decode(&stateCtlMsg); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("400 - invalid JSON"))
+			return
+		}
+		if stateCtlMsg.On == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("400 - invalid Request"))
+			return
+		}
+		var err error
+		if *stateCtlMsg.On {
+			err = as.StartRxStream()
+		} else {
+			err = as.StopRxStream()
+		}
+		fmt.Printf("set state of %v to %v\n", as.Name(), *stateCtlMsg.On)
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(
+				fmt.Sprintf("500 - unable to change audio server %s state to %v", asName, *stateCtlMsg.On)))
+		}
+		web.updateWsClients()
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (web *WebServer) serverHdlr(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	vars := mux.Vars(req)
+	asName := vars["server"]
+
+	as, ok := web.trx.Server(asName)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("500 - unable to find server %s", asName)))
+	}
+
+	serverMsg := &AudioServer{
+		Name:   as.Name(),
+		TxUser: as.TxUser(),
+		On:     as.RxOn(),
+		// Latency: as.Latency();
+	}
+	if err := json.NewEncoder(w).Encode(serverMsg); err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - unable to encode AudioControlState msg"))
 	}
 }

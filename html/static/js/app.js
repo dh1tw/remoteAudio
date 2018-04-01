@@ -8,25 +8,26 @@ var vm = new Vue({
 
     data: {
         ws: null, // Our websocket
-        rxOn: false,
         txOn: false,
         txUser: null,
         connectionState: false,
-        radioState: false,
         blockRxVolumeUpdate: false,
         blockTxVolumeUpdate: false,
+        audioServers: {},
+        selectedAudioServer: "",
         wsConnected: false,
         hideWsConnectionMsg: false,
+    },
+    components: {
+        'audioservers': AudioServers,
+        'dummy': Dummy,
     },
     mounted: function () {
         var self = this;
         this.ws = new ReconnectingWebSocket('ws://' + window.location.host + '/ws');
         this.ws.addEventListener('message', function (e) {
             var msg = JSON.parse(e.data);
-
-            if (msg.rx_on !== null) {
-                self.rxOn = msg.rx_on;
-            }
+            console.log(msg);
 
             if (msg.tx_on !== null) {
                 self.txOn = msg.tx_on;
@@ -45,29 +46,33 @@ var vm = new Vue({
                 }
             }
 
-            if (msg.tx_user !== null) {
-                self.txUser = msg.tx_user;
-            }
-
             if (msg.connected !== null) {
                 self.connectionState = msg.connected;
             }
 
-            if (msg.radio_online !== null) {
-                self.radioState = msg.radio_online;
+            if (msg.audio_servers !== null) {
+                for (var i = 0; i < msg.audio_servers.length; i++) {
+                    self.addAudioServer(msg.audio_servers[i])
+                }
             }
 
-            if (msg.latency !== null) {
-                if (latencyChart.data.datasets[0].data.length >= 20) {
-                    latencyChart.data.datasets[0].data.shift();
+            if (msg.selected_server !== null) {
+                if (msg.selected_server !== this.selectedAudioServer){
+                    self.selectServer(msg.selected_server);
                 }
-                if (msg.ping > 500) {
-                    latencyChart.data.datasets[0].data.push(500); // truncate
-                } else {
-                    latencyChart.data.datasets[0].data.push(msg.latency);
-                }
-                latencyChart.update(0.1);
             }
+
+            // if (msg.latency !== null) {
+            //     if (latencyChart.data.datasets[0].data.length >= 20) {
+            //         latencyChart.data.datasets[0].data.shift();
+            //     }
+            //     if (msg.ping > 500) {
+            //         latencyChart.data.datasets[0].data.push(500); // truncate
+            //     } else {
+            //         latencyChart.data.datasets[0].data.push(msg.latency);
+            //     }
+            //     latencyChart.update(0.1);
+            // }
         });
         this.ws.addEventListener('open', function () {
             self.wsConnected = true
@@ -85,12 +90,45 @@ var vm = new Vue({
         openWebsocket: function () {
 
         },
-        sendRxOn: function () {
-            this.$http.put("/api/rx/state",
+        // add a rotator
+        addAudioServer: function (as) {
+
+            // if (!(as.name in this.audioServers)) {
+                this.$set(this.audioServers, as.name, as);
+            // }
+
+            // if this is the first rotator, set the main azimuth rotator component
+            if (this.selectedAudioServer.name === "n/a") {
+                this.selectedAudioServer = as;
+                this.selectServer(as.name);
+            }
+        },
+        setAudioServer: function (audioServerName) {
+            this.$http.put("/api/server/"+audioServerName+"/active",
+            JSON.stringify({
+                active: true,
+            }));
+
+            console.log("selected: " + audioServerName);
+        },
+        setRxState: function (audioServerName, rxState) {
+            console.log("set " + audioServerName + " to " + rxState)
+            this.$http.put("/api/server/"+audioServerName+"/state",
                 JSON.stringify({
-                    on: !this.rxOn,
+                    on: rxState,
                 }));
         },
+        selectServer: function(asName){
+            this.$set(this.audioServers[asName], "selected", true)
+            console.log("selected:", this.audioServers[asName].selected)
+        },
+
+        // sendRxOn: function () {
+        //     this.$http.put("/api/rx/state",
+        //         JSON.stringify({
+        //             on: !this.rxOn,
+        //         }));
+        // },
         sendTxOn: function () {
             // if (this.serverAudioOn) {
             this.$http.put("/api/tx/state",

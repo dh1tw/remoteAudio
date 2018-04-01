@@ -24,3 +24,7 @@ body {
 .noUi-handle.noUi-active{
 	transform: none !important;
 }
+
+.svr-selected{
+	color: red !important;
+}

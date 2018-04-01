@@ -147,6 +147,16 @@ func (x *Trx) SelectServer(name string) error {
 	return nil
 }
 
+func (x *Trx) SelectedServer() string {
+	x.RLock()
+	defer x.RUnlock()
+
+	if x.curServer != nil {
+		return x.curServer.Name()
+	}
+	return ""
+}
+
 func (x *Trx) SetRxVolume(vol float32) error {
 	x.Lock()
 	defer x.Unlock()

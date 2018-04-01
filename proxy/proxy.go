@@ -94,12 +94,24 @@ func (as *AudioServer) TxAddress() string {
 
 func (as *AudioServer) StartRxStream() error {
 	_, err := as.rpc.StartStream(context.Background(), &sbAudio.None{})
-	return err
+	if err != nil {
+		return err
+	}
+	as.Lock()
+	as.rxOn = true
+	as.Unlock()
+	return nil
 }
 
 func (as *AudioServer) StopRxStream() error {
 	_, err := as.rpc.StopStream(context.Background(), &sbAudio.None{})
-	return err
+	if err != nil {
+		return err
+	}
+	as.Lock()
+	as.rxOn = false
+	as.Unlock()
+	return nil
 }
 
 func (as *AudioServer) TxUser() string {

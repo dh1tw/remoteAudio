@@ -29,47 +29,12 @@
     <div class="container">
       <div class="starter-template">
         <div class="row">
-          <div class="col-lg-4 col-md-4 col-sm-6">
-            <div class="panel panel-primary">
-              <div class="panel-heading">
-                Connectivity
-              </div>
-              <div class="panel-body">
-                <div class="list-group">
-                  <div class="list-group-item">
-                    <div class="row-action-primary">
-                      <i class="fa fa-wifi" aria-hidden="true"></i>
-                    </div>
-                    <div class="row-content">
-                      <h4 class="list-group-item-heading">Connection</h4>
-                      <h4 v-if="connectionState"><span class="label label-success">Connected</h4>
-                      <h4 v-else><span class="label label-danger">Disconnected</h4>
-                    </div>
-                  </div>
-                  <div class="list-group-separator"></div>
-                  <div class="list-group-item">
-                    <div class="row-action-primary">
-                      <i class="fa fa-wifi" aria-hidden="true"></i>
-                    </div>
-                    <div class="row-content">
-                      <h4 class="list-group-item-heading">Radio</h4>
-                      <h4 v-if="radioState"><span class="label label-success">Online</h4>
-                      <h4 v-else><span class="label label-danger">Offline</h4>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <audioservers :servers="audioServers" v-on:set-audioserver="setAudioServer" v-on:set-rxstate="setRxState"></audioservers>
           <div class="col-lg-4 col-md-4 col-sm-6">
             <div class="panel panel-primary">
               <div class="panel-heading">Rx Audio</div>
               <div class="panel-body">
                 <div class="list-group">
-                  <div class="list-group-item">
-                    <button class="btn btn-default btn-raised" v-bind:class="{'btn-success': rxOn}" @click="sendRxOn"><i class="fa fa-volume-up" aria-hidden="true"></i> RX Audio</button>
-                  </div>
-                  <hr>
                   <h4 class="list-group-item-heading">Volume</h4>
                   <div class="list-group-item">
                     <div id="rxVolumeSlider" class="slider"></div>
@@ -158,6 +123,8 @@
   <script src="/static/js/material.min.js"></script>
   <script src="/static/js/ripples.min.js"></script>
   <script src="/static/js/reconnecting-websocket.js"></script>
+  <script src="/static/js/components/audioserver.js"></script>
+  <script src="/static/js/components/audioservers.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 
