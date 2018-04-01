@@ -401,7 +401,7 @@ func (ns *natsServer) StartStream(ctx context.Context, in, out *sbAudio.None) er
 	if err := ns.sendState(); err != nil {
 		return fmt.Errorf("StartStream (send_state): %v", err)
 	}
-	return nil
+	return ns.sendState()
 }
 
 func (ns *natsServer) StopStream(ctx context.Context, in, out *sbAudio.None) error {
@@ -412,7 +412,7 @@ func (ns *natsServer) StopStream(ctx context.Context, in, out *sbAudio.None) err
 	if err := ns.sendState(); err != nil {
 		return fmt.Errorf("StopStream (send_state): %v", err)
 	}
-	return nil
+	return ns.sendState()
 }
 
 func (ns *natsServer) Ping(ctx context.Context, in, out *sbAudio.PingPong) error {
