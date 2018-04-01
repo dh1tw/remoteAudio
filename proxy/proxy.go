@@ -27,7 +27,7 @@ type AudioServer struct {
 
 func NewAudioServer(name string, client client.Client, opts ...Option) (*AudioServer, error) {
 
-	serviceName := fmt.Sprintf("shackbus.radio.audio.%s.", name)
+	serviceName := fmt.Sprintf("shackbus.radio.%s.audio", name)
 
 	as := &AudioServer{
 		name:         name,
@@ -111,6 +111,8 @@ func (as *AudioServer) stateUpdateCb(msg broker.Publication) error {
 	if err := proto.Unmarshal(msg.Message().Body, &newState); err != nil {
 		return err
 	}
+	as.Lock()
+	defer as.Unlock()
 
 	as.rxOn = newState.GetRxOn()
 	as.txUser = newState.GetTxUser()
@@ -141,7 +143,16 @@ func (as *AudioServer) getCapabilities() error {
 	as.Lock()
 	defer as.Unlock()
 	as.rxAddress = caps.GetRxStreamAddress()
+	if len(as.rxAddress) == 0 {
+		return fmt.Errorf("getCapabilities: RxStreamAddress empty")
+	}
 	as.txAddress = caps.GetTxStreamAddress()
+	if len(as.txAddress) == 0 {
+		return fmt.Errorf("getCapabilities: TxStreamAddress empty")
+	}
 	as.stateAddress = caps.GetStateUpdatesAddress()
+	if len(as.stateAddress) == 0 {
+		return fmt.Errorf("getCapabilities: StateUpdatesAddress empty")
+	}
 	return nil
 }
