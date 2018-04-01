@@ -39,7 +39,6 @@ func NewTrx(opts Options) (*Trx, error) {
 	if opts.Rx == nil {
 		return nil, fmt.Errorf("rx variable is nil")
 	}
-
 	if opts.Tx == nil {
 		return nil, fmt.Errorf("tx variable is nil")
 	}
@@ -49,12 +48,16 @@ func NewTrx(opts Options) (*Trx, error) {
 	if opts.ToNetwork == nil {
 		return nil, fmt.Errorf("toNetwork sink is nil")
 	}
+	if opts.Broker == nil {
+		return nil, fmt.Errorf("broker is nil")
+	}
 
 	trx := &Trx{
 		rx:          opts.Rx,
 		tx:          opts.Tx,
 		fromNetwork: opts.FromNetwork,
 		toNetwork:   opts.ToNetwork,
+		broker:      opts.Broker,
 		servers:     make(map[string]*proxy.AudioServer),
 	}
 
@@ -100,18 +103,21 @@ func (x *Trx) SelectServer(name string) error {
 		return fmt.Errorf("unknown audio server: %v", name)
 	}
 
-	if err := x.rxAudioSub.Unsubscribe(); err != nil {
-		return fmt.Errorf("select server unsubscribe: %v", err)
+	if x.rxAudioSub != nil {
+		if err := x.rxAudioSub.Unsubscribe(); err != nil {
+			return fmt.Errorf("select server unsubscribe: %v", err)
+		}
 	}
 
 	x.curServer = newSvr
 
 	sub, err := x.broker.Subscribe(newSvr.RxAddress(), x.fromWireCb)
 	if err != nil {
-		return fmt.Errorf("select server subscribe: %v", err)
+		return fmt.Errorf("SelectServer subscribe: %v", err)
 	}
 
 	x.rxAudioSub = sub
+	sub.Topic()
 
 	// publish to new topic
 
@@ -150,6 +156,7 @@ func (x *Trx) SetTxVolume(vol float32) error {
 		return err
 	}
 	toNetwork.SetVolume(vol)
+	fmt.Printf("setting vol to %v\n", vol)
 	return nil
 }
 
@@ -168,7 +175,7 @@ func (x *Trx) SetTxState(on bool) error {
 	x.Lock()
 	defer x.Unlock()
 
-	return x.tx.Sinks.EnableSink("toNetwork", true)
+	return x.tx.Sinks.EnableSink("toNetwork", on)
 }
 
 func (x *Trx) SetRxState(on bool) error {
@@ -233,16 +240,15 @@ func (x *Trx) fromWireCb(pub broker.Publication) error {
 }
 
 func (x *Trx) toWireCb(data []byte) {
-	x.RLock()
-	defer x.RUnlock()
 	// Callback which is called by pbWriter to push the audio
 	// packets to the network
+	// NO MUTEX! (causes deadlock)
 	msg := &broker.Message{
 		Body: data,
 	}
 
 	err := x.broker.Publish(x.curServer.TxAddress(), msg)
 	if err != nil {
-		log.Println(err)
+		log.Fatal("toWireCb:", err)
 	}
 }
