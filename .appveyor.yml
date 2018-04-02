@@ -19,6 +19,7 @@ environment:
       GOARCH: amd64
 
 clone_script:
+  - cmd: SET APPVEYOR_BUILD_FOLDER_ORIGINAL=%APPVEYOR_BUILD_FOLDER%
   - cmd: SET APPVEYOR_BUILD_FOLDER=c:\gopath\src\github.com\dh1tw\remoteAudio
   - cmd: git clone --recursive -q --branch=%APPVEYOR_REPO_BRANCH% https://github.com/%APPVEYOR_REPO_NAME%.git %APPVEYOR_BUILD_FOLDER%
   - cmd: cd %APPVEYOR_BUILD_FOLDER%
@@ -53,7 +54,7 @@ after_build:
   - .\ci\build-windows-bundle.bat
   - cmd: dir
 artifacts:
-  - path: %APPVEYOR_BUILD_FOLDER%\remoteAudio-v%APPVEYOR_REPO_TAG_NAME%-%GOOS%-%GOARCH%.zip
+  - path: remoteAudio-v%APPVEYOR_REPO_TAG_NAME%-%GOOS%-%GOARCH%.zip
     name: remoteAudio
 deploy:
   description: ''

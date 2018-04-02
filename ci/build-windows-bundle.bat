@@ -16,4 +16,4 @@ REM zip everything
 %MSYS_PATH%\usr\bin\bash -lc "cd /c/gopath/src/github.com/dh1tw/remoteAudio/release && 7z a -tzip remoteAudio-v$APPVEYOR_REPO_TAG_NAME-$GOOS-$GOARCH.zip *"
 
 REM copy it into the build folder
-xcopy %GOPATH%\src\github.com\dh1tw\remoteAudio\release\remoteAudio-v%APPVEYOR_REPO_TAG_NAME%-%GOOS%-%GOARCH%.zip %APPVEYOR_BUILD_FOLDER%\ /e /i > nul
+xcopy %GOPATH%\src\github.com\dh1tw\remoteAudio\release\remoteAudio-v%APPVEYOR_REPO_TAG_NAME%-%GOOS%-%GOARCH%.zip %APPVEYOR_BUILD_FOLDER_ORIGINAL%\ /e /i > nul
