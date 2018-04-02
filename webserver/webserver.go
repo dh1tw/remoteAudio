@@ -84,10 +84,7 @@ func (web *WebServer) Start() {
 
 	web.trx.SetNotifyServerChangeCb(web.updateWsClients)
 
-	box, err := rice.FindBox("../html")
-	if err != nil {
-		log.Fatal("webserver: box not found")
-	}
+	box := rice.MustFindBox("../html")
 
 	fileServer := http.FileServer(box.HTTPBox())
 
@@ -100,7 +97,6 @@ func (web *WebServer) Start() {
 	router.HandleFunc("/api/server/{server}/active", web.serverActiveHdlr)
 	router.HandleFunc("/api/server/{server}/state", web.serverStateHdlr)
 	router.HandleFunc("/ws", web.webSocketHdlr)
-	router.HandleFunc("/", IndexHdlr)
 	router.PathPrefix("/").Handler(fileServer)
 
 	serverURL := fmt.Sprintf("%s:%d", web.url, web.port)

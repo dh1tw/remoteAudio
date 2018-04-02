@@ -9,10 +9,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func IndexHdlr(w http.ResponseWriter, req *http.Request) {
-	http.ServeFile(w, req, "html/index.html")
-}
-
 func (web *WebServer) webSocketHdlr(w http.ResponseWriter, req *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, req, nil)
