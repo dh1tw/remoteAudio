@@ -16,14 +16,15 @@ import (
 
 type Trx struct {
 	sync.RWMutex
-	rx          *chain.Chain
-	tx          *chain.Chain
-	fromNetwork *pbReader.PbReader
-	toNetwork   *pbWriter.PbWriter
-	broker      broker.Broker
-	servers     map[string]*proxy.AudioServer
-	rxAudioSub  broker.Subscriber
-	curServer   *proxy.AudioServer
+	rx                   *chain.Chain
+	tx                   *chain.Chain
+	fromNetwork          *pbReader.PbReader
+	toNetwork            *pbWriter.PbWriter
+	broker               broker.Broker
+	servers              map[string]*proxy.AudioServer
+	rxAudioSub           broker.Subscriber
+	curServer            *proxy.AudioServer
+	notifyServerChangeCb func()
 }
 
 type Options struct {
@@ -66,6 +67,12 @@ func NewTrx(opts Options) (*Trx, error) {
 	return trx, nil
 }
 
+func (x *Trx) SetNotifyServerChangeCb(f func()) {
+	x.Lock()
+	x.Unlock()
+	x.notifyServerChangeCb = f
+}
+
 func (x *Trx) AddServer(asvr *proxy.AudioServer) {
 	x.Lock()
 	defer x.Unlock()
@@ -78,7 +85,17 @@ func (x *Trx) AddServer(asvr *proxy.AudioServer) {
 		return
 	}
 	x.servers[asvr.Name()] = asvr
+
+	asvr.SetNotifyCb(x.onAudioServersChanged)
+	go x.onAudioServersChanged()
+
 	log.Println("added audio server", asvr.Name())
+}
+
+func (x *Trx) onAudioServersChanged() {
+	if x.notifyServerChangeCb != nil {
+		x.notifyServerChangeCb()
+	}
 }
 
 // Server returns a particular AudioServer. If no
@@ -108,12 +125,27 @@ func (x *Trx) RemoveServer(asName string) {
 	x.Lock()
 	defer x.Unlock()
 
-	_, ok := x.servers[asName]
+	as, ok := x.servers[asName]
 	if !ok {
 		return
 	}
 
 	delete(x.servers, asName)
+
+	if as.Name() == x.curServer.Name() && len(x.servers) > 0 {
+		for _, svr := range x.servers {
+			go x.SelectServer(svr.Name()) // must be async to avoid deadlock
+		}
+	} else if len(x.servers) == 0 {
+		x.curServer = nil
+		if err := x.tx.Sinks.EnableSink("toNetwork", false); err != nil {
+			log.Println(err) // better fatal?
+		}
+	}
+
+	as.Close()
+	go x.onAudioServersChanged()
+
 	log.Println("removed audio server", asName)
 }
 
@@ -140,9 +172,6 @@ func (x *Trx) SelectServer(name string) error {
 	}
 
 	x.rxAudioSub = sub
-	sub.Topic()
-
-	// publish to new topic
 
 	return nil
 }
@@ -189,7 +218,6 @@ func (x *Trx) SetTxVolume(vol float32) error {
 		return err
 	}
 	toNetwork.SetVolume(vol)
-	fmt.Printf("setting vol to %v\n", vol)
 	return nil
 }
 
@@ -207,6 +235,10 @@ func (x *Trx) GetTxVolume() (float32, error) {
 func (x *Trx) SetTxState(on bool) error {
 	x.Lock()
 	defer x.Unlock()
+
+	if x.curServer == nil {
+		return nil
+	}
 
 	return x.tx.Sinks.EnableSink("toNetwork", on)
 }
@@ -278,6 +310,10 @@ func (x *Trx) toWireCb(data []byte) {
 	// NO MUTEX! (causes deadlock)
 	msg := &broker.Message{
 		Body: data,
+	}
+
+	if x.curServer == nil {
+		return
 	}
 
 	err := x.broker.Publish(x.curServer.TxAddress(), msg)

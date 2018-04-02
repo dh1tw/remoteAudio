@@ -32,12 +32,17 @@
           <audioservers :servers="audioServers" v-on:set-audioserver="setAudioServer" v-on:set-rxstate="setRxState"></audioservers>
           <div class="col-lg-4 col-md-4 col-sm-6">
             <div class="panel panel-primary">
-              <div class="panel-heading">Rx Audio</div>
+              <div class="panel-heading">Local Audio</div>
               <div class="panel-body">
                 <div class="list-group">
-                  <h4 class="list-group-item-heading">Volume</h4>
+                  <h4 class="list-group-item-heading">Speaker Volume</h4>
                   <div class="list-group-item">
                     <div id="rxVolumeSlider" class="slider"></div>
+                  </div>
+                  <hr>
+                  <h4 class="list-group-item-heading">Tx Volume</h4>
+                  <div class="list-group-item">
+                    <div id="txVolumeSlider" class="slider"></div>
                   </div>
                 </div>
               </div>
@@ -45,16 +50,11 @@
           </div>
           <div class="col-lg-4 col-md-4 col-sm-6">
             <div class="panel panel-primary">
-              <div class="panel-heading">Tx Audio</div>
+              <div class="panel-heading">PTT</div>
               <div class="panel-body">
                 <div class="list-group">
                   <div class="list-group-item">
                     <button class="btn btn-default btn-raised" v-bind:class="{'btn-danger': txOn}" @click="sendTxOn"><i class="fa fa-microphone" aria-hidden="true"></i> TX Audio</button>
-                  </div>
-                  <hr>
-                  <h4 class="list-group-item-heading">Volume</h4>
-                  <div class="list-group-item">
-                    <div id="txVolumeSlider" class="slider"></div>
                   </div>
                 </div>
               </div>
@@ -63,14 +63,14 @@
         </div>
         <div>
           <div class="row">
-            <div class="col-lg-12 col-md-12">
+            <!-- <div class="col-lg-12 col-md-12">
               <div class="panel panel-primary">
                 <div class="panel-heading"><i class="fa fa-area-chart" aria-hidden="true"></i> Latency (one way)</div>
                 <div class="card-block">
                   <canvas id="latencyChart"></canvas>
                 </div>
               </div>
-            </div>
+            </div> -->
             <!--<div class="col-lg-3 col-md-3">
               <div class="panel panel-primary">
                 <div class="panel-heading">

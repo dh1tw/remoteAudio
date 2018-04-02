@@ -28,3 +28,12 @@ body {
 .svr-selected{
 	color: red !important;
 }
+
+.svr-name{
+	text-transform: uppercase;
+	font-weight: bold;
+}
+
+.vcenter{
+	vertical-align: text-bottom !important;
+}

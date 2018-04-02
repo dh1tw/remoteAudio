@@ -3,7 +3,9 @@ package proxy
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
+	"time"
 
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 	"github.com/gogo/protobuf/proto"
@@ -13,16 +15,19 @@ import (
 
 type AudioServer struct {
 	sync.RWMutex
-	name         string
-	serviceName  string
-	client       client.Client
-	rpc          sbAudio.ServerClient
-	stateSub     broker.Subscriber
-	rxAddress    string
-	txAddress    string
-	stateAddress string
-	rxOn         bool
-	txUser       string
+	name           string
+	serviceName    string
+	client         client.Client
+	rpc            sbAudio.ServerClient
+	stateSub       broker.Subscriber
+	rxAddress      string
+	txAddress      string
+	stateAddress   string
+	rxOn           bool
+	txUser         string
+	latency        int
+	notifyChangeCb func()
+	closePing      chan struct{}
 }
 
 func NewAudioServer(name string, client client.Client, opts ...Option) (*AudioServer, error) {
@@ -37,6 +42,7 @@ func NewAudioServer(name string, client client.Client, opts ...Option) (*AudioSe
 		txAddress:    fmt.Sprintf("%s.tx", serviceName),
 		stateAddress: fmt.Sprintf("%s.state", serviceName),
 		txUser:       "",
+		closePing:    make(chan struct{}),
 	}
 
 	as.rpc = sbAudio.NewServerClient(as.serviceName, as.client)
@@ -55,11 +61,65 @@ func NewAudioServer(name string, client client.Client, opts ...Option) (*AudioSe
 
 	as.stateSub = sub
 
+	// start a go routine to ping our service every second
+	go func() {
+		for {
+			select {
+			case <-time.After(time.Second):
+
+				ping, err := as.ping()
+
+				if err != nil {
+					log.Println("ping:", err)
+					break
+				}
+				as.Lock()
+				as.latency = ping
+				as.Unlock()
+				go as.notifyChangeCb()
+			case <-as.closePing:
+				return
+			}
+		}
+	}()
+
 	return as, nil
 }
 
 func (as *AudioServer) Close() {
+	as.Lock()
+	defer as.Unlock()
+
 	as.stateSub.Unsubscribe()
+	close(as.closePing)
+	as.rpc = nil
+	as.client = nil
+	as.notifyChangeCb = nil
+}
+
+func (as *AudioServer) ping() (int, error) {
+
+	ping := time.Now().UnixNano() / int64(time.Millisecond)
+
+	pingMsg := sbAudio.PingPong{
+		Ping: ping,
+	}
+
+	pong, err := as.rpc.Ping(context.Background(), &pingMsg)
+	if err != nil {
+		return 0, err
+	}
+
+	now := time.Now().UnixNano() / int64(time.Millisecond)
+
+	res := int((now - pong.Ping) / 2)
+	return res, nil
+}
+
+func (as *AudioServer) SetNotifyCb(f func()) {
+	as.Lock()
+	defer as.Unlock()
+	as.notifyChangeCb = f
 }
 
 func (as *AudioServer) Name() string {
@@ -120,6 +180,12 @@ func (as *AudioServer) TxUser() string {
 	return as.txUser
 }
 
+func (as *AudioServer) Latency() int {
+	as.RLock()
+	defer as.RUnlock()
+	return as.latency
+}
+
 func (as *AudioServer) stateUpdateCb(msg broker.Publication) error {
 
 	newState := sbAudio.State{}
@@ -132,6 +198,10 @@ func (as *AudioServer) stateUpdateCb(msg broker.Publication) error {
 
 	as.rxOn = newState.GetRxOn()
 	as.txUser = newState.GetTxUser()
+
+	if as.notifyChangeCb != nil {
+		go as.notifyChangeCb()
+	}
 
 	// TBD check if something has changed and notify subcribers
 

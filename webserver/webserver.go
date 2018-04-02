@@ -28,12 +28,12 @@ type wsClient struct {
 }
 
 type ApplicationState struct {
-	TxOn           bool          `json:"tx_on"`
-	RxVolume       int           `json:"rx_volume"`
-	TxVolume       int           `json:"tx_volume"`
-	Connected      bool          `json:"connected"`
-	AudioServers   []AudioServer `json:"audio_servers"`
-	SelectedServer string        `json:"selected_server"`
+	TxOn           bool                   `json:"tx_on"`
+	RxVolume       int                    `json:"rx_volume"`
+	TxVolume       int                    `json:"tx_volume"`
+	Connected      bool                   `json:"connected"`
+	AudioServers   map[string]AudioServer `json:"audio_servers"`
+	SelectedServer string                 `json:"selected_server"`
 }
 
 type AudioServer struct {
@@ -82,6 +82,8 @@ func NewWebServer(url string, port int, trx *trx.Trx) (*WebServer, error) {
 
 func (web *WebServer) Start() {
 
+	web.trx.SetNotifyServerChangeCb(web.updateWsClients)
+
 	box, err := rice.FindBox("../html")
 	if err != nil {
 		log.Fatal("webserver: box not found")
@@ -93,7 +95,7 @@ func (web *WebServer) Start() {
 	router.HandleFunc("/api/rx/volume", web.rxVolumeHdlr)
 	router.HandleFunc("/api/tx/volume", web.txVolumeHdlr)
 	router.HandleFunc("/api/tx/state", web.txStateHdlr)
-	// router.HandleFunc("/api/servers", web.txStateHdlr)
+	router.HandleFunc("/api/servers", web.serversHdlr).Methods("GET")
 	router.HandleFunc("/api/server/{server}", web.serverHdlr).Methods("GET")
 	router.HandleFunc("/api/server/{server}/active", web.serverActiveHdlr)
 	router.HandleFunc("/api/server/{server}/state", web.serverStateHdlr)
@@ -130,7 +132,7 @@ func (web *WebServer) Start() {
 	}
 }
 
-func (web *WebServer) updateWsClients() {
+func (web *WebServer) getAppState() (ApplicationState, error) {
 	web.RLock()
 	defer web.RUnlock()
 
@@ -150,7 +152,7 @@ func (web *WebServer) updateWsClients() {
 	}
 
 	asNames := web.trx.Servers()
-	audioServers := []AudioServer{}
+	audioServers := make(map[string]AudioServer)
 
 	for _, asName := range asNames {
 
@@ -159,12 +161,13 @@ func (web *WebServer) updateWsClients() {
 			break
 		}
 		as := AudioServer{
-			Name:   svr.Name(),
-			On:     svr.RxOn(),
-			TxUser: svr.TxUser(),
+			Name:    svr.Name(),
+			On:      svr.RxOn(),
+			TxUser:  svr.TxUser(),
+			Latency: svr.Latency(),
 		}
 
-		audioServers = append(audioServers, as)
+		audioServers[as.Name] = as
 	}
 
 	appState := ApplicationState{
@@ -173,6 +176,17 @@ func (web *WebServer) updateWsClients() {
 		TxVolume:       int(txVolume * 100),
 		AudioServers:   audioServers,
 		SelectedServer: web.trx.SelectedServer(),
+	}
+
+	return appState, nil
+}
+
+func (web *WebServer) updateWsClients() {
+
+	appState, err := web.getAppState()
+	if err != nil {
+		log.Println("getAppState:", err)
+		return
 	}
 
 	data, err := json.Marshal(appState)

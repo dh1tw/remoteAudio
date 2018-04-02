@@ -14,13 +14,11 @@ var vm = new Vue({
         blockRxVolumeUpdate: false,
         blockTxVolumeUpdate: false,
         audioServers: {},
-        selectedAudioServer: "",
         wsConnected: false,
         hideWsConnectionMsg: false,
     },
     components: {
         'audioservers': AudioServers,
-        'dummy': Dummy,
     },
     mounted: function () {
         var self = this;
@@ -51,13 +49,19 @@ var vm = new Vue({
             }
 
             if (msg.audio_servers !== null) {
-                for (var i = 0; i < msg.audio_servers.length; i++) {
-                    self.addAudioServer(msg.audio_servers[i])
-                }
+                self.$set(self, "audioServers", msg.audio_servers)
+                // if (msg.audio_servers.length == 0) {
+                //     self.$set(self, "audioServers", {})
+                //     console.log(self.audioServers)
+                // } else {
+                //     for (var i = 0; i < msg.audio_servers.length; i++) {
+                //         this.$set(this.audioServers, as.name, as);
+                //     }
+                // }
             }
 
             if (msg.selected_server !== null) {
-                if (msg.selected_server !== this.selectedAudioServer){
+                if (msg.selected_server !== this.selectedAudioServer) {
                     self.selectServer(msg.selected_server);
                 }
             }
@@ -90,35 +94,26 @@ var vm = new Vue({
         openWebsocket: function () {
 
         },
-        // add a rotator
-        addAudioServer: function (as) {
-
-            // if (!(as.name in this.audioServers)) {
-                this.$set(this.audioServers, as.name, as);
-            // }
-
-            // if this is the first rotator, set the main azimuth rotator component
-            if (this.selectedAudioServer.name === "n/a") {
-                this.selectedAudioServer = as;
-                this.selectServer(as.name);
-            }
-        },
         setAudioServer: function (audioServerName) {
-            this.$http.put("/api/server/"+audioServerName+"/active",
-            JSON.stringify({
-                active: true,
-            }));
+            this.$http.put("/api/server/" + audioServerName + "/active",
+                JSON.stringify({
+                    active: true,
+                }));
 
             console.log("selected: " + audioServerName);
         },
         setRxState: function (audioServerName, rxState) {
             console.log("set " + audioServerName + " to " + rxState)
-            this.$http.put("/api/server/"+audioServerName+"/state",
+            this.$http.put("/api/server/" + audioServerName + "/state",
                 JSON.stringify({
                     on: rxState,
                 }));
         },
-        selectServer: function(asName){
+        selectServer: function (asName) {
+            if (asName == "") {
+                console.log("empty")
+                return
+            }
             this.$set(this.audioServers[asName], "selected", true)
             console.log("selected:", this.audioServers[asName].selected)
         },
@@ -221,60 +216,60 @@ $(document).ready(function () {
 
 
 
-var data = {
-    labels: ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
-    datasets: [{
-        label: "Latency",
-        fill: true,
-        lineTension: 0.1,
-        backgroundColor: "rgba(75,192,192,0.4)",
-        borderColor: "rgba(75,192,192,1)",
-        borderCapStyle: 'butt',
-        borderDash: [],
-        borderDashOffset: 0.0,
-        borderJoinStyle: 'miter',
-        pointBorderColor: "rgba(75,192,192,1)",
-        pointBackgroundColor: "#fff",
-        pointBorderWidth: 1,
-        pointHoverRadius: 5,
-        pointHoverBackgroundColor: "rgba(75,192,192,1)",
-        pointHoverBorderColor: "rgba(220,220,220,1)",
-        pointHoverBorderWidth: 2,
-        pointRadius: 1,
-        pointHitRadius: 10,
-        data: [65],
-        spanGaps: false,
-    }]
-};
+// var data = {
+//     labels: ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+//     datasets: [{
+//         label: "Latency",
+//         fill: true,
+//         lineTension: 0.1,
+//         backgroundColor: "rgba(75,192,192,0.4)",
+//         borderColor: "rgba(75,192,192,1)",
+//         borderCapStyle: 'butt',
+//         borderDash: [],
+//         borderDashOffset: 0.0,
+//         borderJoinStyle: 'miter',
+//         pointBorderColor: "rgba(75,192,192,1)",
+//         pointBackgroundColor: "#fff",
+//         pointBorderWidth: 1,
+//         pointHoverRadius: 5,
+//         pointHoverBackgroundColor: "rgba(75,192,192,1)",
+//         pointHoverBorderColor: "rgba(220,220,220,1)",
+//         pointHoverBorderWidth: 2,
+//         pointRadius: 1,
+//         pointHitRadius: 10,
+//         data: [65],
+//         spanGaps: false,
+//     }]
+// };
 
-var ctx = document.getElementById("latencyChart");
-var latencyChart = new Chart(ctx, {
-    type: 'line',
-    data: data,
-    options: {
-        legend: {
-            display: false,
-        },
-        // animation:{
-        //     duration: 2000,
-        //     animation: 'easeInOutQuad',
-        // },
-        responsive: true,
-        layout: {
-            padding: {
-                left: 10,
-                right: 20,
-                top: 20
-            },
-        },
-        scales: {
-            yAxes: [{
-                ticks: {
-                    max: 500,
-                    min: 0,
-                    stepSize: 50
-                }
-            }],
-        }
-    }
-});
+// var ctx = document.getElementById("latencyChart");
+// var latencyChart = new Chart(ctx, {
+//     type: 'line',
+//     data: data,
+//     options: {
+//         legend: {
+//             display: false,
+//         },
+//         // animation:{
+//         //     duration: 2000,
+//         //     animation: 'easeInOutQuad',
+//         // },
+//         responsive: true,
+//         layout: {
+//             padding: {
+//                 left: 10,
+//                 right: 20,
+//                 top: 20
+//             },
+//         },
+//         scales: {
+//             yAxes: [{
+//                 ticks: {
+//                     max: 500,
+//                     min: 0,
+//                     stepSize: 50
+//                 }
+//             }],
+//         }
+//     }
+// });

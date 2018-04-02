@@ -191,6 +191,7 @@ func (web *WebServer) serverActiveHdlr(w http.ResponseWriter, req *http.Request)
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("500 - unable to find server %s", asName)))
+		return
 	}
 
 	switch req.Method {
@@ -244,6 +245,7 @@ func (web *WebServer) serverStateHdlr(w http.ResponseWriter, req *http.Request) 
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("500 - unable to find server %s", asName)))
+		return
 	}
 
 	switch req.Method {
@@ -278,7 +280,6 @@ func (web *WebServer) serverStateHdlr(w http.ResponseWriter, req *http.Request) 
 		} else {
 			err = as.StopRxStream()
 		}
-		fmt.Printf("set state of %v to %v\n", as.Name(), *stateCtlMsg.On)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -302,6 +303,7 @@ func (web *WebServer) serverHdlr(w http.ResponseWriter, req *http.Request) {
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("500 - unable to find server %s", asName)))
+		return
 	}
 
 	serverMsg := &AudioServer{
@@ -311,6 +313,24 @@ func (web *WebServer) serverHdlr(w http.ResponseWriter, req *http.Request) {
 		// Latency: as.Latency();
 	}
 	if err := json.NewEncoder(w).Encode(serverMsg); err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - unable to encode AudioControlState msg"))
+	}
+}
+
+func (web *WebServer) serversHdlr(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	appState, err := web.getAppState()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500 - unable to execute query"))
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(appState); err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("500 - unable to encode AudioControlState msg"))

@@ -7,7 +7,13 @@ var AudioServers = {
                 <div class="panel-body">
                   <div class="list-group">
                     <div v-for="server in servers" :key="servers">
-                      <audioserver v-on:set-audioserver="setAudioServer" v-on:set-rxstate="setRxState" :selected=server.selected :rxOn="server.rx_on" :name="server.name"></audioserver>
+                      <audioserver v-on:set-audioserver="setAudioServer"
+                        v-on:set-rxstate="setRxState"
+                        :selected=server.selected
+                        :rxOn="server.rx_on"
+                        :name="server.name"
+                        :txUser="server.tx_user"
+                        :latency="server.latency"></audioserver>
                       <div class="list-group-separator"></div>
                     </div
                   </div>
@@ -29,10 +35,6 @@ var AudioServers = {
       this.$emit('set-rxstate', audioServerName, rxState);
     },
   },
-  computed: {
-    'testname': function () {
-      return "dude"
-    },
-  },
+  computed: {},
   watch: {},
 }
