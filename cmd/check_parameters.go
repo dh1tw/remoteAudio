@@ -24,10 +24,10 @@ func checkAudioParameterValues() bool {
 		ok = false
 	}
 
-	if codec := strings.ToUpper(viper.GetString("audio.codec")); codec != "OPUS" && codec != "PCM" {
-		fmt.Println(parmError{"audio.codec", "allowed values are [OPUS, PCM]"})
-		ok = false
-	}
+	// if codec := strings.ToUpper(viper.GetString("audio.codec")); codec != "OPUS" && codec != "PCM" {
+	// 	fmt.Println(parmError{"audio.codec", "allowed values are [OPUS, PCM]"})
+	// 	ok = false
+	// }
 
 	if strings.ToUpper(viper.GetString("audio.codec")) == "PCM" {
 
