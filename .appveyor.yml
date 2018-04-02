@@ -51,6 +51,8 @@ build_script:
   - '%MSYS_PATH%\usr\bin\bash -lc "cd /c/gopath/src/github.com/dh1tw/remoteAudio && make dist"'
 after_build:
   - .\ci\build-windows-bundle.bat
+  - cmd: dir
+  - cmd: dir %APPVEYOR_BUILD_FOLDER%
 artifacts:
   - path: '*.zip'
     name: remoteAudio
