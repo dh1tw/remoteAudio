@@ -54,7 +54,7 @@ after_build:
   - cmd: dir
   - cmd: dir %APPVEYOR_BUILD_FOLDER%
 artifacts:
-  - path: '*.zip'
+  - path: remoteAudio-%APPVEYOR_REPO_TAG_NAME%-%GOOS%-%GOARCH%.zip
     name: remoteAudio
 deploy:
   description: ''
