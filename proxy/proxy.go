@@ -65,12 +65,12 @@ func NewAudioServer(name string, client client.Client, opts ...Option) (*AudioSe
 	go func() {
 		for {
 			select {
-			case <-time.After(time.Second):
+			case <-time.After(time.Second * 3):
 
 				ping, err := as.ping()
 
 				if err != nil {
-					log.Println("ping:", err)
+					log.Println("ping:", err) // should be fatal?
 					break
 				}
 				as.Lock()
