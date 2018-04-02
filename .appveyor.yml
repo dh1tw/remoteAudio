@@ -53,7 +53,7 @@ after_build:
   - .\ci\build-windows-bundle.bat
   - cmd: dir
 artifacts:
-  - path: remoteAudio-v%APPVEYOR_REPO_TAG_NAME%-%GOOS%-%GOARCH%.zip
+  - path: %APPVEYOR_BUILD_FOLDER%\remoteAudio-v%APPVEYOR_REPO_TAG_NAME%-%GOOS%-%GOARCH%.zip
     name: remoteAudio
 deploy:
   description: ''
