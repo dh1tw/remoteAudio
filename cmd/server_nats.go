@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	// _ "net/http/pprof"
@@ -44,7 +45,7 @@ func init() {
 	natsServerCmd.Flags().IntP("broker-port", "p", 4222, "Broker Port")
 	natsServerCmd.Flags().StringP("password", "P", "", "NATS Password")
 	natsServerCmd.Flags().StringP("username", "U", "", "NATS Username")
-	natsServerCmd.Flags().StringP("radio", "Y", "myradio", "Radio ID")
+	natsServerCmd.Flags().StringP("radio", "Y", "ts480", "radio name to which this audio server belongs")
 	natsServerCmd.Flags().BoolP("stream-on-startup", "t", false, "start streaming audio on startup")
 }
 
@@ -130,7 +131,18 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	brNatsOpts := nopts
 	trNatsOpts := nopts
 
-	serviceName := fmt.Sprintf("shackbus.radio.%s.audio", viper.GetString("nats.radio"))
+	radioName := viper.GetString("nats.radio")
+
+	if len(radioName) == 0 {
+		log.Fatal("radio name can not be empty")
+	}
+
+	if strings.ContainsAny(radioName, " _\n\r") {
+		log.Fatal(fmt.Sprintf("forbidden character in radio name '%s'", radioName))
+	}
+
+	serviceName := fmt.Sprintf("shackbus.radio.%s.audio", radioName)
+
 	// we want to set the nats.Options.Name so that we can distinguish
 	// them when monitoring the nats server with nats-top
 	regNatsOpts.Name = serviceName + ":registry"
@@ -148,7 +160,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	// listening on.
 	svr := server.NewServer(
 		server.Name(serviceName),
-		server.Address(validateSubject(serviceName)),
+		server.Address(serviceName),
 		server.Transport(tr),
 		server.Registry(reg),
 		server.Broker(br),
@@ -172,10 +184,11 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	)
 
 	ns := &natsServer{
-		rxAudioTopic: fmt.Sprintf("%s.rx", strings.Replace(serviceName, " ", "_", -1)),
-		txAudioTopic: fmt.Sprintf("%s.tx", strings.Replace(serviceName, " ", "_", -1)),
-		stateTopic:   fmt.Sprintf("%s.state", strings.Replace(serviceName, " ", "_", -1)),
+		rxAudioTopic: serviceName + ".rx",
+		txAudioTopic: serviceName + ".tx",
+		stateTopic:   serviceName + ".state",
 		service:      rs,
+		broker:       br,
 	}
 
 	mic, err := scWriter.NewScWriter(
@@ -215,6 +228,9 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		opus.Application(opusApplication),
 		opus.MaxBandwidth(opusMaxBandwidth),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	toNetwork, err := pbWriter.NewPbWriter(
 		pbWriter.Encoder(opusEncoder),
@@ -223,7 +239,6 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		pbWriter.FramesPerBuffer(audioFramesPerBuffer),
 		pbWriter.ToWireCb(ns.toWireCb),
 	)
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -262,12 +277,10 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal("subscribe:", err)
 	}
-
-	sub.Topic() // can sub be removed?
+	ns.txAudioSub = sub
 
 	// register our Rotator RPC handler
 	sbAudio.RegisterServerHandler(rs.Server(), ns)
-	ns.initialized = true
 
 	if streamOnStartup {
 		rx.Sinks.EnableSink("toNetwork", true)
@@ -289,15 +302,17 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 }
 
 type natsServer struct {
+	sync.RWMutex
 	name         string
 	service      micro.Service
+	broker       broker.Broker
 	rx           *chain.Chain
 	tx           *chain.Chain
 	fromNetwork  *pbReader.PbReader
 	rxAudioTopic string
 	txAudioTopic string
+	txAudioSub   broker.Subscriber
 	stateTopic   string
-	initialized  bool
 	rxOn         bool
 	txUser       string
 }
@@ -306,11 +321,6 @@ func (ns *natsServer) enqueueFromWire(pub broker.Publication) error {
 	if ns.fromNetwork == nil {
 		return nil
 	}
-
-	if !ns.initialized {
-		return nil
-	}
-
 	return ns.fromNetwork.Enqueue(pub.Message().Body)
 }
 
@@ -318,40 +328,26 @@ func (ns *natsServer) enqueueFromWire(pub broker.Publication) error {
 // packets to the network
 func (ns *natsServer) toWireCb(data []byte) {
 
-	if !ns.initialized {
-		return
-	}
-
-	if ns.service == nil {
-		return
-	}
-
-	if ns.service.Options().Broker == nil {
-		return
+	if ns.broker == nil {
+		log.Println("sendState: broker not set") // better Fatal?
 	}
 
 	msg := &broker.Message{
 		Body: data,
 	}
 
-	err := ns.service.Options().Broker.Publish(ns.rxAudioTopic, msg)
+	err := ns.broker.Publish(ns.rxAudioTopic, msg)
 	if err != nil {
-		log.Println(err)
+		log.Println(err) // better fatal?
 	}
 }
 
 func (ns *natsServer) sendState() error {
+	ns.RLock()
+	defer ns.RUnlock()
 
-	if !ns.initialized {
-		return nil
-	}
-
-	if ns.service == nil {
-		return nil
-	}
-
-	if ns.service.Options().Broker == nil {
-		return nil
+	if ns.broker == nil {
+		return fmt.Errorf("sendState: broker not set")
 	}
 
 	state := sbAudio.State{
@@ -368,14 +364,12 @@ func (ns *natsServer) sendState() error {
 		Body: data,
 	}
 
-	err = ns.service.Options().Broker.Publish(ns.stateTopic, msg)
-	if err != nil {
-		return err
-	}
-	return nil
+	return ns.broker.Publish(ns.stateTopic, msg)
 }
 
 func (ns *natsServer) GetCapabilities(ctx context.Context, in *sbAudio.None, out *sbAudio.Capabilities) error {
+	ns.RLock()
+	defer ns.RUnlock()
 	out.Name = ns.name
 	out.RxStreamAddress = ns.rxAudioTopic
 	out.TxStreamAddress = ns.txAudioTopic
@@ -394,23 +388,37 @@ func (ns *natsServer) GetState(ctx context.Context, in *sbAudio.None, out *sbAud
 }
 
 func (ns *natsServer) StartStream(ctx context.Context, in, out *sbAudio.None) error {
+
 	if err := ns.rx.Sinks.EnableSink("toNetwork", true); err != nil {
-		return fmt.Errorf("StartStream: %v", err)
+		log.Println("StartStream:", err)
+		return err
 	}
+
+	ns.Lock()
 	ns.rxOn = true
+	ns.Unlock()
+
 	if err := ns.sendState(); err != nil {
-		return fmt.Errorf("StartStream (send_state): %v", err)
+		log.Println("StartStream:", err)
+		return err
 	}
 	return nil
 }
 
 func (ns *natsServer) StopStream(ctx context.Context, in, out *sbAudio.None) error {
+
 	if err := ns.rx.Sinks.EnableSink("toNetwork", false); err != nil {
-		return fmt.Errorf("StopStream: %v", err)
+		log.Println("StopStream:", err)
+		return err
 	}
+
+	ns.Lock()
 	ns.rxOn = false
+	ns.Unlock()
+
 	if err := ns.sendState(); err != nil {
-		return fmt.Errorf("StopStream (send_state): %v", err)
+		log.Println("StopStream:", err)
+		return err
 	}
 	return nil
 }
@@ -421,9 +429,11 @@ func (ns *natsServer) Ping(ctx context.Context, in, out *sbAudio.PingPong) error
 }
 
 func (ns *natsServer) getState() (bool, string, error) {
+	ns.RLock()
+	defer ns.RUnlock()
 	_, rxOn, err := ns.rx.Sinks.Sink("toNetwork")
 	if err != nil {
 		return false, "", err
 	}
-	return rxOn, "dummyUser", nil
+	return rxOn, ns.txUser, nil
 }
