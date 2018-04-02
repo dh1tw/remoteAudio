@@ -24,7 +24,6 @@ complexity = 5
 max-bandwidth = "wideband"
 
 [audio]
-codec = "opus"
 rx-buffer-length = 10 # 10x10ms (@framesize=480 & samplerate=48kHz)
 # opus does not accept arbitrary frame length! Check OPUS documentation
 frame-length = 480  #10ms @ 48kHz (should work for most cases)
