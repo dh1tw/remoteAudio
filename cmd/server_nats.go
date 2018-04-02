@@ -32,7 +32,7 @@ import (
 
 // serverMqttCmd represents the mqtt command
 var natsServerCmd = &cobra.Command{
-	Use:   "natsserver",
+	Use:   "nats",
 	Short: "nats server",
 	Long:  `nats server`,
 	Run:   natsAudioServer,

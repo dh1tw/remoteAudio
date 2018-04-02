@@ -36,14 +36,14 @@ import (
 
 // serverMqttCmd represents the mqtt command
 var natsClientCmd = &cobra.Command{
-	Use:   "natsclient",
+	Use:   "nats",
 	Short: "nats client",
 	Long:  `nats client`,
 	Run:   natsAudioClient,
 }
 
 func init() {
-	serverCmd.AddCommand(natsClientCmd)
+	clientCmd.AddCommand(natsClientCmd)
 	natsClientCmd.Flags().StringP("broker-url", "u", "localhost", "Broker URL")
 	natsClientCmd.Flags().IntP("broker-port", "p", 4222, "Broker Port")
 	natsClientCmd.Flags().StringP("password", "P", "", "NATS Password")
