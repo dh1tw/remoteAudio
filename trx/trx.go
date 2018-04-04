@@ -69,7 +69,7 @@ func NewTrx(opts Options) (*Trx, error) {
 
 func (x *Trx) SetNotifyServerChangeCb(f func()) {
 	x.Lock()
-	x.Unlock()
+	defer x.Unlock()
 	x.notifyServerChangeCb = f
 }
 
@@ -93,6 +93,8 @@ func (x *Trx) AddServer(asvr *proxy.AudioServer) {
 }
 
 func (x *Trx) onAudioServersChanged() {
+	x.RLock()
+	defer x.RUnlock()
 	if x.notifyServerChangeCb != nil {
 		x.notifyServerChangeCb()
 	}
