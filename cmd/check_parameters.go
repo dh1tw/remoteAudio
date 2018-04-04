@@ -31,41 +31,41 @@ func checkAudioParameterValues() bool {
 
 	if strings.ToUpper(viper.GetString("audio.codec")) == "PCM" {
 
-		if viper.GetFloat64("pcm.samplerate") < 0 {
-			fmt.Println(parmError{"pcm.samplerate", "value must be > 0"})
-			ok = false
-		}
+		// if viper.GetFloat64("pcm.samplerate") < 0 {
+		// 	fmt.Println(parmError{"pcm.samplerate", "value must be > 0"})
+		// 	ok = false
+		// }
 
-		if viper.GetFloat64("pcm.samplerate")/viper.GetFloat64("input-device.samplerate") < 1/256 ||
-			viper.GetFloat64("pcm.samplerate")/viper.GetFloat64("input-device.samplerate") > 256 ||
-			viper.GetFloat64("input-device.samplerate")/viper.GetFloat64("pcm.samplerate") < 1/256 ||
-			viper.GetFloat64("input-device.samplerate")/viper.GetFloat64("pcm.samplerate") > 256 {
-			fmt.Println(parmError{"pcm.samplerate", "ratio between input-device & pcm samplerate must be < 256"})
-			ok = false
-		}
+		// if viper.GetFloat64("pcm.samplerate")/viper.GetFloat64("input-device.samplerate") < 1/256 ||
+		// 	viper.GetFloat64("pcm.samplerate")/viper.GetFloat64("input-device.samplerate") > 256 ||
+		// 	viper.GetFloat64("input-device.samplerate")/viper.GetFloat64("pcm.samplerate") < 1/256 ||
+		// 	viper.GetFloat64("input-device.samplerate")/viper.GetFloat64("pcm.samplerate") > 256 {
+		// 	fmt.Println(parmError{"pcm.samplerate", "ratio between input-device & pcm samplerate must be < 256"})
+		// 	ok = false
+		// }
 
-		if viper.GetInt("pcm.bitdepth") != 8 &&
-			viper.GetInt("pcm.bitdepth") != 12 &&
-			viper.GetInt("pcm.bitdepth") != 16 &&
-			viper.GetInt("pcm.bitdepth") != 24 {
-			fmt.Println(parmError{"pcm.bitdepth", "allowed values are [8, 12, 16, 24]"})
-			ok = false
-		}
+		// if viper.GetInt("pcm.bitdepth") != 8 &&
+		// 	viper.GetInt("pcm.bitdepth") != 12 &&
+		// 	viper.GetInt("pcm.bitdepth") != 16 &&
+		// 	viper.GetInt("pcm.bitdepth") != 24 {
+		// 	fmt.Println(parmError{"pcm.bitdepth", "allowed values are [8, 12, 16, 24]"})
+		// 	ok = false
+		// }
 
-		if chs := viper.GetInt("pcm.channels"); chs >= 1 && chs <= 2 {
-			fmt.Println(parmError{"pcm.channels", "allowed values are [1 (Mono), 2 (Stereo)]"})
-			ok = false
-		}
+		// if chs := viper.GetInt("pcm.channels"); chs >= 1 && chs <= 2 {
+		// 	fmt.Println(parmError{"pcm.channels", "allowed values are [1 (Mono), 2 (Stereo)]"})
+		// 	ok = false
+		// }
 
-		if viper.GetInt("pcm.resampling-quality") < 0 || viper.GetInt("pcm.resampling-quality") > 4 {
-			fmt.Println(parmError{"pcm.resampling-quality", "allowed values are [0...4]"})
-			ok = false
-		}
+		// if viper.GetInt("pcm.resampling-quality") < 0 || viper.GetInt("pcm.resampling-quality") > 4 {
+		// 	fmt.Println(parmError{"pcm.resampling-quality", "allowed values are [0...4]"})
+		// 	ok = false
+		// }
 
-		if viper.GetInt("audio.frame-length") <= 0 {
-			fmt.Println(parmError{"audio.frame-length", "value must be > 0"})
-			ok = false
-		}
+		// if viper.GetInt("audio.frame-length") <= 0 {
+		// 	fmt.Println(parmError{"audio.frame-length", "value must be > 0"})
+		// 	ok = false
+		// }
 	}
 
 	if strings.ToUpper(viper.GetString("audio.codec")) == "OPUS" {
