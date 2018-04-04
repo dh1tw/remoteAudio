@@ -45,8 +45,7 @@ func init() {
 	natsServerCmd.Flags().IntP("broker-port", "p", 4222, "Broker Port")
 	natsServerCmd.Flags().StringP("password", "P", "", "NATS Password")
 	natsServerCmd.Flags().StringP("username", "U", "", "NATS Username")
-	natsServerCmd.Flags().StringP("radio", "Y", "ts480", "radio name to which this audio server belongs")
-	natsServerCmd.Flags().BoolP("stream-on-startup", "t", false, "start streaming audio on startup")
+	natsServerCmd.Flags().StringP("radio", "Y", "", "radio name to which this audio server belongs (e.g. 'ts480'")
 }
 
 func natsAudioServer(cmd *cobra.Command, args []string) {
@@ -58,15 +57,16 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		if strings.Contains(err.Error(), "Not Found in") {
 			fmt.Println("no config file found")
 		} else {
-			fmt.Println("Error parsing config file", viper.ConfigFileUsed())
-			fmt.Println(err)
+			fmt.Fprintf(os.Stderr, "Error parsing config file %v: %v\n",
+				viper.ConfigFileUsed(), err)
 			os.Exit(1)
 		}
 	}
 
 	// check if values from config file / pflags are valid
-	if !checkAudioParameterValues() {
-		os.Exit(-1)
+	if err := checkAudioParameterValues(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	// bind the pflags to viper settings
@@ -75,7 +75,6 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	viper.BindPFlag("nats.password", cmd.Flags().Lookup("password"))
 	viper.BindPFlag("nats.username", cmd.Flags().Lookup("username"))
 	viper.BindPFlag("nats.radio", cmd.Flags().Lookup("radio"))
-	viper.BindPFlag("audio.stream-on-startup", cmd.Flags().Lookup("stream-on-startup"))
 
 	// profiling server
 	// go func() {
@@ -101,16 +100,10 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 
 	opusBitrate := viper.GetInt("opus.bitrate")
 	opusComplexity := viper.GetInt("opus.complexity")
-	opusApplication, err := GetOpusApplication(viper.GetString("opus.application"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	opusMaxBandwidth, err := GetOpusMaxBandwith(viper.GetString("opus.max-bandwidth"))
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	streamOnStartup := viper.GetBool("audio.stream-on-startup")
+	// value checked before
+	opusApplication, _ := getOpusApplication(viper.GetString("opus.application"))
+	opusMaxBandwidth, _ := getOpusMaxBandwith(viper.GetString("opus.max-bandwidth"))
 
 	natsUsername := viper.GetString("nats.username")
 	natsPassword := viper.GetString("nats.password")
@@ -134,7 +127,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	radioName := viper.GetString("nats.radio")
 
 	if len(radioName) == 0 {
-		log.Fatal("radio name can not be empty")
+		log.Fatal("radio name missing")
 	}
 
 	if strings.ContainsAny(radioName, " _\n\r") {
@@ -282,22 +275,22 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	// register our Rotator RPC handler
 	sbAudio.RegisterServerHandler(rs.Server(), ns)
 
-	if streamOnStartup {
-		rx.Sinks.EnableSink("toNetwork", true)
-		ns.rxOn = true
-	}
 	rx.Sources.SetSource("radioAudio")
 
 	// stream immediately audio from the network to the radio
 	tx.Sources.SetSource("fromNetwork")
-	tx.Sinks.EnableSink("mic", true)
+	if err := tx.StartTx(); err != nil {
+		exit(err)
+	}
 
 	if err := rs.Run(); err != nil {
 		log.Println(err)
 		mic.Close()
 		radioAudio.Close()
+		rx.Sources.Close()
+		tx.Sinks.Close()
 		// TBD: close also router (and all sinks)
-		os.Exit(1)
+		return
 	}
 }
 
@@ -389,7 +382,7 @@ func (ns *natsServer) GetState(ctx context.Context, in *sbAudio.None, out *sbAud
 
 func (ns *natsServer) StartStream(ctx context.Context, in, out *sbAudio.None) error {
 
-	if err := ns.rx.Sinks.EnableSink("toNetwork", true); err != nil {
+	if err := ns.rx.StartTx(); err != nil {
 		log.Println("StartStream:", err)
 		return err
 	}
@@ -407,7 +400,7 @@ func (ns *natsServer) StartStream(ctx context.Context, in, out *sbAudio.None) er
 
 func (ns *natsServer) StopStream(ctx context.Context, in, out *sbAudio.None) error {
 
-	if err := ns.rx.Sinks.EnableSink("toNetwork", false); err != nil {
+	if err := ns.rx.StopTx(); err != nil {
 		log.Println("StopStream:", err)
 		return err
 	}

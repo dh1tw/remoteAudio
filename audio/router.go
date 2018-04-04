@@ -2,6 +2,7 @@ package audio
 
 import (
 	"fmt"
+	"log"
 	"sync"
 )
 
@@ -13,6 +14,7 @@ type Router interface {
 	Sink(string) (Sink, bool, error)
 	EnableSink(string, bool) error
 	Write(Msg) SinkErrors
+	Close()
 	Flush()
 }
 
@@ -131,8 +133,21 @@ func (r *DefaultRouter) Flush() {
 	defer r.RUnlock()
 	for _, s := range r.sinks {
 		s.Flush()
-		if s.enabled {
-			// fmt.Println("flushing", sinkName)
+	}
+}
+
+// Close disables and closes all the Sinks of the router.
+func (r *DefaultRouter) Close() {
+	r.Lock()
+	defer r.Unlock()
+
+	for _, sink := range r.sinks {
+		sink.Flush()
+		if err := sink.Stop(); err != nil {
+			log.Println(err)
+		}
+		if err := sink.Close(); err != nil {
+			log.Println(err)
 		}
 	}
 }

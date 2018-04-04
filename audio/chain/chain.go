@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"errors"
 	"log"
 
 	"github.com/dh1tw/remoteAudio/audio"
@@ -29,7 +30,24 @@ func NewChain(opts ...Option) (*Chain, error) {
 	}
 	nc.Sources = fromRadioSources
 
-	nc.Sources.SetCb(nc.DefaultSourceToSinkCb)
+	nc.Sources.SetOnDataCb(nc.DefaultSourceToSinkCb)
+
+	options := Options{}
+
+	for _, option := range opts {
+		option(&options)
+	}
+
+	if len(options.DefaultSource) == 0 {
+		return nil, errors.New("missing default source")
+	}
+
+	if len(options.DefaultSink) == 0 {
+		return nil, errors.New("missing default sink")
+	}
+
+	nc.defaultSink = options.DefaultSink
+	nc.defaultSource = options.DefaultSource
 
 	return nc, nil
 }

@@ -48,12 +48,12 @@ func init() {
 	natsClientCmd.Flags().IntP("broker-port", "p", 4222, "Broker Port")
 	natsClientCmd.Flags().StringP("password", "P", "", "NATS Password")
 	natsClientCmd.Flags().StringP("username", "U", "", "NATS Username")
-	natsClientCmd.Flags().StringP("radio", "Y", "myradio", "Radio ID")
+	natsClientCmd.Flags().StringP("radio", "Y", "", "default radio (e.g. 'ts480')")
 	natsClientCmd.Flags().StringP("http-host", "w", "127.0.0.1", "Host (use '0.0.0.0' to listen on all network adapters)")
 	natsClientCmd.Flags().StringP("http-port", "k", "9090", "Port to access the web interface")
 	natsClientCmd.Flags().Int32("tx-volume", 70, "volume of tx audio stream on startup")
 	natsClientCmd.Flags().Int32("rx-volume", 70, "volume of rx audio stream on startup")
-	natsClientCmd.Flags().BoolP("stream-on-startup", "t", false, "start sending audio on startup")
+	natsClientCmd.Flags().BoolP("stream-on-startup", "t", false, "start the local and remote audio streams on startup")
 }
 
 func natsAudioClient(cmd *cobra.Command, args []string) {
@@ -65,15 +65,16 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		if strings.Contains(err.Error(), "Not Found in") {
 			fmt.Println("no config file found")
 		} else {
-			fmt.Println("Error parsing config file", viper.ConfigFileUsed())
-			fmt.Println(err)
+			fmt.Fprintf(os.Stderr, "Error parsing config file %v: %v\n",
+				viper.ConfigFileUsed(), err)
 			os.Exit(1)
 		}
 	}
 
 	// check if values from config file / pflags are valid
-	if !checkAudioParameterValues() {
-		os.Exit(-1)
+	if err := checkAudioParameterValues(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	// bind the pflags to viper settings
@@ -111,31 +112,30 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	opusBitrate := viper.GetInt("opus.bitrate")
 	opusComplexity := viper.GetInt("opus.complexity")
-	opusApplication, err := GetOpusApplication(viper.GetString("opus.application"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	opusMaxBandwidth, err := GetOpusMaxBandwith(viper.GetString("opus.max-bandwidth"))
-	if err != nil {
-		log.Fatal(err)
-	}
+	//values checked before
+	opusApplication, err := getOpusApplication(viper.GetString("opus.application"))
+	opusMaxBandwidth, err := getOpusMaxBandwith(viper.GetString("opus.max-bandwidth"))
 
 	rxVolume := viper.GetInt("audio.rx-volume")
 	txVolume := viper.GetInt("audio.tx-volume")
-	// streamOnStartup := viper.GetBool("audio.stream-on-startup")
+	streamOnStartup := viper.GetBool("audio.stream-on-startup")
 
 	natsUsername := viper.GetString("nats.username")
 	natsPassword := viper.GetString("nats.password")
 	natsBrokerURL := viper.GetString("nats.broker-url")
 	natsBrokerPort := viper.GetInt("nats.broker-port")
-	// radioID := viper.GetString("nats.radio")
+	radioName := viper.GetString("nats.radio")
+
+	portaudio.Initialize()
+	defer portaudio.Terminate()
+
+	if len(radioName) > 0 && strings.ContainsAny(radioName, " _\n\r") {
+		exit(fmt.Errorf("forbidden character in radio name '%s'", radioName))
+	}
 
 	httpHost := viper.GetString("http.host")
 	httpPort := viper.GetInt("http.port")
 	natsAddr := fmt.Sprintf("nats://%s:%v", natsBrokerURL, natsBrokerPort)
-
-	portaudio.Initialize()
-	defer portaudio.Terminate()
 
 	// start from default nats config and add the common options
 	nopts := nats.GetDefaultOptions()
@@ -144,9 +144,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	nopts.Password = natsPassword
 
 	disconnectedHdlr := func(conn *nats.Conn) {
-		log.Println("connection to nats broker closed")
-		os.Exit(1)
-		// connClosed <- struct{}{}
+		exit(fmt.Errorf("connection to nats broker closed"))
 	}
 
 	errorHdlr := func(conn *nats.Conn, sub *nats.Subscription, err error) {
@@ -187,7 +185,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		scWriter.FramesPerBuffer(audioFramesPerBuffer),
 	)
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 	speaker.SetVolume(float32(rxVolume) / 100)
 
@@ -199,12 +197,12 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		scReader.FramesPerBuffer(audioFramesPerBuffer),
 	)
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
 	fromNetwork, err := pbReader.NewPbReader()
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
 	// opus Encoder for PbWriter
@@ -226,20 +224,20 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	)
 
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 	toNetwork.SetVolume(float32(txVolume) / 100)
 
 	rx, err := chain.NewChain(chain.DefaultSource("fromNetwork"),
 		chain.DefaultSink("speaker"))
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
 	tx, err := chain.NewChain(chain.DefaultSource("mic"),
 		chain.DefaultSink("toNetwork"))
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
 	rx.Sources.AddSource("fromNetwork", fromNetwork)
@@ -252,17 +250,12 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	tx.Sinks.AddSink("toNetwork", toNetwork, false)
 	tx.Sources.SetSource("mic")
 
-	// if streamOnStartup {
-	// 	tx.Sinks.EnableSink("toNetwork", true)
-	// }
-
 	if err := cl.Init(); err != nil {
-		log.Fatal(err)
-		return
+		exit(err)
 	}
 
 	if err := br.Connect(); err != nil {
-		log.Fatal("broker:", err)
+		exit(err)
 	}
 
 	trxOpts := trx.Options{
@@ -275,19 +268,31 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	trx, err := trx.NewTrx(trxOpts)
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
-	// // skipping discovery - loading default object
-	// audioSvr, err := proxy.NewAudioServer(radioID, cl)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// audioSvr.Name()
-	// trx.AddServer(audioSvr)
-	// if err := trx.SelectServer(radioID); err != nil {
-	// 	log.Fatal(err)
-	// }
+	// if a radio name is specified, create immediately
+	// an audioServer object
+	if len(radioName) > 0 {
+		audioSvr, err := proxy.NewAudioServer(radioName, cl)
+		if err != nil {
+			exit(fmt.Errorf("audio server for %s unavailable", radioName))
+		}
+
+		trx.AddServer(audioSvr)
+		if err := trx.SelectServer(radioName); err != nil {
+			exit(err)
+		}
+
+		if streamOnStartup {
+			if err := trx.SetTxState(true); err != nil {
+				exit(err)
+			}
+			if err := audioSvr.StartRxStream(); err != nil {
+				exit(err)
+			}
+		}
+	}
 
 	nc := natsClient{
 		trx:    trx,
@@ -301,7 +306,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	web, err := webserver.NewWebServer(httpHost, httpPort, trx)
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
 	go web.Start()
@@ -318,11 +323,18 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 				// TBD: close also router (and all sinks)
 				mic.Close()
 				speaker.Close()
-
 				return
 			}
 		}
 	}
+}
+
+// exit prints the error to stderr, stops portaudio and returns with exit
+// code 1
+func exit(err error) {
+	fmt.Fprintln(os.Stderr, err)
+	portaudio.Terminate()
+	os.Exit(1)
 }
 
 type natsClient struct {

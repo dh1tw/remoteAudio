@@ -2,22 +2,26 @@ package audio
 
 import (
 	"fmt"
+	"log"
 	"sync"
 )
 
-// Selector manages several audio sources.
+// Selector manages several audio sources. Whenever the selected source
+// (network, microphone..etc) has new data available the provided OnDataCb
+// Callback will be executed.
 type Selector interface {
 	AddSource(string, Source)
 	RemoveSource(string) error
 	SetSource(string) error
-	SetCb(OnDataCb)
+	SetOnDataCb(OnDataCb)
+	Close()
 }
 
 // DefaultSelector is the default implementation of an audio Selector.
 type DefaultSelector struct {
 	sync.Mutex
-	sources map[string]*source
-	cb      OnDataCb
+	sources  map[string]*source
+	onDataCb OnDataCb
 }
 
 type source struct {
@@ -55,12 +59,13 @@ func (s *DefaultSelector) RemoveSource(name string) error {
 	return nil
 }
 
-// SetSource selects the active source.
+// SetSource selects the audio source from which data data will be
+// provided (through the OnDataCb callback).
 func (s *DefaultSelector) SetSource(name string) error {
 	s.Lock()
 	defer s.Unlock()
 
-	if s.cb == nil {
+	if s.onDataCb == nil {
 		return fmt.Errorf("selector callback not set")
 	}
 
@@ -75,14 +80,30 @@ func (s *DefaultSelector) SetSource(name string) error {
 	}
 
 	s.sources[name].active = true
-	s.sources[name].SetCb(s.cb)
+	s.sources[name].SetCb(s.onDataCb)
 	s.sources[name].Start()
 
 	return nil
 }
 
-// SetCb sets the callback function will will be executed when new audio
+// SetOnDataCb sets the callback function will will be executed when new audio
 // msgs are available from the selected source.
-func (s *DefaultSelector) SetCb(cb OnDataCb) {
-	s.cb = cb
+func (s *DefaultSelector) SetOnDataCb(cb OnDataCb) {
+	s.onDataCb = cb
+}
+
+// Close disables and closes all the Sources of the selector.
+func (s *DefaultSelector) Close() {
+	s.Lock()
+	defer s.Unlock()
+
+	for _, src := range s.sources {
+		src.active = false
+		if err := src.Stop(); err != nil {
+			log.Println(err)
+		}
+		if err := src.Close(); err != nil {
+			log.Println(err)
+		}
+	}
 }

@@ -140,7 +140,7 @@ func (x *Trx) RemoveServer(asName string) {
 		}
 	} else if len(x.servers) == 0 {
 		x.curServer = nil
-		if err := x.tx.Sinks.EnableSink("toNetwork", false); err != nil {
+		if err := x.tx.StopTx(); err != nil {
 			log.Println(err) // better fatal?
 		}
 	}
@@ -242,7 +242,10 @@ func (x *Trx) SetTxState(on bool) error {
 		return nil
 	}
 
-	return x.tx.Sinks.EnableSink("toNetwork", on)
+	if on {
+		return x.tx.StartTx()
+	}
+	return x.tx.StopTx()
 }
 
 func (x *Trx) SetRxState(on bool) error {
