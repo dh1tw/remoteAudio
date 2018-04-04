@@ -96,7 +96,7 @@ func (x *Trx) onAudioServersChanged() {
 	x.RLock()
 	defer x.RUnlock()
 	if x.notifyServerChangeCb != nil {
-		x.notifyServerChangeCb()
+		go x.notifyServerChangeCb()
 	}
 }
 
