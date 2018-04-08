@@ -22,6 +22,7 @@ import (
 	"github.com/gordonklaus/portaudio"
 	micro "github.com/micro/go-micro"
 	"github.com/micro/go-micro/broker"
+	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/server"
 	natsBroker "github.com/micro/go-plugins/broker/nats"
 	natsReg "github.com/micro/go-plugins/registry/nats"
@@ -127,11 +128,11 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	radioName := viper.GetString("nats.radio")
 
 	if len(radioName) == 0 {
-		log.Fatal("radio name missing")
+		exit(fmt.Errorf("radio name missing"))
 	}
 
 	if strings.ContainsAny(radioName, " _\n\r") {
-		log.Fatal(fmt.Sprintf("forbidden character in radio name '%s'", radioName))
+		exit(fmt.Errorf("forbidden character in radio name '%s'", radioName))
 	}
 
 	serviceName := fmt.Sprintf("shackbus.radio.%s.audio", radioName)
@@ -142,8 +143,10 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	brNatsOpts.Name = serviceName + ":broker"
 	trNatsOpts.Name = serviceName + ":transport"
 
+	regTimeout := registry.Timeout(time.Second * 2)
+
 	// create instances of our nats Registry, Broker and Transport
-	reg := natsReg.NewRegistry(natsReg.Options(regNatsOpts))
+	reg := natsReg.NewRegistry(natsReg.Options(regNatsOpts), regTimeout)
 	br := natsBroker.NewBroker(natsBroker.Options(brNatsOpts))
 	tr := natsTr.NewTransport(natsTr.Options(trNatsOpts))
 
@@ -176,6 +179,8 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		micro.Server(svr),
 	)
 
+	// natsServer is a convenience object which contains all the long
+	// living variable & objects of this application
 	ns := &natsServer{
 		rxAudioTopic: serviceName + ".rx",
 		txAudioTopic: serviceName + ".tx",
@@ -184,6 +189,8 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		broker:       br,
 	}
 
+	// create an sound card writer (typically feeding audio into the
+	// microphone of the transceiver)
 	mic, err := scWriter.NewScWriter(
 		scWriter.DeviceName(oDeviceName),
 		scWriter.Channels(oChannels),
@@ -193,9 +200,11 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		scWriter.FramesPerBuffer(audioFramesPerBuffer),
 	)
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
+	// create a soundcard reader (typically connected to the speaker
+	// of the transceiver)
 	radioAudio, err := scReader.NewScReader(
 		scReader.DeviceName(iDeviceName),
 		scReader.Channels(iChannels),
@@ -204,15 +213,17 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		scReader.FramesPerBuffer(audioFramesPerBuffer),
 	)
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
+	// create a Protobuf reader through which will decode the incomming
+	// data from the network
 	fromNetwork, err := pbReader.NewPbReader()
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
-	// opus Encoder for PbWriter
+	// opus Encoder for the protobuf writer
 	opusEncoder, err := opus.NewEncoder(
 		opus.Bitrate(opusBitrate),
 		opus.Complexity(opusComplexity),
@@ -222,9 +233,11 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		opus.MaxBandwidth(opusMaxBandwidth),
 	)
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
+	// create a protobuf serializer which will encode our audio data
+	// and send it on the wire
 	toNetwork, err := pbWriter.NewPbWriter(
 		pbWriter.Encoder(opusEncoder),
 		pbWriter.Samplerate(iSamplerate),
@@ -233,42 +246,63 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		pbWriter.ToWireCb(ns.toWireCb),
 	)
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
+	// create the receiving audio chain (from speaker to network)
 	rx, err := chain.NewChain(chain.DefaultSource("radioAudio"),
 		chain.DefaultSink("toNetwork"))
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
+	// create the sending chain (from network to microphone)
 	tx, err := chain.NewChain(chain.DefaultSource("fromNetwork"),
 		chain.DefaultSink("mic"))
 	if err != nil {
-		log.Fatal(err)
+		exit(err)
 	}
 
+	// add audio sinks & sources to the tx audio chain
 	tx.Sources.AddSource("fromNetwork", fromNetwork)
 	tx.Sinks.AddSink("mic", mic, false)
 
+	// add audio sinks & sources to the rx audio chain
 	rx.Sources.AddSource("radioAudio", radioAudio)
 	rx.Sinks.AddSink("toNetwork", toNetwork, false)
 
+	// assign the rx and tx audio chain to our natsServer
 	ns.rx = rx
 	ns.tx = tx
 	ns.fromNetwork = fromNetwork
 
-	// initalize our service
+	// initalize our micro service
 	rs.Init()
 
+	// before we annouce this service, we have to ensure that no other
+	// service with the same name exists. Therefore we query the
+	// registry for all other existing services.
+	services, err := reg.ListServices()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// if a service with this name already exists, then exit
+	for _, service := range services {
+		if service.Name == serviceName {
+			exit(fmt.Errorf("service %s already exists", service.Name))
+		}
+	}
+
+	// connect the broker
 	if err := br.Connect(); err != nil {
-		log.Fatal("broker:", err)
+		exit(fmt.Errorf("broker: %v", err))
 	}
 
 	// subscribe to the audio topic and enqueue the raw data into the pbReader
 	sub, err := br.Subscribe(ns.txAudioTopic, ns.enqueueFromWire)
 	if err != nil {
-		log.Fatal("subscribe:", err)
+		exit(fmt.Errorf("subscribe: %v", err))
 	}
 	ns.txAudioSub = sub
 
@@ -283,14 +317,15 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		exit(err)
 	}
 
+	// run the micro service
 	if err := rs.Run(); err != nil {
 		log.Println(err)
 		mic.Close()
 		radioAudio.Close()
 		rx.Sources.Close()
+		rx.Sinks.Close()
+		tx.Sources.Close()
 		tx.Sinks.Close()
-		// TBD: close also router (and all sinks)
-		return
 	}
 }
 
