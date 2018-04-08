@@ -28,9 +28,11 @@ type AudioServer struct {
 	latency        int
 	notifyChangeCb func()
 	closePing      chan struct{}
+	doneCh         chan struct{}
+	doneOnce       sync.Once
 }
 
-func NewAudioServer(name string, client client.Client, opts ...Option) (*AudioServer, error) {
+func NewAudioServer(name string, client client.Client, doneCh chan struct{}, opts ...Option) (*AudioServer, error) {
 
 	serviceName := fmt.Sprintf("shackbus.radio.%s.audio", name)
 
@@ -43,6 +45,7 @@ func NewAudioServer(name string, client client.Client, opts ...Option) (*AudioSe
 		stateAddress: fmt.Sprintf("%s.state", serviceName),
 		txUser:       "",
 		closePing:    make(chan struct{}),
+		doneCh:       doneCh,
 	}
 
 	as.rpc = sbAudio.NewServerClient(as.serviceName, as.client)
@@ -70,8 +73,9 @@ func NewAudioServer(name string, client client.Client, opts ...Option) (*AudioSe
 				ping, err := as.ping()
 
 				if err != nil {
-					log.Println("ping:", err) // should be fatal?
-					break
+					log.Println("unable to ping service", as.Name())
+					as.closeDone()
+					return
 				}
 				as.Lock()
 				as.latency = ping
@@ -86,6 +90,15 @@ func NewAudioServer(name string, client client.Client, opts ...Option) (*AudioSe
 	return as, nil
 }
 
+// the doneCh must be closed through this function to avoid
+// multiple times closing this channel. Closing the doneCh signals the
+// application that this object can be disposed.
+func (as *AudioServer) closeDone() {
+	as.doneOnce.Do(func() { close(as.doneCh) })
+}
+
+// Close shutsdown this object and all associated go routines so that
+// it can be garbage collected.
 func (as *AudioServer) Close() {
 	as.Lock()
 	defer as.Unlock()
@@ -95,6 +108,7 @@ func (as *AudioServer) Close() {
 	as.rpc = nil
 	as.client = nil
 	as.notifyChangeCb = nil
+	as.closeDone()
 }
 
 func (as *AudioServer) ping() (int, error) {

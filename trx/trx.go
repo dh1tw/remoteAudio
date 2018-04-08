@@ -123,13 +123,13 @@ func (x *Trx) Servers() []string {
 	return list
 }
 
-func (x *Trx) RemoveServer(asName string) {
+func (x *Trx) RemoveServer(asName string) error {
 	x.Lock()
 	defer x.Unlock()
 
 	as, ok := x.servers[asName]
 	if !ok {
-		return
+		return fmt.Errorf("unable to remove unknown audio server: %v", asName)
 	}
 
 	delete(x.servers, asName)
@@ -145,10 +145,13 @@ func (x *Trx) RemoveServer(asName string) {
 		}
 	}
 
+	log.Println("removed audio server", as.Name())
+
 	as.Close()
+	// emit event
 	go x.onAudioServersChanged()
 
-	log.Println("removed audio server", asName)
+	return nil
 }
 
 func (x *Trx) SelectServer(name string) error {

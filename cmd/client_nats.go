@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/dh1tw/remoteAudio/proxy"
@@ -274,7 +273,8 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	// if a radio name is specified, create immediately
 	// an audioServer object
 	if len(radioName) > 0 {
-		audioSvr, err := proxy.NewAudioServer(radioName, cl)
+		doneCh := make(chan struct{})
+		audioSvr, err := proxy.NewAudioServer(radioName, cl, doneCh)
 		if err != nil {
 			exit(fmt.Errorf("audio server for %s unavailable", radioName))
 		}
@@ -292,14 +292,16 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 				exit(err)
 			}
 		}
+
+		go func() {
+			<-doneCh
+			trx.RemoveServer(radioName)
+		}()
 	}
 
 	nc := natsClient{
 		trx:    trx,
 		client: cl,
-		cache: serviceCache{
-			cache: make(map[string]time.Time),
-		},
 	}
 
 	go nc.watchRegistry()
@@ -340,13 +342,6 @@ func exit(err error) {
 type natsClient struct {
 	client client.Client
 	trx    *trx.Trx
-	cache  serviceCache
-}
-
-type serviceCache struct {
-	sync.Mutex
-	ttl   time.Duration
-	cache map[string]time.Time
 }
 
 // watchRegistry is a blocking function which continously
@@ -354,9 +349,7 @@ type serviceCache struct {
 func (nc *natsClient) watchRegistry() {
 	watcher, err := nc.client.Options().Registry.Watch()
 	if err != nil {
-		log.Println(err)
-		os.Exit(1)
-		return
+		exit(err)
 	}
 
 	for {
@@ -373,35 +366,21 @@ func (nc *natsClient) watchRegistry() {
 		switch res.Action {
 
 		case "create", "update":
-			if err := nc.checkAndAddServer(res.Service.Name); err != nil {
-				log.Println(err)
+			serverExists := nc.existsServer(res.Service.Name)
+
+			if serverExists {
+				continue
 			}
-			nc.cache.Lock()
-			nc.cache.cache[res.Service.Name] = time.Now()
-			nc.cache.Unlock()
+
+			if err := nc.addServer(res.Service.Name); err != nil {
+				// if we can not add the server, something is really wrong
+				// so we better exit
+				exit(err)
+			}
 
 		case "delete":
-			asName := nameFromFQSN(res.Service.Name)
-			nc.trx.RemoveServer(asName)
-
-			nc.cache.Lock()
-			delete(nc.cache.cache, res.Service.Name)
-			nc.cache.Unlock()
+			nc.removeServer(res.Service.Name)
 		}
-
-		// nc.cache.Lock()
-		// for service, timeout := range nc.cache.cache {
-		// 	if time.Since(timeout) >= nc.cache.ttl {
-		// 		// rotatorName := nameFromFQSN(service)
-		// 		// r, exists := w.Rotator(rotatorName)
-		// 		// if !exists {
-		// 		// 	continue
-		// 		// }
-		// 		// r.Close()
-		// 		delete(nc.cache.cache, res.Service.Name)
-		// 	}
-		// }
-		// nc.cache.Unlock()
 	}
 }
 
@@ -414,45 +393,44 @@ func isAudioServer(serviceName string) bool {
 	return true
 }
 
-func (nc *natsClient) checkAndAddServer(aServerName string) error {
+func (nc *natsClient) existsServer(aServerName string) bool {
+	sName := nameFromFQSN(aServerName)
+	_, exists := nc.trx.Server(sName)
+	return exists
+}
+
+func (nc *natsClient) addServer(aServerName string) error {
 
 	sName := nameFromFQSN(aServerName)
 
-	_, exists := nc.trx.Server(sName)
-	if exists {
-		return nil
-	}
-
-	audioSvr, err := proxy.NewAudioServer(sName, nc.client)
+	doneCh := make(chan struct{})
+	audioSvr, err := proxy.NewAudioServer(sName, nc.client, doneCh)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	nc.trx.AddServer(audioSvr)
+
+	go func() {
+		<-doneCh
+		nc.trx.RemoveServer(sName)
+	}()
 
 	// if this is the only server, then make it our default
 	// and enable it
 	if len(nc.trx.Servers()) == 1 {
 		if err := nc.trx.SelectServer(sName); err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 
 	return nil
 }
 
-// // GetCodec return the integer representation of a string containing the
-// // name of an audio codec
-// func GetCodec(codec string) (int, error) {
-// 	switch strings.ToLower(codec) {
-// 	case "pcm":
-// 		return PCM, nil
-// 	case "opus":
-// 		return OPUS, nil
-// 	}
-// 	errMsg := fmt.Sprintf("unknown codec: %s", codec)
-// 	return 0, errors.New(errMsg)
-// }
+func (nc *natsClient) removeServer(aServerName string) error {
+	sName := nameFromFQSN(aServerName)
+	return nc.trx.RemoveServer(sName)
+}
 
 //extract the service's name from its fully qualified service name (FQSN)
 func nameFromFQSN(serviceName string) string {
