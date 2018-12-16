@@ -2,7 +2,7 @@
 *.pprof
 launch.json
 *.svg
-/sb_audio
+# /sb_audio
 remoteAudio
 *.wav
 *.exe
