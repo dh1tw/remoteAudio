@@ -7,9 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
-
-	// _ "net/http/pprof"
+	"time" // _ "net/http/pprof"
 
 	"github.com/dh1tw/remoteAudio/audio/chain"
 	"github.com/dh1tw/remoteAudio/audio/pbReader"
@@ -27,7 +25,7 @@ import (
 	natsBroker "github.com/micro/go-plugins/broker/nats"
 	natsReg "github.com/micro/go-plugins/registry/nats"
 	natsTr "github.com/micro/go-plugins/transport/nats"
-	"github.com/nats-io/nats"
+	"github.com/nats-io/go-nats"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
