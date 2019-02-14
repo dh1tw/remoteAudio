@@ -155,6 +155,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	svr := server.NewServer(
 		server.Name(serviceName),
 		server.Address(serviceName),
+		server.RegisterInterval(time.Second*10),
 		server.Transport(tr),
 		server.Registry(reg),
 		server.Broker(br),
@@ -169,7 +170,6 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	// let's create the new audio service
 	rs := micro.NewService(
 		micro.Name(serviceName),
-		micro.RegisterInterval(time.Second*10),
 		micro.Broker(br),
 		micro.Transport(tr),
 		micro.Registry(reg),
