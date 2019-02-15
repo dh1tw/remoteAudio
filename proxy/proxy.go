@@ -18,7 +18,7 @@ type AudioServer struct {
 	name           string
 	serviceName    string
 	client         client.Client
-	rpc            sbAudio.ServerClient
+	rpc            sbAudio.ServerService
 	stateSub       broker.Subscriber
 	rxAddress      string
 	txAddress      string
@@ -111,6 +111,8 @@ func (as *AudioServer) Close() {
 	as.closeDone()
 }
 
+// ping performs a ping request to the audio server and returns the
+// oneway latency (ping/2) in milli seconds.
 func (as *AudioServer) ping() (int, error) {
 
 	ping := time.Now().UnixNano() / int64(time.Millisecond)
