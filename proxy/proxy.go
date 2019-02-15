@@ -48,7 +48,7 @@ func NewAudioServer(name string, client client.Client, doneCh chan struct{}, opt
 		doneCh:       doneCh,
 	}
 
-	as.rpc = sbAudio.NewServerClient(as.serviceName, as.client)
+	as.rpc = sbAudio.NewServerService(as.serviceName, as.client)
 
 	if err := as.getCapabilities(); err != nil {
 		return nil, err
