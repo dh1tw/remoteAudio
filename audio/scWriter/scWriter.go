@@ -23,6 +23,7 @@ type ScWriter struct {
 	stash      []float32
 	volume     float32
 	src        src
+	fill       bool
 }
 
 // src contains a samplerate converter and its needed variables
@@ -129,9 +130,25 @@ func (p *ScWriter) playCb(in []float32,
 	//pull data from Ringbuffer
 	p.Lock()
 	data := p.ring.Dequeue()
+	bufCapacity := p.ring.Capacity()
+	bufLength := p.ring.Length()
 	p.Unlock()
 
-	if data == nil {
+	// log.Printf("Buf: %d / %d\n", bufLength, bufCapacity)
+
+	if data == nil && bufLength == 0 {
+		if !p.fill {
+			// log.Println("start filling buffer")
+		}
+		p.fill = true
+	}
+
+	if bufLength >= bufCapacity/2 && p.fill {
+		p.fill = false
+		// log.Println("stop filling buffer")
+	}
+
+	if data == nil || p.fill {
 		// fill with silence
 		// fmt.Println("silence")
 		for i := 0; i < len(in); i++ {
