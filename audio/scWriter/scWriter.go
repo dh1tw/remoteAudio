@@ -23,7 +23,7 @@ type ScWriter struct {
 	stash      []float32
 	volume     float32
 	src        src
-	fill       bool
+	bufFill    bool // indicates if the buffer is filling up
 }
 
 // src contains a samplerate converter and its needed variables
@@ -127,30 +127,37 @@ func (p *ScWriter) playCb(in []float32,
 		return // move on!
 	}
 
-	//pull data from Ringbuffer
+	var data interface{}
+
 	p.Lock()
-	data := p.ring.Dequeue()
+	bufFill := p.bufFill
 	bufCapacity := p.ring.Capacity()
 	bufLength := p.ring.Length()
+	// when filling up the buffer, don't dequeue data
+	if !bufFill {
+		//pull data from Ringbuffer
+		data = p.ring.Dequeue()
+	}
 	p.Unlock()
 
 	// log.Printf("Buf: %d / %d\n", bufLength, bufCapacity)
 
-	if data == nil && bufLength == 0 {
-		if !p.fill {
-			// log.Println("start filling buffer")
+	// start filling buffer when buffer runs empty
+	if bufLength == 0 {
+		p.Lock()
+		p.bufFill = true
+		p.Unlock()
+	}
+
+	if bufFill {
+		// stop filling buffer when it's again half full
+		if bufLength >= bufCapacity/2 {
+			p.bufFill = false
 		}
-		p.fill = true
 	}
 
-	if bufLength >= bufCapacity/2 && p.fill {
-		p.fill = false
-		// log.Println("stop filling buffer")
-	}
-
-	if data == nil || p.fill {
-		// fill with silence
-		// fmt.Println("silence")
+	// if no data is available we fill the audio package with silence
+	if data == nil {
 		for i := 0; i < len(in); i++ {
 			in[i] = 0
 		}
