@@ -154,7 +154,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	// listening on.
 	svr := server.NewServer(
 		server.Name(serviceName),
-		server.Address(serviceName),
+		server.Address(validateSubject(serviceName)),
 		server.RegisterInterval(time.Second*10),
 		server.Transport(tr),
 		server.Registry(reg),
