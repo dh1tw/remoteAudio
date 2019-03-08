@@ -5,9 +5,9 @@ import (
 	"log"
 	"sync"
 
-	"github.com/dh1tw/remoteAudio/audio/pbWriter"
+	"github.com/dh1tw/remoteAudio/audio/sinks/pbWriter"
 
-	"github.com/dh1tw/remoteAudio/audio/pbReader"
+	"github.com/dh1tw/remoteAudio/audio/sources/pbReader"
 
 	"github.com/dh1tw/remoteAudio/audio/chain"
 	"github.com/dh1tw/remoteAudio/proxy"
