@@ -35,5 +35,14 @@ body {
 }
 
 .vcenter{
-	vertical-align: text-bottom !important;
+	display: flex !important;
+	align-items: center;
+}
+
+.svr-height{
+	height: 120px;
+}
+
+.form-horizontal .control-label.text-left{
+	text-align: left;
 }
