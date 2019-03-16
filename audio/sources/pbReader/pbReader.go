@@ -18,11 +18,9 @@ import (
 // received from the network.
 type PbReader struct {
 	sync.RWMutex
-	options               Options
-	enabled               bool
-	txUser                string
-	lastPacket            time.Time
-	notifyTxUserChangedCb func()
+	options    Options
+	enabled    bool
+	lastPacket time.Time
 }
 
 // NewPbReader is the constructor for a PbReader object.
@@ -60,7 +58,6 @@ func (pbr *PbReader) Start() error {
 	pbr.Lock()
 	defer pbr.Unlock()
 	pbr.enabled = true
-	// go pbr.checkTxUser()
 	return nil
 }
 
@@ -70,33 +67,6 @@ func (pbr *PbReader) Stop() error {
 	pbr.enabled = false
 	return nil
 }
-
-// func (pbr *PbReader) checkTxUser() {
-// 	for {
-// 		select {
-// 		case <-time.After(time.Millisecond * 100):
-// 			pbr.RLock()
-// 			if time.Since(pbr.lastPacket) > time.Millisecond*100 {
-// 				pbr.txUser = ""
-// 			}
-// 			pbr.RUnlock()
-// 		}
-// 	}
-// }
-
-// func (pbr *PbReader) notifyTxUserChanged() {
-
-// 	if pbr.notifyTxUserChangedCb == nil{
-// 		return
-// 	}
-// 	pbr.notifyTxUserChangedCb(pbr.txUser)
-// }
-
-// func (pbr *PbReader) SetTxUserChangedCb(cb func()) {
-// 	pbr.Lock()
-// 	defer pbr.Unlock()
-// 	pbr.notifyTxUserChangedCb = cb
-// }
 
 func (pbr *PbReader) Close() error {
 	return nil
@@ -159,7 +129,7 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 		EOF:        false,
 		Frames:     num,
 		Samplerate: pbr.options.Samplerate, // we want 48kHz for internal processing
-		Metadata:   map[string]interface{}{"origin": msg.GetUserId()},
+		Metadata:   map[string]interface{}{"userID": msg.GetUserId()},
 	}
 
 	pbr.options.Callback(audioMsg)
