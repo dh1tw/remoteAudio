@@ -112,7 +112,7 @@ func (as *AudioServer) Close() {
 }
 
 // ping performs a ping request to the audio server and returns the
-// oneway latency (ping/2) in milli seconds.
+// latency (ping / 2-way) in milliseconds.
 func (as *AudioServer) ping() (int, error) {
 
 	ping := time.Now().UnixNano() / int64(time.Millisecond)
@@ -128,7 +128,7 @@ func (as *AudioServer) ping() (int, error) {
 
 	now := time.Now().UnixNano() / int64(time.Millisecond)
 
-	res := int((now - pong.Ping) / 2)
+	res := int(now - pong.Ping)
 	return res, nil
 }
 
