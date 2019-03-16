@@ -185,11 +185,11 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg) error {
 			pbw.stash = pbw.stash[:0] // empty
 		}
 
-		if audioMsg.EOF {
-			// get the stuff from the stash
-			fmt.Println("EOF!!!")
-			fmt.Println("stash size:", len(pbw.stash))
-		}
+		// if audioMsg.EOF {
+		// 	// get the stuff from the stash
+		// 	fmt.Println("EOF!!!")
+		// 	fmt.Println("stash size:", len(pbw.stash))
+		// }
 
 		// if the audio buffer size is actually smaller than the one we need,
 		// then stash it for the next time and return
