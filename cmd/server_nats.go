@@ -10,6 +10,7 @@ import (
 	"time" // _ "net/http/pprof"
 
 	"github.com/dh1tw/remoteAudio/audio/chain"
+	"github.com/dh1tw/remoteAudio/audio/nodes/doorman"
 	"github.com/dh1tw/remoteAudio/audio/sinks/pbWriter"
 	"github.com/dh1tw/remoteAudio/audio/sinks/scWriter"
 	"github.com/dh1tw/remoteAudio/audio/sources/pbReader"
@@ -247,6 +248,20 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		exit(err)
 	}
 
+	onTxUserChanged := func(txUser string) {
+		ns.Lock()
+		ns.txUser = txUser
+		ns.Unlock()
+		if err := ns.sendState(); err != nil {
+			log.Println(err)
+		}
+	}
+
+	dm, err := doorman.NewDoorman(doorman.TXUserChanged(onTxUserChanged))
+	if err != nil {
+		exit(err)
+	}
+
 	// create the receiving audio chain (from speaker to network)
 	rx, err := chain.NewChain(chain.DefaultSource("radioAudio"),
 		chain.DefaultSink("toNetwork"))
@@ -256,7 +271,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 
 	// create the sending chain (from network to microphone)
 	tx, err := chain.NewChain(chain.DefaultSource("fromNetwork"),
-		chain.DefaultSink("mic"))
+		chain.DefaultSink("mic"), chain.Node(dm))
 	if err != nil {
 		exit(err)
 	}
