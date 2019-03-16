@@ -10,6 +10,7 @@ import (
 type Chain struct {
 	Sources       audio.Selector //rx path sources
 	Sinks         audio.Router   //rx path sinks
+	Nodes         []audio.Node
 	defaultSource string
 	defaultSink   string
 }
@@ -30,8 +31,6 @@ func NewChain(opts ...Option) (*Chain, error) {
 	}
 	nc.Sources = fromRadioSources
 
-	nc.Sources.SetOnDataCb(nc.DefaultSourceToSinkCb)
-
 	options := Options{}
 
 	for _, option := range opts {
@@ -48,6 +47,32 @@ func NewChain(opts ...Option) (*Chain, error) {
 
 	nc.defaultSink = options.DefaultSink
 	nc.defaultSource = options.DefaultSource
+	nc.Nodes = options.Nodes
+
+	nodesCount := len(nc.Nodes)
+
+	if nodesCount == 0 {
+		nc.Sources.SetOnDataCb(nc.DefaultSourceToSinkCb)
+		return nc, nil
+	}
+
+	if nodesCount >= 1 {
+		nc.Sources.SetOnDataCb(func(msg audio.Msg) {
+			nc.Nodes[0].Write(msg)
+		})
+	}
+
+	for i, nextSource := range nc.Nodes {
+		if i == 0 {
+			continue
+		}
+		lastSrc := nc.Nodes[i-1]
+		lastSrc.SetCb(func(msg audio.Msg) {
+			nextSource.Write(msg)
+		})
+	}
+
+	nc.Nodes[nodesCount-1].SetCb(nc.DefaultSourceToSinkCb)
 
 	return nc, nil
 }
@@ -58,6 +83,10 @@ func (nc *Chain) StartTx() error {
 
 func (nc *Chain) StopTx() error {
 	return nc.Sinks.EnableSink(nc.defaultSink, false)
+}
+
+func (nc *Chain) ForwardToNode(data audio.Msg) {
+
 }
 
 func (nc *Chain) DefaultSourceToSinkCb(data audio.Msg) {
