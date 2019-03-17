@@ -8,7 +8,7 @@ import (
 type Option func(*Options)
 
 // Options is the data structure holding the optional values. The
-// values are typcially set by calling the functional options.
+// values are typically set by calling the functional options.
 type Options struct {
 	DeviceName      string
 	Encoder         audiocodec.Encoder
