@@ -289,7 +289,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	ns.tx = tx
 	ns.fromNetwork = fromNetwork
 
-	// initalize our micro service
+	// initialize our micro service
 	rs.Init()
 
 	// before we annouce this service, we have to ensure that no other

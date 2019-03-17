@@ -113,7 +113,7 @@ func NewScWriter(opts ...Option) (*ScWriter, error) {
 	return w, nil
 }
 
-// portaudio callback which will be called continously when the stream is
+// portaudio callback which will be called continuously when the stream is
 // started; this function should be short and never block
 func (p *ScWriter) playCb(in []float32,
 	iTime pa.StreamCallbackTimeInfo,

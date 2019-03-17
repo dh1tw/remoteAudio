@@ -340,7 +340,7 @@ type natsClient struct {
 	trx    *trx.Trx
 }
 
-// watchRegistry is a blocking function which continously
+// watchRegistry is a blocking function which continuously
 // checks the registry for changes (new rotators being added/updated/removed).
 func (nc *natsClient) watchRegistry() {
 	watcher, err := nc.client.Options().Registry.Watch()

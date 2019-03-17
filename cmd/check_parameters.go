@@ -104,7 +104,7 @@ func getOpusApplication(app string) (opus.Application, error) {
 }
 
 // getOpusMaxBandwith returns the integer representation of an
-// Opus max bandwitdh value string (typically read from application settings)
+// Opus max bandwidth value string (typically read from application settings)
 func getOpusMaxBandwith(maxBw string) (opus.Bandwidth, error) {
 	switch strings.ToLower(maxBw) {
 	case "narrowband":
