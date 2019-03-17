@@ -45,7 +45,7 @@ func init() {
 	natsServerCmd.Flags().IntP("broker-port", "p", 4222, "Broker Port")
 	natsServerCmd.Flags().StringP("password", "P", "", "NATS Password")
 	natsServerCmd.Flags().StringP("username", "U", "", "NATS Username")
-	natsServerCmd.Flags().StringP("radio", "Y", "", "radio name to which this audio server belongs (e.g. 'ts480'")
+	natsServerCmd.Flags().StringP("radio", "Y", "", "radio name to which this audio server belongs (e.g. 'ts480')")
 }
 
 func natsAudioServer(cmd *cobra.Command, args []string) {
@@ -83,7 +83,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 
 	// viper settings need to be copied in local variables
 	// since viper lookups allocate of each lookup a copy
-	// and are quite inperformant
+	// and are quite unperformant
 
 	audioFramesPerBuffer := viper.GetInt("audio.frame-length")
 
