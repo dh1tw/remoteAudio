@@ -7,18 +7,23 @@ import (
 	"github.com/dh1tw/remoteAudio/audio"
 )
 
+// Chain holds a complete chain of audio elements from the Source,
+// through processing nodes ending in a sink. In a typically VoIP
+// architecture one would have one a receiving (rx) and transmitting
+// (tx) chain.
 type Chain struct {
-	Sources       audio.Selector //rx path sources
-	Sinks         audio.Router   //rx path sinks
+	Sources       audio.Selector //selector can hold one or more sources
+	Sinks         audio.Router   //router can hold one or more sinks
 	Nodes         []audio.Node
 	defaultSource string
 	defaultSink   string
 }
 
+// NewChain is the constructor method for an audio chain.
 func NewChain(opts ...Option) (*Chain, error) {
 
 	nc := &Chain{}
-	// Setup receiving path
+
 	fromRadioSinks, err := audio.NewDefaultRouter()
 	if err != nil {
 		log.Fatal(err)
@@ -29,6 +34,7 @@ func NewChain(opts ...Option) (*Chain, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	nc.Sources = fromRadioSources
 
 	options := Options{}
@@ -45,23 +51,30 @@ func NewChain(opts ...Option) (*Chain, error) {
 		return nil, errors.New("missing default sink")
 	}
 
+	// overwrite default sink / source with values provided by the
+	// options variable
 	nc.defaultSink = options.DefaultSink
 	nc.defaultSource = options.DefaultSource
 	nc.Nodes = options.Nodes
 
 	nodesCount := len(nc.Nodes)
 
+	// Wire up the chain, connect the source->nodes->sink with each other
+
+	// if no nodes are available, we connect the source with the sink
 	if nodesCount == 0 {
 		nc.Sources.SetOnDataCb(nc.DefaultSourceToSinkCb)
 		return nc, nil
 	}
 
+	// connect the source with the first node
 	if nodesCount >= 1 {
 		nc.Sources.SetOnDataCb(func(msg audio.Msg) {
 			nc.Nodes[0].Write(msg)
 		})
 	}
 
+	// connect the remaining nodes with each other
 	for i, nextSource := range nc.Nodes {
 		if i == 0 {
 			continue
@@ -72,23 +85,23 @@ func NewChain(opts ...Option) (*Chain, error) {
 		})
 	}
 
+	// connect the last node with the sink
 	nc.Nodes[nodesCount-1].SetCb(nc.DefaultSourceToSinkCb)
 
 	return nc, nil
 }
 
-func (nc *Chain) StartTx() error {
-	return nc.Sinks.EnableSink(nc.defaultSink, true)
-}
-
-func (nc *Chain) StopTx() error {
-	return nc.Sinks.EnableSink(nc.defaultSink, false)
+// Enable will enable or disable the chain. This is done be enabling
+// or disableing the selected default sink in the chain.
+func (nc *Chain) Enable(state bool) error {
+	return nc.Sinks.EnableSink(nc.defaultSink, state)
 }
 
 func (nc *Chain) ForwardToNode(data audio.Msg) {
 
 }
 
+// DefaultSourceToSinkCb connects a source with a sink
 func (nc *Chain) DefaultSourceToSinkCb(data audio.Msg) {
 	err := nc.Sinks.Write(data)
 	if err != nil {

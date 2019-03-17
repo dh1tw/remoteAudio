@@ -326,7 +326,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 
 	// stream immediately audio from the network to the radio
 	tx.Sources.SetSource("fromNetwork")
-	if err := tx.StartTx(); err != nil {
+	if err := tx.Enable(true); err != nil {
 		exit(err)
 	}
 
@@ -430,7 +430,7 @@ func (ns *natsServer) GetState(ctx context.Context, in *sbAudio.None, out *sbAud
 
 func (ns *natsServer) StartStream(ctx context.Context, in, out *sbAudio.None) error {
 
-	if err := ns.rx.StartTx(); err != nil {
+	if err := ns.rx.Enable(true); err != nil {
 		log.Println("StartStream:", err)
 		return err
 	}
@@ -448,7 +448,7 @@ func (ns *natsServer) StartStream(ctx context.Context, in, out *sbAudio.None) er
 
 func (ns *natsServer) StopStream(ctx context.Context, in, out *sbAudio.None) error {
 
-	if err := ns.rx.StopTx(); err != nil {
+	if err := ns.rx.Enable(false); err != nil {
 		log.Println("StopStream:", err)
 		return err
 	}

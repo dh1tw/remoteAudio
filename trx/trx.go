@@ -152,7 +152,7 @@ func (x *Trx) RemoveServer(asName string) error {
 		}
 	} else if len(x.servers) == 0 {
 		x.curServer = nil
-		if err := x.tx.StopTx(); err != nil {
+		if err := x.tx.Enable(false); err != nil {
 			log.Println(err) // better fatal?
 		}
 	}
@@ -267,9 +267,9 @@ func (x *Trx) SetTxState(on bool) error {
 	}
 
 	if on {
-		return x.tx.StartTx()
+		return x.tx.Enable(true)
 	}
-	return x.tx.StopTx()
+	return x.tx.Enable(false)
 }
 
 // SetRxState turns on/off the audio stream sent from the remote audio server.
