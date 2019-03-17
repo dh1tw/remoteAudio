@@ -34,7 +34,7 @@ func (web *WebServer) txStateHdlr(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-	state, err := web.trx.GetTxState()
+	state, err := web.trx.TxState()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -82,7 +82,7 @@ func (web *WebServer) rxVolumeHdlr(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-	volume, err := web.trx.GetRxVolume()
+	volume, err := web.trx.RxVolume()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -132,7 +132,7 @@ func (web *WebServer) txVolumeHdlr(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-	volume, err := web.trx.GetTxVolume()
+	volume, err := web.trx.TxVolume()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

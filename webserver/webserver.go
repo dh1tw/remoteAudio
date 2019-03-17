@@ -132,17 +132,17 @@ func (web *WebServer) getAppState() (ApplicationState, error) {
 	web.RLock()
 	defer web.RUnlock()
 
-	txState, err := web.trx.GetTxState()
+	txState, err := web.trx.TxState()
 	if err != nil {
 		log.Println(err)
 	}
 
-	rxVolume, err := web.trx.GetRxVolume()
+	rxVolume, err := web.trx.RxVolume()
 	if err != nil {
 		log.Println(err)
 	}
 
-	txVolume, err := web.trx.GetTxVolume()
+	txVolume, err := web.trx.TxVolume()
 	if err != nil {
 		log.Println(err)
 	}

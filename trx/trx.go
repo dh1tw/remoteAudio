@@ -14,6 +14,9 @@ import (
 	"github.com/micro/go-micro/broker"
 )
 
+// Trx is a data structure which holds the components needed for a 2-way
+// radio. It holds the available audio servers, the communication means,
+// the audio rx and tx chains etc.
 type Trx struct {
 	sync.RWMutex
 	rx                   *chain.Chain
@@ -27,6 +30,8 @@ type Trx struct {
 	notifyServerChangeCb func()
 }
 
+// Options is the data structure holding the values used for instantiating
+// a Trx object. This struct has to be provided the the object constructor.
 type Options struct {
 	Rx          *chain.Chain
 	Tx          *chain.Chain
@@ -35,6 +40,7 @@ type Options struct {
 	Broker      broker.Broker
 }
 
+// NewTrx is the constructor method of a Trx object.
 func NewTrx(opts Options) (*Trx, error) {
 
 	if opts.Rx == nil {
@@ -67,12 +73,15 @@ func NewTrx(opts Options) (*Trx, error) {
 	return trx, nil
 }
 
+// SetNotifyServerChangeCb allows to set a callback which get's executed
+// when a remote audio server changes / disappears.
 func (x *Trx) SetNotifyServerChangeCb(f func()) {
 	x.Lock()
 	defer x.Unlock()
 	x.notifyServerChangeCb = f
 }
 
+// AddServer adds a remote audio server, represented through a proxy object.
 func (x *Trx) AddServer(asvr *proxy.AudioServer) {
 	x.Lock()
 	defer x.Unlock()
@@ -92,6 +101,8 @@ func (x *Trx) AddServer(asvr *proxy.AudioServer) {
 	log.Println("added audio server", asvr.Name())
 }
 
+// onAudioServersChanged will execute a callback to inform the parent
+// application that a remote audio server has changed.
 func (x *Trx) onAudioServersChanged() {
 	x.RLock()
 	defer x.RUnlock()
@@ -123,6 +134,7 @@ func (x *Trx) Servers() []string {
 	return list
 }
 
+// RemoveServer removes a remote audio server from the Trx.
 func (x *Trx) RemoveServer(asName string) error {
 	x.Lock()
 	defer x.Unlock()
@@ -154,6 +166,8 @@ func (x *Trx) RemoveServer(asName string) error {
 	return nil
 }
 
+// SelectServer selects a particular remote audio server from which the
+// audio will be received / sent to.
 func (x *Trx) SelectServer(name string) error {
 	x.Lock()
 	defer x.Unlock()
@@ -181,6 +195,7 @@ func (x *Trx) SelectServer(name string) error {
 	return nil
 }
 
+// SelectedServer returns the name of the currently selected Audio Server.
 func (x *Trx) SelectedServer() string {
 	x.RLock()
 	defer x.RUnlock()
@@ -191,6 +206,7 @@ func (x *Trx) SelectedServer() string {
 	return ""
 }
 
+// SetRxVolume sets the volume of the local speakers.
 func (x *Trx) SetRxVolume(vol float32) error {
 	x.Lock()
 	defer x.Unlock()
@@ -203,7 +219,8 @@ func (x *Trx) SetRxVolume(vol float32) error {
 	return nil
 }
 
-func (x *Trx) GetRxVolume() (float32, error) {
+// RxVolume returns the currently set volume for the local speakers.
+func (x *Trx) RxVolume() (float32, error) {
 	x.Lock()
 	defer x.Unlock()
 
@@ -214,6 +231,7 @@ func (x *Trx) GetRxVolume() (float32, error) {
 	return speaker.Volume(), nil
 }
 
+// SetTxVolume sets the volume of the audio sent to the remote audio server.
 func (x *Trx) SetTxVolume(vol float32) error {
 	x.Lock()
 	defer x.Unlock()
@@ -226,7 +244,8 @@ func (x *Trx) SetTxVolume(vol float32) error {
 	return nil
 }
 
-func (x *Trx) GetTxVolume() (float32, error) {
+// TxVolume returns the current volume level for the audio sent to the remote audio server.
+func (x *Trx) TxVolume() (float32, error) {
 	x.Lock()
 	defer x.Unlock()
 
@@ -237,6 +256,8 @@ func (x *Trx) GetTxVolume() (float32, error) {
 	return toNetwork.Volume(), nil
 }
 
+// SetTxState turns on/off the audio stream sent to the remote audio server.
+// It can be considered PTT (Push To Talk)
 func (x *Trx) SetTxState(on bool) error {
 	x.Lock()
 	defer x.Unlock()
@@ -251,6 +272,7 @@ func (x *Trx) SetTxState(on bool) error {
 	return x.tx.StopTx()
 }
 
+// SetRxState turns on/off the audio stream sent from the remote audio server.
 func (x *Trx) SetRxState(on bool) error {
 	x.Lock()
 	defer x.Unlock()
@@ -269,7 +291,9 @@ func (x *Trx) SetRxState(on bool) error {
 	return err
 }
 
-func (x *Trx) GetTxState() (bool, error) {
+// TxState returns a boolean if audio is currently sent to the remote
+// audio server, or not.
+func (x *Trx) TxState() (bool, error) {
 	x.Lock()
 	defer x.Unlock()
 
@@ -280,7 +304,9 @@ func (x *Trx) GetTxState() (bool, error) {
 	return state, nil
 }
 
-func (x *Trx) GetRxState() (bool, error) {
+// RxState returns a boolean if the remote audio server is streaming
+// audio or not.
+func (x *Trx) RxState() (bool, error) {
 	x.Lock()
 	defer x.Unlock()
 
@@ -291,7 +317,10 @@ func (x *Trx) GetRxState() (bool, error) {
 	return x.curServer.RxOn(), nil
 }
 
-func (x *Trx) GetTxUser() (string, error) {
+// TxUser returns the current user from which the remote audio server
+// is receiving audio. If nobody is transmitting / sending audio to the
+// remote audio server, an empty string will be returned.
+func (x *Trx) TxUser() (string, error) {
 	x.Lock()
 	defer x.Unlock()
 
@@ -302,6 +331,9 @@ func (x *Trx) GetTxUser() (string, error) {
 	return x.curServer.TxUser(), nil
 }
 
+// fromWireCb is a callback that is executed when audio is received
+// from the network. It will typically then enqueue the received data
+// into an audio source / chain.
 func (x *Trx) fromWireCb(pub broker.Publication) error {
 	x.RLock()
 	defer x.RUnlock()
@@ -312,6 +344,9 @@ func (x *Trx) fromWireCb(pub broker.Publication) error {
 	return x.fromNetwork.Enqueue(pub.Message().Body)
 }
 
+// toWireCb is a callback that is executed when audio is ready to
+// be sent to the audio server. Typically this callback is called from
+// an audio sync (e.g. pbWriter).
 func (x *Trx) toWireCb(data []byte) {
 	// Callback which is called by pbWriter to push the audio
 	// packets to the network
