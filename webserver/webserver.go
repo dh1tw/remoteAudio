@@ -8,17 +8,10 @@ import (
 	"sync"
 
 	rice "github.com/GeertJohan/go.rice"
-	"github.com/cskr/pubsub"
 	"github.com/dh1tw/remoteAudio/trx"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
-
-type WebServerSettings struct {
-	Events  *pubsub.PubSub
-	Address string
-	Port    int
-}
 
 // wsClient contains a Websocket client
 type wsClient struct {
@@ -27,6 +20,8 @@ type wsClient struct {
 	send         chan []byte
 }
 
+// ApplicationState is a data structure is provided through the
+// /api/v{version}/servers endpoint.
 type ApplicationState struct {
 	TxOn           bool                   `json:"tx_on"`
 	RxVolume       int                    `json:"rx_volume"`
@@ -36,6 +31,8 @@ type ApplicationState struct {
 	SelectedServer string                 `json:"selected_server"`
 }
 
+// AudioServer is a data structure which is provided through the
+// /api/v{version}/server/{radio} endpoint.
 type AudioServer struct {
 	Name    string `json:"name"`
 	On      bool   `json:"rx_on"`
@@ -45,6 +42,8 @@ type AudioServer struct {
 
 var upgrader = websocket.Upgrader{}
 
+// WebServer is the webserver's data structure holding internal
+// variables.
 type WebServer struct {
 	sync.RWMutex
 	url            string
@@ -54,18 +53,30 @@ type WebServer struct {
 	removeWsClient chan *wsClient
 	trx            *trx.Trx
 }
+
+// AudioControlState is a data structure which can be get/set through the
+// /api/v{version}/server{radio}/state endpoint. It is used to start & stop
+// the audio stream of a remote audio server.
 type AudioControlState struct {
 	On *bool `json:"on"`
 }
 
+// AudioControlVolume is a data structure which can be get/set through the
+// /api/v{version}/rx/volume and /api/v{version}/tx/volume endpoints.
+// It is used to adjust the local audio levels.
 type AudioControlVolume struct {
 	Volume *int `json:"volume"`
 }
 
+// AudioControlSelected is a data structure which can be get/set through the
+// /api/v{version}/server{radio}/selected endpoint to select a particular
+// remote audio.
 type AudioControlSelected struct {
 	Selected *bool `json:"selected"`
 }
 
+// NewWebServer is the constructor method for a remoteAudio web server.
+// The web server is only available on clients.
 func NewWebServer(url string, port int, trx *trx.Trx) (*WebServer, error) {
 
 	web := &WebServer{
@@ -80,6 +91,8 @@ func NewWebServer(url string, port int, trx *trx.Trx) (*WebServer, error) {
 	return web, nil
 }
 
+// Start will initialize the webserver and start serving on the designated
+// interface & port.
 func (web *WebServer) Start() {
 
 	web.trx.SetNotifyServerChangeCb(web.updateWsClients)
@@ -128,6 +141,8 @@ func (web *WebServer) Start() {
 	}
 }
 
+// getAppState returns the serialized information about the local configuration
+// (e.g. volume levels) and all remote audio servers.
 func (web *WebServer) getAppState() (ApplicationState, error) {
 	web.RLock()
 	defer web.RUnlock()
@@ -177,6 +192,8 @@ func (web *WebServer) getAppState() (ApplicationState, error) {
 	return appState, nil
 }
 
+// updateWsClients sends the current state of the application to all
+// connected websockets.
 func (web *WebServer) updateWsClients() {
 
 	appState, err := web.getAppState()
@@ -194,6 +211,8 @@ func (web *WebServer) updateWsClients() {
 	}
 }
 
+// write is a function which instantiates a go-routine through which
+// concurrent writing to a websocket is handled.
 func (c *wsClient) write() {
 	defer func() {
 		c.ws.Close()
@@ -213,6 +232,8 @@ func (c *wsClient) write() {
 	}
 }
 
+// read is a function which instantiates a go-routine through which
+// concurrent reading from a websocket is handled.
 func (c *wsClient) read() {
 	defer func() {
 		c.removeClient <- c
