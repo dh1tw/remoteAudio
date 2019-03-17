@@ -214,6 +214,9 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		opus.Application(opusApplication),
 		opus.MaxBandwidth(opusMaxBandwidth),
 	)
+	if err != nil {
+		exit(err)
+	}
 
 	toNetwork, err := pbWriter.NewPbWriter(
 		pbWriter.Encoder(opusEncoder),
@@ -222,7 +225,6 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		pbWriter.FramesPerBuffer(audioFramesPerBuffer),
 		pbWriter.UserID(natsUsername),
 	)
-
 	if err != nil {
 		exit(err)
 	}
