@@ -63,7 +63,7 @@ func NewChain(opts ...Option) (*Chain, error) {
 
 	// if no nodes are available, we connect the source with the sink
 	if nodesCount == 0 {
-		nc.Sources.SetOnDataCb(nc.DefaultSourceToSinkCb)
+		nc.Sources.SetOnDataCb(nc.defaultSourceToSinkCb)
 		return nc, nil
 	}
 
@@ -86,7 +86,7 @@ func NewChain(opts ...Option) (*Chain, error) {
 	}
 
 	// connect the last node with the sink
-	nc.Nodes[nodesCount-1].SetCb(nc.DefaultSourceToSinkCb)
+	nc.Nodes[nodesCount-1].SetCb(nc.defaultSourceToSinkCb)
 
 	return nc, nil
 }
@@ -97,8 +97,8 @@ func (nc *Chain) Enable(state bool) error {
 	return nc.Sinks.EnableSink(nc.defaultSink, state)
 }
 
-// DefaultSourceToSinkCb connects a source with a sink
-func (nc *Chain) DefaultSourceToSinkCb(data audio.Msg) {
+// defaultSourceToSinkCb connects a source with a sink
+func (nc *Chain) defaultSourceToSinkCb(data audio.Msg) {
 	err := nc.Sinks.Write(data)
 	if err != nil {
 		// handle Error -> remove source
