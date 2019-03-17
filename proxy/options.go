@@ -3,6 +3,8 @@ package proxy
 // Option is the type for a function option
 type Option func(*Options)
 
+// Options is the data structure which holds the particular Options values.
+// The values are typically provided as functional options.
 type Options struct {
 }
 

@@ -6,6 +6,8 @@ import (
 	opus "gopkg.in/hraban/opus.v2"
 )
 
+//OpusEncoder is the data structure for the opus encoder. This struct hold
+//the internal values of the encoder.
 type OpusEncoder struct {
 	name        string
 	options     Options
@@ -13,7 +15,7 @@ type OpusEncoder struct {
 	application opus.Application
 }
 
-// NewOpusEncoder is the constructor method for an Opus encoder.
+// NewEncoder is the constructor method for an Opus encoder.
 func NewEncoder(opts ...Option) (*OpusEncoder, error) {
 
 	oEnc := &OpusEncoder{

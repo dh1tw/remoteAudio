@@ -2,8 +2,11 @@ package opus
 
 import opus "gopkg.in/hraban/opus.v2"
 
+// Option is a type used for functional options
 type Option func(*Options)
 
+// Options is a data structure which is passed into an opus encoder or decoder.
+// The struct is filled through functional options.
 type Options struct {
 	Name         string
 	Samplerate   float64

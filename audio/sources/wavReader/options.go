@@ -1,6 +1,7 @@
 package wavReader
 
 const (
+	// DefaultFramesPerBuffer default amount of audio frames read per buffer
 	DefaultFramesPerBuffer int = 4096
 )
 

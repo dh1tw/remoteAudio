@@ -4,9 +4,12 @@ package wavWriter
 type Option func(*Options)
 
 const (
-	DefaultChannels   int     = 1
+	// DefaultChannels recorded into a wav file
+	DefaultChannels int = 1
+	// DefaultSamplerate for writing wav files to disk
 	DefaultSamplerate float64 = 48000
-	DefaultBitDepth   int     = 16
+	// DefaultBitDepth for writing audio samples to disk
+	DefaultBitDepth int = 16
 )
 
 // Options contains the parameters for initializing a wav writer.

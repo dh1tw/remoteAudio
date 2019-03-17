@@ -5,6 +5,8 @@ import (
 	opus "gopkg.in/hraban/opus.v2"
 )
 
+// OpusDecoder is the data structure which holds internal values
+// for the decoder.
 type OpusDecoder struct {
 	name    string
 	options Options

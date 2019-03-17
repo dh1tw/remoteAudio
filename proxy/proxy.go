@@ -13,6 +13,10 @@ import (
 	"github.com/micro/go-micro/client"
 )
 
+// AudioServer is a local proxy object respresenting a remote Audio server. It can
+// be considered an abstraction layer so you don't have to take care of
+// sending and receiving messages to the remote audio server. This proxy
+// implementation is based on the micro.mu microservice framework.
 type AudioServer struct {
 	sync.RWMutex
 	name           string
@@ -32,6 +36,9 @@ type AudioServer struct {
 	doneOnce       sync.Once
 }
 
+// NewAudioServer is the constructor for the Audioserver proxy. The communication
+// with the remote audio server is done through a micro client. In case the
+// object disappears the doneCh will be closed.
 func NewAudioServer(name string, client client.Client, doneCh chan struct{}, opts ...Option) (*AudioServer, error) {
 
 	serviceName := fmt.Sprintf("shackbus.radio.%s.audio", name)
@@ -65,6 +72,7 @@ func NewAudioServer(name string, client client.Client, doneCh chan struct{}, opt
 	as.stateSub = sub
 
 	// start a go routine to ping our service every second
+	// for monitoring the latency to the server.
 	go func() {
 		for {
 			select {
@@ -132,42 +140,53 @@ func (as *AudioServer) ping() (int, error) {
 	return res, nil
 }
 
+// SetNotifyCb sets a callback which will be executed whenever the
+// state of the server changes.
 func (as *AudioServer) SetNotifyCb(f func()) {
 	as.Lock()
 	defer as.Unlock()
 	as.notifyChangeCb = f
 }
 
+// Name returns the name of the remote audio server
 func (as *AudioServer) Name() string {
 	as.RLock()
 	defer as.RUnlock()
 	return as.name
 }
 
+// ServiceName returns the fully qualified service name of the remote audio server
 func (as *AudioServer) ServiceName() string {
 	as.RLock()
 	defer as.RUnlock()
 	return as.serviceName
 }
 
+// RxOn returns a boolean which indicates the the remote audio server is
+// streaming audio.
 func (as *AudioServer) RxOn() bool {
 	as.RLock()
 	defer as.RUnlock()
 	return as.rxOn
 }
 
+// RxAddress returns the address on which the remote audio server is sending
+// out the audio.
 func (as *AudioServer) RxAddress() string {
 	as.RLock()
 	defer as.RUnlock()
 	return as.rxAddress
 }
 
+// TxAddress returns the address on which the remote audio server is listening
+// for incoming audio to be transmitted.
 func (as *AudioServer) TxAddress() string {
 	as.RLock()
 	defer as.RUnlock()
 	return as.txAddress
 }
 
+// StartRxStream tells the remote audio server to start streaming audio.
 func (as *AudioServer) StartRxStream() error {
 	_, err := as.rpc.StartStream(context.Background(), &sbAudio.None{})
 	if err != nil {
@@ -179,6 +198,7 @@ func (as *AudioServer) StartRxStream() error {
 	return nil
 }
 
+// StopRxStream tells the remote audio server to stop streaming audio.
 func (as *AudioServer) StopRxStream() error {
 	_, err := as.rpc.StopStream(context.Background(), &sbAudio.None{})
 	if err != nil {
@@ -190,18 +210,23 @@ func (as *AudioServer) StopRxStream() error {
 	return nil
 }
 
+// TxUser returns the current user transmitting through the remote audio server.
+// In case nobody is transmitting, an empty string will be returned.
 func (as *AudioServer) TxUser() string {
 	as.RLock()
 	defer as.RUnlock()
 	return as.txUser
 }
 
+// Latency returns the ping (2-way) latency to the remote audio server.
 func (as *AudioServer) Latency() int {
 	as.RLock()
 	defer as.RUnlock()
 	return as.latency
 }
 
+// stateUpdateCb decodes a protobuf coming from the micro broker and
+// notifies the parent application through a callback.
 func (as *AudioServer) stateUpdateCb(msg broker.Publication) error {
 
 	newState := sbAudio.State{}
@@ -224,6 +249,7 @@ func (as *AudioServer) stateUpdateCb(msg broker.Publication) error {
 	return nil
 }
 
+// getState queries the remote audio server to retrieve it's state.
 func (as *AudioServer) getState() error {
 	state, err := as.rpc.GetState(context.Background(), &sbAudio.None{})
 	if err != nil {
@@ -237,6 +263,8 @@ func (as *AudioServer) getState() error {
 	return nil
 }
 
+// getCapabilities queries the remote audio server to retrieve it's
+// capabilities
 func (as *AudioServer) getCapabilities() error {
 	caps, err := as.rpc.GetCapabilities(context.Background(), &sbAudio.None{})
 	if err != nil {

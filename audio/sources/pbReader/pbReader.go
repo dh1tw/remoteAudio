@@ -54,6 +54,7 @@ func NewPbReader(opts ...Option) (*PbReader, error) {
 	return pbr, nil
 }
 
+// Start processing Protobufs
 func (pbr *PbReader) Start() error {
 	pbr.Lock()
 	defer pbr.Unlock()
@@ -61,6 +62,7 @@ func (pbr *PbReader) Start() error {
 	return nil
 }
 
+// Stop processing Protobufs
 func (pbr *PbReader) Stop() error {
 	pbr.Lock()
 	defer pbr.Unlock()
@@ -68,16 +70,21 @@ func (pbr *PbReader) Stop() error {
 	return nil
 }
 
+// Close shuts down the PbReader
 func (pbr *PbReader) Close() error {
 	return nil
 }
 
+// SetCb sets the callback which get's executed once the
+// Protobuf has been converted in an audio.Msg.
 func (pbr *PbReader) SetCb(cb audio.OnDataCb) {
 	pbr.Lock()
 	defer pbr.Unlock()
 	pbr.options.Callback = cb
 }
 
+// Enqueue is the entry point for the PbReader. Incoming Protobufs
+// are enqueded with this function.
 func (pbr *PbReader) Enqueue(data []byte) error {
 	pbr.Lock()
 	defer pbr.Unlock()
