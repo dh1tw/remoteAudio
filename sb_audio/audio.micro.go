@@ -44,7 +44,7 @@ var _ server.Option
 
 // Client API for Server service
 
-type ServerClient interface {
+type ServerService interface {
 	GetCapabilities(ctx context.Context, in *None, opts ...client.CallOption) (*Capabilities, error)
 	GetState(ctx context.Context, in *None, opts ...client.CallOption) (*State, error)
 	StartStream(ctx context.Context, in *None, opts ...client.CallOption) (*None, error)
@@ -52,26 +52,26 @@ type ServerClient interface {
 	Ping(ctx context.Context, in *PingPong, opts ...client.CallOption) (*PingPong, error)
 }
 
-type serverClient struct {
-	c           client.Client
-	serviceName string
+type serverService struct {
+	c    client.Client
+	name string
 }
 
-func NewServerClient(serviceName string, c client.Client) ServerClient {
+func NewServerService(name string, c client.Client) ServerService {
 	if c == nil {
 		c = client.NewClient()
 	}
-	if len(serviceName) == 0 {
-		serviceName = "shackbus.audio"
+	if len(name) == 0 {
+		name = "shackbus.audio"
 	}
-	return &serverClient{
-		c:           c,
-		serviceName: serviceName,
+	return &serverService{
+		c:    c,
+		name: name,
 	}
 }
 
-func (c *serverClient) GetCapabilities(ctx context.Context, in *None, opts ...client.CallOption) (*Capabilities, error) {
-	req := c.c.NewRequest(c.serviceName, "Server.GetCapabilities", in)
+func (c *serverService) GetCapabilities(ctx context.Context, in *None, opts ...client.CallOption) (*Capabilities, error) {
+	req := c.c.NewRequest(c.name, "Server.GetCapabilities", in)
 	out := new(Capabilities)
 	err := c.c.Call(ctx, req, out, opts...)
 	if err != nil {
@@ -80,8 +80,8 @@ func (c *serverClient) GetCapabilities(ctx context.Context, in *None, opts ...cl
 	return out, nil
 }
 
-func (c *serverClient) GetState(ctx context.Context, in *None, opts ...client.CallOption) (*State, error) {
-	req := c.c.NewRequest(c.serviceName, "Server.GetState", in)
+func (c *serverService) GetState(ctx context.Context, in *None, opts ...client.CallOption) (*State, error) {
+	req := c.c.NewRequest(c.name, "Server.GetState", in)
 	out := new(State)
 	err := c.c.Call(ctx, req, out, opts...)
 	if err != nil {
@@ -90,8 +90,8 @@ func (c *serverClient) GetState(ctx context.Context, in *None, opts ...client.Ca
 	return out, nil
 }
 
-func (c *serverClient) StartStream(ctx context.Context, in *None, opts ...client.CallOption) (*None, error) {
-	req := c.c.NewRequest(c.serviceName, "Server.StartStream", in)
+func (c *serverService) StartStream(ctx context.Context, in *None, opts ...client.CallOption) (*None, error) {
+	req := c.c.NewRequest(c.name, "Server.StartStream", in)
 	out := new(None)
 	err := c.c.Call(ctx, req, out, opts...)
 	if err != nil {
@@ -100,8 +100,8 @@ func (c *serverClient) StartStream(ctx context.Context, in *None, opts ...client
 	return out, nil
 }
 
-func (c *serverClient) StopStream(ctx context.Context, in *None, opts ...client.CallOption) (*None, error) {
-	req := c.c.NewRequest(c.serviceName, "Server.StopStream", in)
+func (c *serverService) StopStream(ctx context.Context, in *None, opts ...client.CallOption) (*None, error) {
+	req := c.c.NewRequest(c.name, "Server.StopStream", in)
 	out := new(None)
 	err := c.c.Call(ctx, req, out, opts...)
 	if err != nil {
@@ -110,8 +110,8 @@ func (c *serverClient) StopStream(ctx context.Context, in *None, opts ...client.
 	return out, nil
 }
 
-func (c *serverClient) Ping(ctx context.Context, in *PingPong, opts ...client.CallOption) (*PingPong, error) {
-	req := c.c.NewRequest(c.serviceName, "Server.Ping", in)
+func (c *serverService) Ping(ctx context.Context, in *PingPong, opts ...client.CallOption) (*PingPong, error) {
+	req := c.c.NewRequest(c.name, "Server.Ping", in)
 	out := new(PingPong)
 	err := c.c.Call(ctx, req, out, opts...)
 	if err != nil {
@@ -130,30 +130,41 @@ type ServerHandler interface {
 	Ping(context.Context, *PingPong, *PingPong) error
 }
 
-func RegisterServerHandler(s server.Server, hdlr ServerHandler, opts ...server.HandlerOption) {
-	s.Handle(s.NewHandler(&Server{hdlr}, opts...))
+func RegisterServerHandler(s server.Server, hdlr ServerHandler, opts ...server.HandlerOption) error {
+	type server interface {
+		GetCapabilities(ctx context.Context, in *None, out *Capabilities) error
+		GetState(ctx context.Context, in *None, out *State) error
+		StartStream(ctx context.Context, in *None, out *None) error
+		StopStream(ctx context.Context, in *None, out *None) error
+		Ping(ctx context.Context, in *PingPong, out *PingPong) error
+	}
+	type Server struct {
+		server
+	}
+	h := &serverHandler{hdlr}
+	return s.Handle(s.NewHandler(&Server{h}, opts...))
 }
 
-type Server struct {
+type serverHandler struct {
 	ServerHandler
 }
 
-func (h *Server) GetCapabilities(ctx context.Context, in *None, out *Capabilities) error {
+func (h *serverHandler) GetCapabilities(ctx context.Context, in *None, out *Capabilities) error {
 	return h.ServerHandler.GetCapabilities(ctx, in, out)
 }
 
-func (h *Server) GetState(ctx context.Context, in *None, out *State) error {
+func (h *serverHandler) GetState(ctx context.Context, in *None, out *State) error {
 	return h.ServerHandler.GetState(ctx, in, out)
 }
 
-func (h *Server) StartStream(ctx context.Context, in *None, out *None) error {
+func (h *serverHandler) StartStream(ctx context.Context, in *None, out *None) error {
 	return h.ServerHandler.StartStream(ctx, in, out)
 }
 
-func (h *Server) StopStream(ctx context.Context, in *None, out *None) error {
+func (h *serverHandler) StopStream(ctx context.Context, in *None, out *None) error {
 	return h.ServerHandler.StopStream(ctx, in, out)
 }
 
-func (h *Server) Ping(ctx context.Context, in *PingPong, out *PingPong) error {
+func (h *serverHandler) Ping(ctx context.Context, in *PingPong, out *PingPong) error {
 	return h.ServerHandler.Ping(ctx, in, out)
 }
