@@ -7,7 +7,9 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time" // _ "net/http/pprof"
+	"time"
+
+	// _ "net/http/pprof"
 
 	"github.com/dh1tw/remoteAudio/audio/chain"
 	"github.com/dh1tw/remoteAudio/audio/nodes/doorman"
@@ -34,8 +36,8 @@ import (
 // serverMqttCmd represents the mqtt command
 var natsServerCmd = &cobra.Command{
 	Use:   "nats",
-	Short: "nats server",
-	Long:  `nats server`,
+	Short: "NATS Server",
+	Long:  `NATS Server for bi-directional audio streaming`,
 	Run:   natsAudioServer,
 }
 
@@ -45,7 +47,8 @@ func init() {
 	natsServerCmd.Flags().IntP("broker-port", "p", 4222, "Broker Port")
 	natsServerCmd.Flags().StringP("password", "P", "", "NATS Password")
 	natsServerCmd.Flags().StringP("username", "U", "", "NATS Username")
-	natsServerCmd.Flags().StringP("radio", "Y", "", "radio name to which this audio server belongs (e.g. 'ts480')")
+	natsServerCmd.Flags().StringP("server-name", "Y", "", "server name (e.g. 'ts480')")
+	natsServerCmd.Flags().Int("server-index", 1, "server index - only needed for consistent order in the GUI")
 }
 
 func natsAudioServer(cmd *cobra.Command, args []string) {
@@ -74,7 +77,8 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	viper.BindPFlag("nats.broker-port", cmd.Flags().Lookup("broker-port"))
 	viper.BindPFlag("nats.password", cmd.Flags().Lookup("password"))
 	viper.BindPFlag("nats.username", cmd.Flags().Lookup("username"))
-	viper.BindPFlag("nats.radio", cmd.Flags().Lookup("radio"))
+	viper.BindPFlag("server.name", cmd.Flags().Lookup("server-name"))
+	viper.BindPFlag("server.index", cmd.Flags().Lookup("server-index"))
 
 	// profiling server
 	// go func() {
@@ -124,17 +128,18 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	brNatsOpts := nopts
 	trNatsOpts := nopts
 
-	radioName := viper.GetString("nats.radio")
+	serverIndex := viper.GetInt("server.index")
+	serverName := viper.GetString("server.name")
 
-	if len(radioName) == 0 {
-		exit(fmt.Errorf("radio name missing"))
+	if len(serverName) == 0 {
+		exit(fmt.Errorf("server name missing"))
 	}
 
-	if strings.ContainsAny(radioName, " _\n\r") {
-		exit(fmt.Errorf("forbidden character in radio name '%s'", radioName))
+	if strings.ContainsAny(serverName, " _\n\r") {
+		exit(fmt.Errorf("forbidden character in server name '%s'", serverName))
 	}
 
-	serviceName := fmt.Sprintf("shackbus.radio.%s.audio", radioName)
+	serviceName := fmt.Sprintf("shackbus.radio.%s.audio", serverName)
 
 	// we want to set the nats.Options.Name so that we can distinguish
 	// them when monitoring the nats server with nats-top
@@ -186,6 +191,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		stateTopic:   serviceName + ".state",
 		service:      rs,
 		broker:       br,
+		serverIndex:  serverIndex,
 	}
 
 	// create an sound card writer (typically feeding audio into the
@@ -356,6 +362,7 @@ type natsServer struct {
 	stateTopic   string
 	rxOn         bool
 	txUser       string
+	serverIndex  int
 }
 
 func (ns *natsServer) enqueueFromWire(pub broker.Publication) error {
@@ -415,6 +422,7 @@ func (ns *natsServer) GetCapabilities(ctx context.Context, in *sbAudio.None, out
 	out.RxStreamAddress = ns.rxAudioTopic
 	out.TxStreamAddress = ns.txAudioTopic
 	out.StateUpdatesAddress = ns.stateTopic
+	out.Index = int32(ns.serverIndex)
 	return nil
 }
 

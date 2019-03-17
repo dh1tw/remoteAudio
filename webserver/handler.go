@@ -303,10 +303,11 @@ func (web *WebServer) serverHdlr(w http.ResponseWriter, req *http.Request) {
 	}
 
 	serverMsg := &AudioServer{
-		Name:   as.Name(),
-		TxUser: as.TxUser(),
-		On:     as.RxOn(),
-		// Latency: as.Latency();
+		Name:    as.Name(),
+		Index:   as.Index(),
+		TxUser:  as.TxUser(),
+		On:      as.RxOn(),
+		Latency: as.Latency(),
 	}
 	if err := json.NewEncoder(w).Encode(serverMsg); err != nil {
 		log.Println(err)

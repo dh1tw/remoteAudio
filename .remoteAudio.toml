@@ -3,7 +3,10 @@ broker-url = "localhost"
 broker-port = 4222
 username = ""
 password = ""
-radio = "ft950"
+
+[server]
+name = "ft950"
+index = 1
 
 [input-device]
 device-name = "default"

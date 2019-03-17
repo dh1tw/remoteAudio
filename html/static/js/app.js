@@ -152,7 +152,23 @@ var vm = new Vue({
                     }
                 }
             })
-        }
+        },
+        sortByKey: function(array, key) {
+            return array.sort(function(a, b) {
+                var x = a[key]; var y = b[key];
+                return ((x < y) ? -1 : ((x > y) ? 1 : 0));
+            });
+        },
+    },
+    computed: {
+        sortedAudioServers: function (){
+            var servers = []
+            for (svr in this.audioServers) {
+                servers.push(this.audioServers[svr])
+            }
+            this.sortByKey(servers, "index")
+            return servers
+        },
     },
 });
 

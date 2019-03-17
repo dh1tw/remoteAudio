@@ -30,7 +30,7 @@
       <div class="starter-template">
         <div class="row">
           <audioservers
-              :servers="audioServers"
+              :servers="sortedAudioServers"
               v-on:set-audioserver="setAudioServer"
               v-on:set-rxstate="setRxState">
           </audioservers>

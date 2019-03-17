@@ -35,6 +35,7 @@ type ApplicationState struct {
 // /api/v{version}/server/{radio} endpoint.
 type AudioServer struct {
 	Name    string `json:"name"`
+	Index   int    `json:"index"`
 	On      bool   `json:"rx_on"`
 	TxUser  string `json:"tx_user"`
 	Latency int    `json:"latency"`
@@ -173,6 +174,7 @@ func (web *WebServer) getAppState() (ApplicationState, error) {
 		}
 		as := AudioServer{
 			Name:    svr.Name(),
+			Index:   svr.Index(),
 			On:      svr.RxOn(),
 			TxUser:  svr.TxUser(),
 			Latency: svr.Latency(),

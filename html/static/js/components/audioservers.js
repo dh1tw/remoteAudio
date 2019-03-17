@@ -6,7 +6,7 @@ var AudioServers = {
                   </div>
                 <div class="panel-body">
                   <div class="list-group">
-                    <div v-for="server in servers" :key="servers">
+                    <div v-for="server in servers">
                       <audioserver v-on:set-audioserver="setAudioServer"
                         v-on:set-rxstate="setRxState"
                         :selected=server.selected

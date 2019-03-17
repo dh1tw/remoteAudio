@@ -20,6 +20,7 @@ import (
 type AudioServer struct {
 	sync.RWMutex
 	name           string
+	index          int //static index for displaying several servers consistenly in the GUI
 	serviceName    string
 	client         client.Client
 	rpc            sbAudio.ServerService
@@ -155,6 +156,15 @@ func (as *AudioServer) Name() string {
 	return as.name
 }
 
+// Index returns the static index of the remote audio server. This is only
+// needed for maintaining a consistent order in a GUI if several audio
+// servers are available
+func (as *AudioServer) Index() int {
+	as.RLock()
+	defer as.RUnlock()
+	return as.index
+}
+
 // ServiceName returns the fully qualified service name of the remote audio server
 func (as *AudioServer) ServiceName() string {
 	as.RLock()
@@ -270,8 +280,10 @@ func (as *AudioServer) getCapabilities() error {
 	if err != nil {
 		return fmt.Errorf("getCapabilities: %v", err)
 	}
+
 	as.Lock()
 	defer as.Unlock()
+
 	as.rxAddress = caps.GetRxStreamAddress()
 	if len(as.rxAddress) == 0 {
 		return fmt.Errorf("getCapabilities: RxStreamAddress empty")
@@ -284,5 +296,7 @@ func (as *AudioServer) getCapabilities() error {
 	if len(as.stateAddress) == 0 {
 		return fmt.Errorf("getCapabilities: StateUpdatesAddress empty")
 	}
+	as.index = int(caps.GetIndex())
+
 	return nil
 }
