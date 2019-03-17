@@ -97,10 +97,6 @@ func (nc *Chain) Enable(state bool) error {
 	return nc.Sinks.EnableSink(nc.defaultSink, state)
 }
 
-func (nc *Chain) ForwardToNode(data audio.Msg) {
-
-}
-
 // DefaultSourceToSinkCb connects a source with a sink
 func (nc *Chain) DefaultSourceToSinkCb(data audio.Msg) {
 	err := nc.Sinks.Write(data)
