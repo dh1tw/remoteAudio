@@ -69,8 +69,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	// check if values from config file / pflags are valid
 	if err := checkAudioParameterValues(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		exit(err)
 	}
 
 	// bind the pflags to viper settings
@@ -110,7 +109,13 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	opusComplexity := viper.GetInt("opus.complexity")
 	//values checked before
 	opusApplication, err := getOpusApplication(viper.GetString("opus.application"))
+	if err != nil {
+		exit(err)
+	}
 	opusMaxBandwidth, err := getOpusMaxBandwith(viper.GetString("opus.max-bandwidth"))
+	if err != nil {
+		exit(err)
+	}
 
 	rxVolume := viper.GetInt("audio.rx-volume")
 	txVolume := viper.GetInt("audio.tx-volume")
