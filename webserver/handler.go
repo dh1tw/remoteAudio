@@ -176,7 +176,7 @@ func (web *WebServer) txVolumeHdlr(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (web *WebServer) serverActiveHdlr(w http.ResponseWriter, req *http.Request) {
+func (web *WebServer) serverSelectedHdlr(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
@@ -192,12 +192,12 @@ func (web *WebServer) serverActiveHdlr(w http.ResponseWriter, req *http.Request)
 
 	switch req.Method {
 	case "GET":
-		active := false
+		selected := false
 		if web.trx.SelectedServer() == asName {
-			active = true
+			selected = true
 		}
-		activeCtlMsg := &AudioControlActive{
-			Active: &active,
+		activeCtlMsg := &AudioControlSelected{
+			Selected: &selected,
 		}
 		if err := json.NewEncoder(w).Encode(activeCtlMsg); err != nil {
 			log.Println(err)
@@ -206,15 +206,15 @@ func (web *WebServer) serverActiveHdlr(w http.ResponseWriter, req *http.Request)
 		}
 
 	case "PUT":
-		var activeCtlMsg AudioControlActive
+		var selectedCtlMsg AudioControlSelected
 		dec := json.NewDecoder(req.Body)
 
-		if err := dec.Decode(&activeCtlMsg); err != nil {
+		if err := dec.Decode(&selectedCtlMsg); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("400 - invalid JSON"))
 			return
 		}
-		if activeCtlMsg.Active == nil {
+		if selectedCtlMsg.Selected == nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("400 - invalid Request"))
 			return

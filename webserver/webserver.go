@@ -62,8 +62,8 @@ type AudioControlVolume struct {
 	Volume *int `json:"volume"`
 }
 
-type AudioControlActive struct {
-	Active *bool `json:"active"`
+type AudioControlSelected struct {
+	Selected *bool `json:"selected"`
 }
 
 func NewWebServer(url string, port int, trx *trx.Trx) (*WebServer, error) {
@@ -89,13 +89,13 @@ func (web *WebServer) Start() {
 	fileServer := http.FileServer(box.HTTPBox())
 
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/api/rx/volume", web.rxVolumeHdlr)
-	router.HandleFunc("/api/tx/volume", web.txVolumeHdlr)
-	router.HandleFunc("/api/tx/state", web.txStateHdlr)
-	router.HandleFunc("/api/servers", web.serversHdlr).Methods("GET")
-	router.HandleFunc("/api/server/{server}", web.serverHdlr).Methods("GET")
-	router.HandleFunc("/api/server/{server}/active", web.serverActiveHdlr)
-	router.HandleFunc("/api/server/{server}/state", web.serverStateHdlr)
+	router.HandleFunc("/api/v1.0/rx/volume", web.rxVolumeHdlr)
+	router.HandleFunc("/api/v1.0/tx/volume", web.txVolumeHdlr)
+	router.HandleFunc("/api/v1.0/tx/state", web.txStateHdlr)
+	router.HandleFunc("/api/v1.0/servers", web.serversHdlr).Methods("GET")
+	router.HandleFunc("/api/v1.0/server/{server}", web.serverHdlr).Methods("GET")
+	router.HandleFunc("/api/v1.0/server/{server}/selected", web.serverSelectedHdlr)
+	router.HandleFunc("/api/v1.0/server/{server}/state", web.serverStateHdlr)
 	router.HandleFunc("/ws", web.webSocketHdlr)
 	router.PathPrefix("/").Handler(fileServer)
 

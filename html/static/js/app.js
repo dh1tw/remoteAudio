@@ -91,32 +91,31 @@ var vm = new Vue({
             this.$set(this.audioServers[asName], "selected", true);
         },
         setAudioServer: function (audioServerName) {
-            this.$http.put("/api/server/" + audioServerName + "/active",
+            this.$http.put("/api/v1.0/server/" + audioServerName + "/selected",
                 JSON.stringify({
-                    active: true,
+                    selected: true,
                 }));
         },
         setRxState: function (audioServerName, rxState) {
-            console.log("set " + audioServerName + " to " + rxState)
-            this.$http.put("/api/server/" + audioServerName + "/state",
+            this.$http.put("/api/v1.0/server/" + audioServerName + "/state",
                 JSON.stringify({
                     on: rxState,
                 }));
         },
         sendTxOn: function () {
-            this.$http.put("/api/tx/state",
+            this.$http.put("/api/v1.0/tx/state",
                 JSON.stringify({
                     on: !this.txOn,
                 }));
         },
         sendRxVolume: function (value) {
-            this.$http.put("/api/rx/volume",
+            this.$http.put("/api/v1.0/rx/volume",
                 JSON.stringify({
                     volume: Math.round(value)
                 }));
         },
         sendTxVolume: function (value) {
-            this.$http.put("/api/tx/volume",
+            this.$http.put("/api/v1.0/tx/volume",
                 JSON.stringify({
                     volume: Math.round(value)
                 }));
