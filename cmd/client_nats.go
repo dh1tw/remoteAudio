@@ -252,10 +252,12 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	tx.Sinks.AddSink("toNetwork", toNetwork, false)
 	tx.Sources.SetSource("mic")
 
+	// init the client
 	if err := cl.Init(); err != nil {
 		exit(err)
 	}
 
+	// connect to the broker
 	if err := br.Connect(); err != nil {
 		exit(err)
 	}

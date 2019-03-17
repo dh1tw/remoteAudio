@@ -8,6 +8,8 @@ import (
 // Option is the type for a function option
 type Option func(*Options)
 
+// Options is the data structure which holds the option values. These
+// values are typically set through functional options.
 type Options struct {
 	DeviceName string
 	Decoder    audiocodec.Decoder
