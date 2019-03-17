@@ -33,8 +33,8 @@ import (
 // serverMqttCmd represents the mqtt command
 var natsClientCmd = &cobra.Command{
 	Use:   "nats",
-	Short: "nats client",
-	Long:  `nats client`,
+	Short: "NATS Client",
+	Long:  `NATS Client for bi-directional audio streaming`,
 	Run:   natsAudioClient,
 }
 
@@ -44,7 +44,7 @@ func init() {
 	natsClientCmd.Flags().IntP("broker-port", "p", 4222, "Broker Port")
 	natsClientCmd.Flags().StringP("password", "P", "", "NATS Password")
 	natsClientCmd.Flags().StringP("username", "U", "", "NATS Username")
-	natsClientCmd.Flags().StringP("radio", "Y", "", "default radio (e.g. 'ts480')")
+	natsClientCmd.Flags().StringP("server-name", "Y", "", "default audio server (e.g. 'ts480')")
 	natsClientCmd.Flags().StringP("http-host", "w", "127.0.0.1", "Host (use '0.0.0.0' to listen on all network adapters)")
 	natsClientCmd.Flags().StringP("http-port", "k", "9090", "Port to access the web interface")
 	natsClientCmd.Flags().Int32("tx-volume", 70, "volume of tx audio stream on startup")
@@ -77,7 +77,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	viper.BindPFlag("nats.broker-port", cmd.Flags().Lookup("broker-port"))
 	viper.BindPFlag("nats.password", cmd.Flags().Lookup("password"))
 	viper.BindPFlag("nats.username", cmd.Flags().Lookup("username"))
-	viper.BindPFlag("nats.radio", cmd.Flags().Lookup("radio"))
+	viper.BindPFlag("server.name", cmd.Flags().Lookup("server-name"))
 	viper.BindPFlag("http.host", cmd.Flags().Lookup("http-host"))
 	viper.BindPFlag("http.port", cmd.Flags().Lookup("http-port"))
 	viper.BindPFlag("audio.rx-volume", cmd.Flags().Lookup("rx-volume"))
@@ -125,13 +125,13 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	natsPassword := viper.GetString("nats.password")
 	natsBrokerURL := viper.GetString("nats.broker-url")
 	natsBrokerPort := viper.GetInt("nats.broker-port")
-	radioName := viper.GetString("nats.radio")
+	serverName := viper.GetString("server.name")
 
 	portaudio.Initialize()
 	defer portaudio.Terminate()
 
-	if len(radioName) > 0 && strings.ContainsAny(radioName, " _\n\r") {
-		exit(fmt.Errorf("forbidden character in radio name '%s'", radioName))
+	if len(serverName) > 0 && strings.ContainsAny(serverName, " _\n\r") {
+		exit(fmt.Errorf("forbidden character in server name '%s'", serverName))
 	}
 
 	httpHost := viper.GetString("http.host")
@@ -277,15 +277,15 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	// if a radio name is specified, create immediately
 	// an audioServer object
-	if len(radioName) > 0 {
+	if len(serverName) > 0 {
 		doneCh := make(chan struct{})
-		audioSvr, err := proxy.NewAudioServer(radioName, cl, doneCh)
+		audioSvr, err := proxy.NewAudioServer(serverName, cl, doneCh)
 		if err != nil {
-			exit(fmt.Errorf("audio server for %s unavailable", radioName))
+			exit(fmt.Errorf("audio server for %s unavailable", serverName))
 		}
 
 		trx.AddServer(audioSvr)
-		if err := trx.SelectServer(radioName); err != nil {
+		if err := trx.SelectServer(serverName); err != nil {
 			exit(err)
 		}
 
@@ -300,7 +300,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 		go func() {
 			<-doneCh
-			trx.RemoveServer(radioName)
+			trx.RemoveServer(serverName)
 		}()
 	}
 
