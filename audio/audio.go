@@ -43,9 +43,10 @@ type Token struct {
 	*sync.WaitGroup
 }
 
-// Msg contains an audio buffer with it's metadata.
+// Msg contains an audio buffer with it's metadata. Msgs are internally used to
+// pass the data from the source, through the audio nodes to the audio sink(s).
 type Msg struct {
-	Data       []float32
+	Data       []float32              // audio data, float32 interleaved (if stereo)
 	Samplerate float64                // samplerate, e.g. 48000Hz
 	Channels   int                    // most of the time either 1 (mono) or 2 (stereo)
 	Frames     int                    // Number of Frames in the buffer
