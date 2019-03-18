@@ -7,12 +7,12 @@ matrix:
       env:
         - GIMME_OS=linux
         - GIMME_ARCH=amd64
-      go: "1.10"
+      go: "1.12"
     - os: osx
       env:
         - GIMME_OS=darwin
         - GIMME_ARCH=amd64
-      go: "1.10"
+      go: "1.12"
 cache:
   directories:
   - $HOME/protobuf
@@ -47,4 +47,4 @@ deploy:
     tags:
       true
     draft: true
-    go: "1.10"
+    go: "1.12"
