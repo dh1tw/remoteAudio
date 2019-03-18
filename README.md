@@ -185,6 +185,7 @@ Feel free to [open an issue][12] if you encounter problems.
 
 [1]:https://golang.org
 [2]:http://opus-codec.org
+[3]:https://nats.io/download/nats-io/gnatsd/
 [5]:https://golang.org/dl
 [6]:https://github.com/google/protobuf/releases
 [7]:https://github.com/GeertJohan/go.rice/rice
