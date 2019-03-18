@@ -192,6 +192,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		service:      rs,
 		broker:       br,
 		serverIndex:  serverIndex,
+		lastPing:     time.Now(),
 	}
 
 	// create an sound card writer (typically feeding audio into the
@@ -336,6 +337,9 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		exit(err)
 	}
 
+	// when no ping is received, turn of the audio stream
+	go ns.checkTimeout()
+
 	// run the micro service
 	if err := rs.Run(); err != nil {
 		log.Println(err)
@@ -363,6 +367,7 @@ type natsServer struct {
 	rxOn         bool
 	txUser       string
 	serverIndex  int
+	lastPing     time.Time
 }
 
 func (ns *natsServer) enqueueFromWire(pub broker.Publication) error {
@@ -474,6 +479,9 @@ func (ns *natsServer) StopStream(ctx context.Context, in, out *sbAudio.None) err
 
 func (ns *natsServer) Ping(ctx context.Context, in, out *sbAudio.PingPong) error {
 	out.Ping = in.Ping
+	ns.Lock()
+	defer ns.Unlock()
+	ns.lastPing = time.Now()
 	return nil
 }
 
@@ -485,4 +493,20 @@ func (ns *natsServer) getState() (bool, string, error) {
 		return false, "", err
 	}
 	return rxOn, ns.txUser, nil
+}
+
+func (ns *natsServer) checkTimeout() {
+
+	ticker := time.NewTicker(time.Minute)
+
+	for {
+		<-ticker.C
+		ns.RLock()
+		if time.Since(ns.lastPing) > time.Duration(time.Minute) {
+			if err := ns.rx.Enable(false); err != nil {
+				log.Println("checkTimeout: ", err)
+			}
+		}
+		ns.RUnlock()
+	}
 }
