@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	// _ "net/http/pprof"
@@ -18,11 +16,10 @@ import (
 	"github.com/dh1tw/remoteAudio/audio/sources/pbReader"
 	"github.com/dh1tw/remoteAudio/audio/sources/scReader"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
+	as "github.com/dh1tw/remoteAudio/audioserver"
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
-	"github.com/gogo/protobuf/proto"
 	"github.com/gordonklaus/portaudio"
 	micro "github.com/micro/go-micro"
-	"github.com/micro/go-micro/broker"
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/server"
 	natsBroker "github.com/micro/go-plugins/broker/nats"
@@ -183,18 +180,6 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		micro.Server(svr),
 	)
 
-	// natsServer is a convenience object which contains all the long
-	// living variable & objects of this application
-	ns := &natsServer{
-		rxAudioTopic: serviceName + ".rx",
-		txAudioTopic: serviceName + ".tx",
-		stateTopic:   serviceName + ".state",
-		service:      rs,
-		broker:       br,
-		serverIndex:  serverIndex,
-		lastPing:     time.Now(),
-	}
-
 	// create an sound card writer (typically feeding audio into the
 	// microphone of the transceiver)
 	mic, err := scWriter.NewScWriter(
@@ -249,7 +234,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		pbWriter.Samplerate(iSamplerate),
 		pbWriter.Channels(iChannels),
 		pbWriter.FramesPerBuffer(audioFramesPerBuffer),
-		pbWriter.ToWireCb(ns.toWireCb),
+		pbWriter.ToWireCb(ns.ToWireCb),
 	)
 	if err != nil {
 		exit(err)
@@ -291,11 +276,6 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	rx.Sources.AddSource("radioAudio", radioAudio)
 	rx.Sinks.AddSink("toNetwork", toNetwork, false)
 
-	// assign the rx and tx audio chain to our natsServer
-	ns.rx = rx
-	ns.tx = tx
-	ns.fromNetwork = fromNetwork
-
 	// initialize our micro service
 	rs.Init()
 
@@ -314,31 +294,20 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// connect the broker
-	if err := br.Connect(); err != nil {
-		exit(fmt.Errorf("broker: %v", err))
-	}
-
-	// subscribe to the audio topic and enqueue the raw data into the pbReader
-	sub, err := br.Subscribe(ns.txAudioTopic, ns.enqueueFromWire)
-	if err != nil {
-		exit(fmt.Errorf("subscribe: %v", err))
-	}
-	ns.txAudioSub = sub
+	// ns is a convenience object which contains all the long
+	// living variable & objects of this application
+	ns, err := as.NewAudioServer(
+		as.Broker(br),
+		as.Service(rs),
+		as.ServiceName(serverName),
+		as.Index(serverIndex),
+		as.FromNetwork(fromNetwork),
+		as.RxChain(rx),
+		as.TxChain(tx),
+	)
 
 	// register our Rotator RPC handler
 	sbAudio.RegisterServerHandler(rs.Server(), ns)
-
-	rx.Sources.SetSource("radioAudio")
-
-	// stream immediately audio from the network to the radio
-	tx.Sources.SetSource("fromNetwork")
-	if err := tx.Enable(true); err != nil {
-		exit(err)
-	}
-
-	// when no ping is received, turn of the audio stream
-	go ns.checkTimeout()
 
 	// run the micro service
 	if err := rs.Run(); err != nil {
@@ -349,164 +318,5 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		rx.Sinks.Close()
 		tx.Sources.Close()
 		tx.Sinks.Close()
-	}
-}
-
-type natsServer struct {
-	sync.RWMutex
-	name         string
-	service      micro.Service
-	broker       broker.Broker
-	rx           *chain.Chain
-	tx           *chain.Chain
-	fromNetwork  *pbReader.PbReader
-	rxAudioTopic string
-	txAudioTopic string
-	txAudioSub   broker.Subscriber
-	stateTopic   string
-	rxOn         bool
-	txUser       string
-	serverIndex  int
-	lastPing     time.Time
-}
-
-func (ns *natsServer) enqueueFromWire(pub broker.Publication) error {
-	if ns.fromNetwork == nil {
-		return nil
-	}
-	return ns.fromNetwork.Enqueue(pub.Message().Body)
-}
-
-// Callback which is called by pbWriter to push the audio
-// packets to the network
-func (ns *natsServer) toWireCb(data []byte) {
-
-	if ns.broker == nil {
-		log.Println("sendState: broker not set") // better Fatal?
-	}
-
-	msg := &broker.Message{
-		Body: data,
-	}
-
-	err := ns.broker.Publish(ns.rxAudioTopic, msg)
-	if err != nil {
-		log.Println(err) // better fatal?
-	}
-}
-
-func (ns *natsServer) sendState() error {
-	ns.RLock()
-	defer ns.RUnlock()
-
-	if ns.broker == nil {
-		return fmt.Errorf("sendState: broker not set")
-	}
-
-	state := sbAudio.State{
-		RxOn:   ns.rxOn,
-		TxUser: ns.txUser,
-	}
-
-	data, err := proto.Marshal(&state)
-	if err != nil {
-		return err
-	}
-
-	msg := &broker.Message{
-		Body: data,
-	}
-
-	return ns.broker.Publish(ns.stateTopic, msg)
-}
-
-func (ns *natsServer) GetCapabilities(ctx context.Context, in *sbAudio.None, out *sbAudio.Capabilities) error {
-	ns.RLock()
-	defer ns.RUnlock()
-	out.Name = ns.name
-	out.RxStreamAddress = ns.rxAudioTopic
-	out.TxStreamAddress = ns.txAudioTopic
-	out.StateUpdatesAddress = ns.stateTopic
-	out.Index = int32(ns.serverIndex)
-	return nil
-}
-
-func (ns *natsServer) GetState(ctx context.Context, in *sbAudio.None, out *sbAudio.State) error {
-	rxOn, txUser, err := ns.getState()
-	if err != nil {
-		return err
-	}
-	out.RxOn = rxOn
-	out.TxUser = txUser
-	return nil
-}
-
-func (ns *natsServer) StartStream(ctx context.Context, in, out *sbAudio.None) error {
-
-	if err := ns.rx.Enable(true); err != nil {
-		log.Println("StartStream:", err)
-		return err
-	}
-
-	ns.Lock()
-	ns.rxOn = true
-	ns.Unlock()
-
-	if err := ns.sendState(); err != nil {
-		log.Println("StartStream:", err)
-		return err
-	}
-	return nil
-}
-
-func (ns *natsServer) StopStream(ctx context.Context, in, out *sbAudio.None) error {
-
-	if err := ns.rx.Enable(false); err != nil {
-		log.Println("StopStream:", err)
-		return err
-	}
-
-	ns.Lock()
-	ns.rxOn = false
-	ns.Unlock()
-
-	if err := ns.sendState(); err != nil {
-		log.Println("StopStream:", err)
-		return err
-	}
-	return nil
-}
-
-func (ns *natsServer) Ping(ctx context.Context, in, out *sbAudio.PingPong) error {
-	out.Ping = in.Ping
-	ns.Lock()
-	defer ns.Unlock()
-	ns.lastPing = time.Now()
-	return nil
-}
-
-func (ns *natsServer) getState() (bool, string, error) {
-	ns.RLock()
-	defer ns.RUnlock()
-	_, rxOn, err := ns.rx.Sinks.Sink("toNetwork")
-	if err != nil {
-		return false, "", err
-	}
-	return rxOn, ns.txUser, nil
-}
-
-func (ns *natsServer) checkTimeout() {
-
-	ticker := time.NewTicker(time.Minute)
-
-	for {
-		<-ticker.C
-		ns.RLock()
-		if time.Since(ns.lastPing) > time.Duration(time.Minute) {
-			if err := ns.rx.Enable(false); err != nil {
-				log.Println("checkTimeout: ", err)
-			}
-		}
-		ns.RUnlock()
 	}
 }
