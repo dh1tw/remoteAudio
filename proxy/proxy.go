@@ -25,7 +25,7 @@ type AudioServer struct {
 	client         client.Client
 	rpc            sbAudio.ServerService
 	stateSub       broker.Subscriber
-	rxAddress      string
+	rxAddress      string 
 	txAddress      string
 	stateAddress   string
 	rxOn           bool
@@ -237,7 +237,7 @@ func (as *AudioServer) Latency() int {
 
 // stateUpdateCb decodes a protobuf coming from the micro broker and
 // notifies the parent application through a callback.
-func (as *AudioServer) stateUpdateCb(msg broker.Publication) error {
+func (as *AudioServer) stateUpdateCb(msg broker.Event) error {
 
 	newState := sbAudio.State{}
 
