@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"sync"
 
 	rice "github.com/GeertJohan/go.rice"
@@ -49,6 +50,9 @@ type WebServer struct {
 	sync.RWMutex
 	url            string
 	port           int
+	router         *mux.Router
+	apiVersion     string
+	apiMatch       *regexp.Regexp
 	wsClients      map[*wsClient]bool
 	addWsClient    chan *wsClient
 	removeWsClient chan *wsClient
@@ -86,6 +90,9 @@ func NewWebServer(url string, port int, trx *trx.Trx) (*WebServer, error) {
 		wsClients:      make(map[*wsClient]bool),
 		addWsClient:    make(chan *wsClient),
 		removeWsClient: make(chan *wsClient),
+		apiVersion:     "1.0",
+		apiMatch:       regexp.MustCompile(`api\/v\d\.\d\/`),
+		router:         mux.NewRouter().StrictSlash(true),
 		trx:            trx,
 	}
 
@@ -98,27 +105,20 @@ func (web *WebServer) Start() {
 
 	web.trx.SetNotifyServerChangeCb(web.updateWsClients)
 
+	// load the HTTP routes with their respective endpoints
+	web.routes()
+
 	box := rice.MustFindBox("../html")
 
 	fileServer := http.FileServer(box.HTTPBox())
-
-	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/api/v1.0/rx/volume", web.rxVolumeHdlr)
-	router.HandleFunc("/api/v1.0/tx/volume", web.txVolumeHdlr)
-	router.HandleFunc("/api/v1.0/tx/state", web.txStateHdlr)
-	router.HandleFunc("/api/v1.0/servers", web.serversHdlr).Methods("GET")
-	router.HandleFunc("/api/v1.0/server/{server}", web.serverHdlr).Methods("GET")
-	router.HandleFunc("/api/v1.0/server/{server}/selected", web.serverSelectedHdlr)
-	router.HandleFunc("/api/v1.0/server/{server}/state", web.serverStateHdlr)
-	router.HandleFunc("/ws", web.webSocketHdlr)
-	router.PathPrefix("/").Handler(fileServer)
+	web.router.PathPrefix("/").Handler(fileServer)
 
 	serverURL := fmt.Sprintf("%s:%d", web.url, web.port)
 
 	log.Println("Webserver listening on", serverURL)
 
 	go func() {
-		log.Fatal(http.ListenAndServe(serverURL, router))
+		log.Fatal(http.ListenAndServe(serverURL, web.apiRedirectRouter(web.router)))
 	}()
 
 	for {
