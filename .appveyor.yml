@@ -53,15 +53,18 @@ build_script:
 after_build:
   - .\ci\build-windows-bundle.bat
   - cmd: dir
+  - cmd: dir release
 artifacts:
   - path: remoteAudio-v%APPVEYOR_REPO_TAG_NAME%-%GOOS%-%GOARCH%.zip
-    name: remoteAudio
+    name: remoteAudio-release
+  - path: remoteAudio-commit-%APPVEYOR_REPO_COMMIT%-%GOOS%-%GOARCH%.zip
+    name: remoteAudio-interim-build
 deploy:
   description: ''
   provider: GitHub
   auth_token:
     secure: j2rLmFvQb9PPmy5aj0OXu2JzSyLEsusZDPMaAnmkYk+wQMjJm+xW2atWuvGhvNZY
-  artifact: remoteAudio
+  artifact: remoteAudio-release
   draft: false
   prerelease: false
   on:
