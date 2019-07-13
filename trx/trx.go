@@ -334,7 +334,7 @@ func (x *Trx) TxUser() (string, error) {
 // fromWireCb is a callback that is executed when audio is received
 // from the network. It will typically then enqueue the received data
 // into an audio source / chain.
-func (x *Trx) fromWireCb(pub broker.Publication) error {
+func (x *Trx) fromWireCb(pub broker.Event) error {
 	x.RLock()
 	defer x.RUnlock()
 

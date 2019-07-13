@@ -370,7 +370,7 @@ type natsServer struct {
 	lastPing     time.Time
 }
 
-func (ns *natsServer) enqueueFromWire(pub broker.Publication) error {
+func (ns *natsServer) enqueueFromWire(pub broker.Event) error {
 	if ns.fromNetwork == nil {
 		return nil
 	}
