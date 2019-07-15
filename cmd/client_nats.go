@@ -19,9 +19,9 @@ import (
 	"github.com/dh1tw/remoteAudio/webserver"
 	"github.com/gordonklaus/portaudio"
 	"github.com/micro/go-micro/client"
+	"github.com/micro/go-micro/client/selector/static"
 	"github.com/micro/go-micro/registry"
 	"github.com/micro/go-micro/transport"
-	"github.com/micro/go-micro/client/selector/static"
 	natsBroker "github.com/micro/go-plugins/broker/nats"
 	natsReg "github.com/micro/go-plugins/registry/nats"
 	natsTr "github.com/micro/go-plugins/transport/nats" // _ "net/http/pprof"
@@ -34,8 +34,28 @@ import (
 var natsClientCmd = &cobra.Command{
 	Use:   "nats",
 	Short: "NATS Client",
-	Long:  `NATS Client for bi-directional audio streaming`,
-	Run:   natsAudioClient,
+	Long: `NATS Client for bi-directional audio streaming
+
+The audio streaming is done through the protocol NATS. You need a NATS
+broker up and running to which the client can connect to.
+
+In order to find the supported audio devices and audio host APIs
+for your platform run:
+
+$ remoteAudio(.exe) enumerate
+
+It might be worth trying different host APIs since some provide lower latency
+than others.
+
+You can interact with the remoteAudio client through it's integrated
+web server / REST API. In order to use the REST API check the project's
+wiki https://github.com/dh1tw/remoteAudio/wiki.
+
+The Web Interface / REST API provides you all available audio servers.
+Multiple clients can listen to same audio server however only one can
+send the audio at any time.
+`,
+	Run: natsAudioClient,
 }
 
 func init() {
@@ -95,12 +115,14 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	audioFramesPerBuffer := viper.GetInt("audio.frame-length")
 
 	oDeviceName := viper.GetString("output-device.device-name")
+	oHostAPI := viper.GetString("output-device.hostapi")
 	oSamplerate := viper.GetFloat64("output-device.samplerate")
 	oLatency := viper.GetDuration("output-device.latency")
 	oChannels := viper.GetInt("output-device.channels")
 	oRingBufferSize := viper.GetInt("audio.rx-buffer-length")
 
 	iDeviceName := viper.GetString("input-device.device-name")
+	iHostAPI := viper.GetString("input-device.hostapi")
 	iSamplerate := viper.GetFloat64("input-device.samplerate")
 	iLatency := viper.GetDuration("input-device.latency")
 	iChannels := viper.GetInt("input-device.channels")
@@ -108,6 +130,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	opusBitrate := viper.GetInt("opus.bitrate")
 	opusComplexity := viper.GetInt("opus.complexity")
 	//values checked before
+
 	opusApplication, err := getOpusApplication(viper.GetString("opus.application"))
 	if err != nil {
 		exit(err)
@@ -177,6 +200,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	)
 
 	speaker, err := scWriter.NewScWriter(
+		scWriter.HostAPI(oHostAPI),
 		scWriter.DeviceName(oDeviceName),
 		scWriter.Channels(oChannels),
 		scWriter.Samplerate(oSamplerate),
@@ -190,6 +214,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	speaker.SetVolume(float32(rxVolume) / 100)
 
 	mic, err := scReader.NewScReader(
+		scReader.HostAPI(iHostAPI),
 		scReader.DeviceName(iDeviceName),
 		scReader.Channels(iChannels),
 		scReader.Samplerate(iSamplerate),

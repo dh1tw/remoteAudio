@@ -115,7 +115,7 @@ func (web *WebServer) Start() {
 
 	serverURL := fmt.Sprintf("%s:%d", web.url, web.port)
 
-	log.Println("Webserver listening on", serverURL)
+	log.Println("webserver listening on", serverURL)
 
 	go func() {
 		log.Fatal(http.ListenAndServe(serverURL, web.apiRedirectRouter(web.router)))

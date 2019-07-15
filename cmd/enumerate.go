@@ -30,10 +30,10 @@ Available audio devices and supported Host APIs:
 	Detected {{. | len}} host API(s): {{range .}}
 
 	Name:                   {{.Name}}
-	{{if .DefaultInputDevice}}Default input device:   {{.DefaultInputDevice.Name}}{{end}}
-	{{if .DefaultOutputDevice}}Default output device:  {{.DefaultOutputDevice.Name}}{{end}}
+	{{if .DefaultInputDevice}}Default input device:   '{{.DefaultInputDevice.Name}}'{{end}}
+	{{if .DefaultOutputDevice}}Default output device:  '{{.DefaultOutputDevice.Name}}'{{end}}
 	Devices: {{range .Devices}}
-		Name:                      {{.Name}}
+		Name:                      '{{.Name}}'
 		MaxInputChannels:          {{.MaxInputChannels}}
 		MaxOutputChannels:         {{.MaxOutputChannels}}
 		DefaultLowInputLatency:    {{.DefaultLowInputLatency}}

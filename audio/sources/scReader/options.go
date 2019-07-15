@@ -11,12 +11,21 @@ type Option func(*Options)
 
 // Options contains the parameters for initializing a soundcard reader.
 type Options struct {
+	HostAPI         string
 	DeviceName      string
 	Channels        int
 	Samplerate      float64
 	FramesPerBuffer int
 	Latency         time.Duration
 	Callback        audio.OnDataCb
+}
+
+// HostAPI is a functional option to enforce the usage of a particular
+// audio host API
+func HostAPI(hostAPI string) Option {
+	return func(args *Options) {
+		args.HostAPI = hostAPI
+	}
 }
 
 // DeviceName is a functional option to specify the name of the

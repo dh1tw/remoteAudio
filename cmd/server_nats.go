@@ -37,8 +37,21 @@ import (
 var natsServerCmd = &cobra.Command{
 	Use:   "nats",
 	Short: "NATS Server",
-	Long:  `NATS Server for bi-directional audio streaming`,
-	Run:   natsAudioServer,
+	Long: `NATS Server for bi-directional audio streaming
+
+The server is typically connected to an audio device, e.g. a radio. The used
+streaming protocol is NATS. You need a NATS broker up and running to which the
+server can connect to.
+
+In order to find the supported audio devices and audio host APIs
+for your platform run:
+
+$ remoteAudio(.exe) enumerate
+
+It might be worth trying different host APIs since some provide lower latency
+than others.
+`,
+	Run: natsAudioServer,
 }
 
 func init() {

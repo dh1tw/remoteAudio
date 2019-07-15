@@ -7,12 +7,21 @@ type Option func(*Options)
 
 // Options contains the parameters for initializing a sound card writer.
 type Options struct {
+	HostAPI         string
 	DeviceName      string
 	Channels        int
 	Samplerate      float64
 	FramesPerBuffer int
 	Latency         time.Duration
 	RingBufferSize  int
+}
+
+// HostAPI is a functional option to enforce the usage of a particular
+// audio host API
+func HostAPI(hostAPI string) Option {
+	return func(args *Options) {
+		args.HostAPI = hostAPI
+	}
 }
 
 // DeviceName is a functional option to specify the name of the

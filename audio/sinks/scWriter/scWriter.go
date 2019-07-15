@@ -3,6 +3,8 @@ package scWriter
 import (
 	"fmt"
 	"log"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -41,21 +43,17 @@ func NewScWriter(opts ...Option) (*ScWriter, error) {
 		return nil, err
 	}
 
-	info, err := pa.DefaultOutputDevice()
-	if err != nil {
-		return nil, err
-	}
-
 	w := &ScWriter{
 		options: Options{
 			DeviceName:      "default",
+			HostAPI:         "default",
 			Channels:        2,
 			Samplerate:      48000,
 			FramesPerBuffer: 480,
 			RingBufferSize:  10,
 			Latency:         time.Millisecond * 10,
 		},
-		deviceInfo: info,
+		deviceInfo: nil,
 		ring:       ringBuffer.Ring{},
 		volume:     0.7,
 	}
@@ -76,13 +74,47 @@ func NewScWriter(opts ...Option) (*ScWriter, error) {
 		ratio:      1,
 	}
 
-	// select Playback Audio Device
-	if w.options.DeviceName != "default" {
-		device, err := getPaDevice(w.options.DeviceName)
+	var hostAPI *pa.HostApiInfo
+
+	if w.options.HostAPI == "default" {
+		switch runtime.GOOS {
+		case "windows":
+			// try to use WASAPI since it provides lower latency than the
+			// other windows audio apis
+			ha, err := pa.HostApi(pa.WASAPI)
+			if err != nil {
+				// try to fallback to the default API
+				ha, err = pa.DefaultHostApi()
+				if err != nil {
+					return nil, fmt.Errorf("unable to determine the default host api - please provide a specific host api")
+				}
+			}
+			hostAPI = ha
+		default:
+			// all other OS
+			ha, err := pa.DefaultHostApi()
+			if err != nil {
+				return nil, fmt.Errorf("unable to determine the default host api - please provide a specific host api")
+			}
+			hostAPI = ha
+		}
+	} else {
+		// non-default HostAPI
+		ha, err := getHostAPI(w.options.HostAPI)
 		if err != nil {
 			return nil, err
 		}
-		w.deviceInfo = device
+		hostAPI = ha
+	}
+
+	if w.options.DeviceName == "default" {
+		w.deviceInfo = hostAPI.DefaultOutputDevice
+	} else {
+		dev, err := getPaDevice(w.options.DeviceName, hostAPI)
+		if err != nil {
+			return nil, err
+		}
+		w.deviceInfo = dev
 	}
 
 	// setup Audio Stream
@@ -109,6 +141,7 @@ func NewScWriter(opts ...Option) (*ScWriter, error) {
 	}
 
 	w.stream = stream
+	log.Printf("output sound device: %s, HostAPI: %s\n", w.deviceInfo.Name, w.deviceInfo.HostApi.Name)
 
 	return w, nil
 }
@@ -323,16 +356,63 @@ func (p *ScWriter) Flush() {
 	p.ring.SetCapacity(p.options.RingBufferSize)
 }
 
+// getHostAPI takes the name of a supported portaudio host api and returns
+// the corresponding portaudio hostApiInfo object
+func getHostAPI(name string) (*pa.HostApiInfo, error) {
+
+	var hostAPIType pa.HostApiType
+
+	switch strings.ToLower(name) {
+	case "indevelopment":
+		hostAPIType = pa.InDevelopment
+	case "directsound":
+		hostAPIType = pa.DirectSound
+	case "mme":
+		hostAPIType = pa.MME
+	case "asio":
+		hostAPIType = pa.ASIO
+	case "soundmanager":
+		hostAPIType = pa.SoundManager
+	case "coreaudio":
+		hostAPIType = pa.CoreAudio
+	case "oss":
+		hostAPIType = pa.OSS
+	case "alsa":
+		hostAPIType = pa.ALSA
+	case "al":
+		hostAPIType = pa.AL
+	case "beos":
+		hostAPIType = pa.BeOS
+	case "wdmks":
+		hostAPIType = pa.WDMkS
+	case "jack":
+		hostAPIType = pa.JACK
+	case "wasapi":
+		hostAPIType = pa.WASAPI
+	case "audiosciencehpi":
+		hostAPIType = pa.AudioScienceHPI
+	default:
+		return nil, fmt.Errorf("unknown host api type: %s", name)
+	}
+
+	hostAPIInfo, err := pa.HostApi(hostAPIType)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load host api %s: %s", name, err.Error())
+	}
+
+	return hostAPIInfo, nil
+
+}
+
 // getPaDevice checks if the Audio Devices actually exist and
 // then returns it
-func getPaDevice(name string) (*pa.DeviceInfo, error) {
-	devices, _ := pa.Devices()
-	for _, device := range devices {
-		if device.Name == name {
+func getPaDevice(name string, hostAPI *pa.HostApiInfo) (*pa.DeviceInfo, error) {
+	for _, device := range hostAPI.Devices {
+		if strings.ToLower(device.Name) == strings.ToLower(name) {
 			return device, nil
 		}
 	}
-	return nil, fmt.Errorf("unknown audio device %s", name)
+	return nil, fmt.Errorf("unknown audio device '%s'", name)
 }
 
 // Write converts the frames in the audio buffer into the right format

@@ -31,11 +31,14 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.remoteAudio.yaml)")
+
+	RootCmd.PersistentFlags().String("input-device-hostapi", "default", "Audio host api for input device")
 	RootCmd.PersistentFlags().StringP("input-device-name", "i", "default", "Input device")
 	RootCmd.PersistentFlags().Float64("input-device-samplerate", 48000, "Input device sampling rate")
 	RootCmd.PersistentFlags().Duration("input-device-latency", time.Millisecond*5, "Input latency")
 	RootCmd.PersistentFlags().Int("input-device-channels", 1, "Input Channels")
 
+	RootCmd.PersistentFlags().String("output-device-hostapi", "default", "Audio host api for output device host API")
 	RootCmd.PersistentFlags().StringP("output-device-name", "o", "default", "Output device")
 	RootCmd.PersistentFlags().Float64("output-device-samplerate", 48000, "Output device sampling rate")
 	RootCmd.PersistentFlags().Duration("output-device-latency", time.Millisecond*5, "Output latency")
@@ -49,11 +52,13 @@ func init() {
 	RootCmd.PersistentFlags().IntP("audio-frame-length", "f", 480, "Amount of audio samples in one frame")
 	RootCmd.PersistentFlags().IntP("rx-buffer-length", "R", 10, "Buffer length (in frames) for incoming Audio packets")
 
+	viper.BindPFlag("input-device.hostapi", RootCmd.PersistentFlags().Lookup("input-device-hostapi"))
 	viper.BindPFlag("input-device.device-name", RootCmd.PersistentFlags().Lookup("input-device-name"))
 	viper.BindPFlag("input-device.samplerate", RootCmd.PersistentFlags().Lookup("input-device-samplerate"))
 	viper.BindPFlag("input-device.latency", RootCmd.PersistentFlags().Lookup("input-device-latency"))
 	viper.BindPFlag("input-device.channels", RootCmd.PersistentFlags().Lookup("input-device-channels"))
 
+	viper.BindPFlag("output-device.hostapi", RootCmd.PersistentFlags().Lookup("output-device-hostapi"))
 	viper.BindPFlag("output-device.device-name", RootCmd.PersistentFlags().Lookup("output-device-name"))
 	viper.BindPFlag("output-device.samplerate", RootCmd.PersistentFlags().Lookup("output-device-samplerate"))
 	viper.BindPFlag("output-device.latency", RootCmd.PersistentFlags().Lookup("output-device-latency"))

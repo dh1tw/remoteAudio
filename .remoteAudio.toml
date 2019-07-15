@@ -13,12 +13,14 @@ device-name = "default"
 samplerate = 48000
 latency = "5ms"
 channels = 1
+hostapi = "default"
 
 [output-device]
 device-name = "default"
 samplerate = 48000
 latency = "5ms"
 channels = 2
+hostapi = "default"
 
 [opus]
 application = "restricted_lowdelay"

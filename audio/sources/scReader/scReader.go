@@ -3,6 +3,8 @@ package scReader
 import (
 	"fmt"
 	"log"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,32 +30,62 @@ func NewScReader(opts ...Option) (*ScReader, error) {
 		return nil, err
 	}
 
-	info, err := pa.DefaultInputDevice()
-	if err != nil {
-		return nil, err
-	}
-
 	r := &ScReader{
 		options: Options{
+			HostAPI:         "default",
 			DeviceName:      "default",
 			Channels:        1,
 			Samplerate:      48000,
 			FramesPerBuffer: 480,
 			Latency:         time.Millisecond * 10,
 		},
-		deviceInfo: info,
+		deviceInfo: nil,
 	}
 
 	for _, option := range opts {
 		option(&r.options)
 	}
 
-	if r.options.DeviceName != "default" {
-		device, err := getPaDevice(r.options.DeviceName)
+	var hostAPI *pa.HostApiInfo
+
+	if r.options.HostAPI == "default" {
+		switch runtime.GOOS {
+		case "windows":
+			// try to use WASAPI since it provides lower latency than the
+			// other windows audio apis
+			ha, err := pa.HostApi(pa.WASAPI)
+			if err != nil {
+				// try to fallback to the default API
+				ha, err = pa.DefaultHostApi()
+				if err != nil {
+					return nil, fmt.Errorf("unable to determine the default host api - please provide a specific host api")
+				}
+			}
+			hostAPI = ha
+		default:
+			// all other OS
+			ha, err := pa.DefaultHostApi()
+			if err != nil {
+				return nil, fmt.Errorf("unable to determine the default host api - please provide a specific host api")
+			}
+			hostAPI = ha
+		}
+	} else {
+		ha, err := getHostAPI(r.options.HostAPI)
 		if err != nil {
 			return nil, err
 		}
-		r.deviceInfo = device
+		hostAPI = ha
+	}
+
+	if r.options.DeviceName == "default" {
+		r.deviceInfo = hostAPI.DefaultInputDevice
+	} else {
+		dev, err := getPaDevice(r.options.DeviceName, hostAPI)
+		if err != nil {
+			return nil, err
+		}
+		r.deviceInfo = dev
 	}
 
 	// setup Audio Stream
@@ -77,6 +109,7 @@ func NewScReader(opts ...Option) (*ScReader, error) {
 	}
 	r.stream = stream
 
+	log.Printf("input sound device: %s, HostAPI: %s\n", r.deviceInfo.Name, r.deviceInfo.HostApi.Name)
 	return r, nil
 }
 
@@ -144,14 +177,61 @@ func (r *ScReader) Close() error {
 	return nil
 }
 
+// getHostAPI takes the name of a supported portaudio host api and returns
+// the corresponding portaudio hostApiInfo object
+func getHostAPI(name string) (*pa.HostApiInfo, error) {
+
+	var hostAPIType pa.HostApiType
+
+	switch strings.ToLower(name) {
+	case "indevelopment":
+		hostAPIType = pa.InDevelopment
+	case "directsound":
+		hostAPIType = pa.DirectSound
+	case "mme":
+		hostAPIType = pa.MME
+	case "asio":
+		hostAPIType = pa.ASIO
+	case "soundmanager":
+		hostAPIType = pa.SoundManager
+	case "coreaudio":
+		hostAPIType = pa.CoreAudio
+	case "oss":
+		hostAPIType = pa.OSS
+	case "alsa":
+		hostAPIType = pa.ALSA
+	case "al":
+		hostAPIType = pa.AL
+	case "beos":
+		hostAPIType = pa.BeOS
+	case "wdmks":
+		hostAPIType = pa.WDMkS
+	case "jack":
+		hostAPIType = pa.JACK
+	case "wasapi":
+		hostAPIType = pa.WASAPI
+	case "audiosciencehpi":
+		hostAPIType = pa.AudioScienceHPI
+	default:
+		return nil, fmt.Errorf("unknown host api type: %s", name)
+	}
+
+	hostAPIInfo, err := pa.HostApi(hostAPIType)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load host api %s: %s", name, err.Error())
+	}
+
+	return hostAPIInfo, nil
+
+}
+
 // getPaDevice checks if the Audio Devices actually exist and
 // then returns it
-func getPaDevice(name string) (*pa.DeviceInfo, error) {
-	devices, _ := pa.Devices()
-	for _, device := range devices {
-		if device.Name == name {
+func getPaDevice(name string, hostAPI *pa.HostApiInfo) (*pa.DeviceInfo, error) {
+	for _, device := range hostAPI.Devices {
+		if strings.ToLower(device.Name) == strings.ToLower(name) {
 			return device, nil
 		}
 	}
-	return nil, fmt.Errorf("unknown audio device %s", name)
+	return nil, fmt.Errorf("unknown audio device '%s'", name)
 }
