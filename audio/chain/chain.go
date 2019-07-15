@@ -97,6 +97,13 @@ func (nc *Chain) Enable(state bool) error {
 	return nc.Sinks.EnableSink(nc.defaultSink, state)
 }
 
+// Enabled returns the state if the chain / it's default
+// sink is enabled.
+func (nc *Chain) Enabled() (bool, error) {
+	_, enabled, err := nc.Sinks.Sink(nc.defaultSink)
+	return enabled, err
+}
+
 // defaultSourceToSinkCb connects a source with a sink
 func (nc *Chain) defaultSourceToSinkCb(data audio.Msg) {
 	err := nc.Sinks.Write(data)

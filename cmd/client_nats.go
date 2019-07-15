@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dh1tw/remoteAudio/audio/chain"
+	"github.com/dh1tw/remoteAudio/audio/nodes/vox"
 	"github.com/dh1tw/remoteAudio/audio/sinks/pbWriter"
 	"github.com/dh1tw/remoteAudio/audio/sinks/scWriter"
 	"github.com/dh1tw/remoteAudio/audio/sources/pbReader"
@@ -255,6 +256,16 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	}
 	toNetwork.SetVolume(float32(txVolume) / 100)
 
+	var _trx *trx.Trx
+
+	voxStateChanged := func(newState bool) {
+		if err := _trx.SetVOX(newState); err != nil {
+			log.Println(err)
+		}
+	}
+
+	_vox, err := vox.New(vox.StateChanged(voxStateChanged))
+
 	rx, err := chain.NewChain(chain.DefaultSource("fromNetwork"),
 		chain.DefaultSink("speaker"))
 	if err != nil {
@@ -262,7 +273,8 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	}
 
 	tx, err := chain.NewChain(chain.DefaultSource("mic"),
-		chain.DefaultSink("toNetwork"))
+		chain.DefaultSink("toNetwork"),
+		chain.Node(_vox))
 	if err != nil {
 		exit(err)
 	}
@@ -295,7 +307,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		Broker:      br,
 	}
 
-	trx, err := trx.NewTrx(trxOpts)
+	_trx, err = trx.NewTrx(trxOpts)
 	if err != nil {
 		exit(err)
 	}
@@ -309,13 +321,13 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 			exit(fmt.Errorf("audio server for %s unavailable", serverName))
 		}
 
-		trx.AddServer(audioSvr)
-		if err := trx.SelectServer(serverName); err != nil {
+		_trx.AddServer(audioSvr)
+		if err := _trx.SelectServer(serverName); err != nil {
 			exit(err)
 		}
 
 		if streamOnStartup {
-			if err := trx.SetTxState(true); err != nil {
+			if err := _trx.SetPTT(true); err != nil {
 				exit(err)
 			}
 			if err := audioSvr.StartRxStream(); err != nil {
@@ -325,18 +337,18 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 		go func() {
 			<-doneCh
-			trx.RemoveServer(serverName)
+			_trx.RemoveServer(serverName)
 		}()
 	}
 
 	nc := natsClient{
-		trx:    trx,
+		trx:    _trx,
 		client: cl,
 	}
 
 	go nc.watchRegistry()
 
-	web, err := webserver.NewWebServer(httpHost, httpPort, trx)
+	web, err := webserver.NewWebServer(httpHost, httpPort, _trx)
 	if err != nil {
 		exit(err)
 	}

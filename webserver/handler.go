@@ -67,7 +67,7 @@ func (web *WebServer) txStateHdlr(w http.ResponseWriter, req *http.Request) {
 			w.Write([]byte("400 - invalid Request"))
 			return
 		}
-		if err := web.trx.SetTxState(*stateCtlMsg.On); err != nil {
+		if err := web.trx.SetPTT(*stateCtlMsg.On); err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500 - unable to set tx state"))

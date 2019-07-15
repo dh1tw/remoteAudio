@@ -27,6 +27,8 @@ type Trx struct {
 	servers              map[string]*proxy.AudioServer
 	rxAudioSub           broker.Subscriber
 	curServer            *proxy.AudioServer
+	pttEnabled           bool
+	voxEnabled           bool
 	notifyServerChangeCb func()
 }
 
@@ -256,11 +258,69 @@ func (x *Trx) TxVolume() (float32, error) {
 	return toNetwork.Volume(), nil
 }
 
-// SetTxState turns on/off the audio stream sent to the remote audio server.
-// It can be considered PTT (Push To Talk)
-func (x *Trx) SetTxState(on bool) error {
+func (x *Trx) SetVOX(voxState bool) error {
 	x.Lock()
 	defer x.Unlock()
+
+	if x.voxEnabled == voxState {
+		return nil
+	}
+
+	x.voxEnabled = voxState
+
+	// already sending audio since PTT is active
+	if x.pttEnabled && x.voxEnabled {
+		return nil
+	}
+
+	if x.voxEnabled {
+		return x.setTxState(true)
+	}
+
+	// don't disable the audio stream since PTT is still active
+	if x.pttEnabled && !x.voxEnabled {
+		return nil
+	}
+
+	// !x.voxEnabled
+	return x.setTxState(false)
+}
+
+// SetPTT (Push To Talk) turns on/off the audio stream sent to the remote
+// audio server. In case VOX is active, the application will continue
+// streaming audio to the server.
+func (x *Trx) SetPTT(pttState bool) error {
+	x.Lock()
+	defer x.Unlock()
+
+	if x.pttEnabled == pttState {
+		return nil
+	}
+
+	x.pttEnabled = pttState
+
+	// already sending audio since VOX is active
+	if x.pttEnabled && x.voxEnabled {
+		return nil
+	}
+
+	if x.pttEnabled {
+		return x.setTxState(true)
+	}
+
+	// don't disable the audio stream since VOX is still active
+	if !x.pttEnabled && x.voxEnabled {
+		return nil
+	}
+
+	// !x.pttEnabled
+	return x.setTxState(false)
+}
+
+// SetTxState turns on/off the audio stream sent to the remote audio server.
+// It can be considered PTT (Push To Talk). This method is not safe for
+// concurrent access.
+func (x *Trx) setTxState(on bool) error {
 
 	if x.curServer == nil {
 		return nil
