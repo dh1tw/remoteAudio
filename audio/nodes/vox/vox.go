@@ -15,6 +15,7 @@ import (
 // below a defined threshold level.
 type Vox struct {
 	sync.Mutex
+	enabled        bool
 	active         bool
 	lastActivation time.Time
 	cb             audio.OnDataCb
@@ -53,12 +54,16 @@ func (v *Vox) Write(msg audio.Msg) error {
 		return nil
 	}
 
+	// forward the msg asap to the next node
+	go v.cb(msg)
+
+	if !v.enabled {
+		return nil
+	}
+
 	if msg.Channels > 1 {
 		v.multiChannelWarning()
 	}
-
-	// forward the msg asap to the next node
-	go v.cb(msg)
 
 	// empty frame
 	if len(msg.Data) == 0 {
@@ -74,13 +79,13 @@ func (v *Vox) Write(msg audio.Msg) error {
 		v.lastActivation = time.Now()
 		if !v.active {
 			v.active = true
-			log.Println("activating vox")
+			// log.Println("activating vox")
 			go v.onStateChange(true)
 		}
 	} else {
 		if v.active && time.Since(v.lastActivation) > v.holdTime {
 			v.active = false
-			log.Println("deactivating vox")
+			// log.Println("deactivating vox")
 			go v.onStateChange(false)
 		}
 	}
@@ -94,6 +99,60 @@ func (v *Vox) SetCb(cb audio.OnDataCb) {
 	v.Lock()
 	defer v.Unlock()
 	v.cb = cb
+}
+
+// Enable or disable the vox. If the vox is disabled, the audio data
+// will be passed on to the next audio node in the chain.
+func (v *Vox) Enable(state bool) {
+	v.Lock()
+	defer v.Unlock()
+	v.enabled = state
+}
+
+// Enabled returns a boolean value indicating if the vox is
+// enabled. If not, the audio data is directly passed on to the
+// next audio node in the chain.
+func (v *Vox) Enabled() bool {
+	v.Lock()
+	defer v.Unlock()
+	return v.enabled
+}
+
+// SetThreshold sets the value for the vox threshold. Only values
+// between 0...1 are allowed. Values below or above will be clipped
+// to the minimum or maximum.
+func (v *Vox) SetThreshold(value float32) {
+	v.Lock()
+	defer v.Unlock()
+	if value > 1.0 {
+		v.threshold = 1.0
+	} else if value < 0.0 {
+		v.threshold = 0.0
+	} else {
+		v.threshold = value
+	}
+}
+
+// Threshold returns the vox threshold value.
+func (v *Vox) Threshold() float32 {
+	v.Lock()
+	defer v.Unlock()
+	return v.threshold
+}
+
+// SetHoldTime sets the vox hold time. The hold time is the duration
+// which will be waited until a statechange event is emitted.
+func (v *Vox) SetHoldTime(t time.Duration) {
+	v.Lock()
+	defer v.Unlock()
+	v.holdTime = t
+}
+
+// Holdtime returns the current vox holdtime
+func (v *Vox) Holdtime() time.Duration {
+	v.Lock()
+	defer v.Unlock()
+	return v.holdTime
 }
 
 // calculate the root mean square for a non-interlaced audio

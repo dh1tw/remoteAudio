@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"sync"
+	"time"
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/dh1tw/remoteAudio/trx"
@@ -30,6 +31,9 @@ type ApplicationState struct {
 	Connected      bool                   `json:"connected"`
 	AudioServers   map[string]AudioServer `json:"audio_servers"`
 	SelectedServer string                 `json:"selected_server"`
+	VoxEnabled     bool                   `json:"vox_enabled"`
+	VoxThreshold   float32                `json:"vox_threshold"`
+	VoxHoldtime    time.Duration          `json:"vox_holdtime"`
 }
 
 // AudioServer is a data structure which is provided through the
@@ -71,6 +75,16 @@ type AudioControlState struct {
 // It is used to adjust the local audio levels.
 type AudioControlVolume struct {
 	Volume *int `json:"volume"`
+}
+
+// AudioControlVox is a data structure which can be get/set through the
+// /api/v{version}/tx/vox endpoint.
+// It is used to get / set the local vox settings.
+type AudioControlVox struct {
+	VoxActive    *bool          `json:"vox_active"`
+	VoxEnabled   *bool          `json:"vox_enabled"`
+	VoxThreshold *float32       `json:"vox_threshold"`
+	VoxHoldtime  *time.Duration `json:"vox_holdtime"`
 }
 
 // AudioControlSelected is a data structure which can be get/set through the
@@ -189,6 +203,9 @@ func (web *WebServer) getAppState() (ApplicationState, error) {
 		TxVolume:       int(txVolume * 100),
 		AudioServers:   audioServers,
 		SelectedServer: web.trx.SelectedServer(),
+		VoxEnabled:     web.trx.VOXEnabled(),
+		VoxHoldtime:    web.trx.VOXHoldTime(),
+		VoxThreshold:   web.trx.VOXThreshold(),
 	}
 
 	return appState, nil

@@ -71,6 +71,9 @@ func init() {
 	natsClientCmd.Flags().Int32("tx-volume", 70, "volume of tx audio stream on startup")
 	natsClientCmd.Flags().Int32("rx-volume", 70, "volume of rx audio stream on startup")
 	natsClientCmd.Flags().BoolP("stream-on-startup", "t", false, "start the local and remote audio streams on startup")
+	natsClientCmd.Flags().Bool("vox", false, "enable vox (voice activation)")
+	natsClientCmd.Flags().Float32("vox-threshold", 0.1, "vox threshold (0...1)")
+	natsClientCmd.Flags().Duration("vox-holdtime", time.Millisecond*500, "vox hold time")
 }
 
 func natsAudioClient(cmd *cobra.Command, args []string) {
@@ -104,6 +107,9 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	viper.BindPFlag("audio.rx-volume", cmd.Flags().Lookup("rx-volume"))
 	viper.BindPFlag("audio.tx-volume", cmd.Flags().Lookup("tx-volume"))
 	viper.BindPFlag("audio.stream-on-startup", cmd.Flags().Lookup("stream-on-startup"))
+	viper.BindPFlag("audio.vox", cmd.Flags().Lookup("vox"))
+	viper.BindPFlag("audio.vox-threshold", cmd.Flags().Lookup("vox-threshold"))
+	viper.BindPFlag("audio.vox-holdtime", cmd.Flags().Lookup("vox-holdtime"))
 
 	// profiling server
 	// go func() {
@@ -260,21 +266,32 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	voxStateChanged := func(newState bool) {
 		if err := _trx.SetVOX(newState); err != nil {
-			log.Println(err)
+			log.Printf("unable to set vox: %s\n", err.Error())
 		}
 	}
+	voxEnabled := viper.GetBool("audio.vox")
+	voxThreshold := viper.GetFloat64("audio.vox-threshold")
+	voxHoldtime := viper.GetDuration("audio.vox-holdtime")
 
-	_vox, err := vox.New(vox.StateChanged(voxStateChanged))
+	_vox := vox.New(
+		vox.Enabled(voxEnabled),
+		vox.StateChanged(voxStateChanged),
+		vox.Threshold(float32(voxThreshold)),
+		vox.HoldTime(voxHoldtime))
 
-	rx, err := chain.NewChain(chain.DefaultSource("fromNetwork"),
-		chain.DefaultSink("speaker"))
+	txChainOpts := []chain.Option{
+		chain.DefaultSource("mic"),
+		chain.Node(_vox),
+		chain.DefaultSink("toNetwork"),
+	}
+
+	tx, err := chain.NewChain(txChainOpts...)
 	if err != nil {
 		exit(err)
 	}
 
-	tx, err := chain.NewChain(chain.DefaultSource("mic"),
-		chain.DefaultSink("toNetwork"),
-		chain.Node(_vox))
+	rx, err := chain.NewChain(chain.DefaultSource("fromNetwork"),
+		chain.DefaultSink("speaker"))
 	if err != nil {
 		exit(err)
 	}
@@ -305,6 +322,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		FromNetwork: fromNetwork,
 		ToNetwork:   toNetwork,
 		Broker:      br,
+		Vox:         _vox,
 	}
 
 	_trx, err = trx.NewTrx(trxOpts)

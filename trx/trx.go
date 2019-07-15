@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
+	"github.com/dh1tw/remoteAudio/audio/nodes/vox"
 	"github.com/dh1tw/remoteAudio/audio/sinks/pbWriter"
 
 	"github.com/dh1tw/remoteAudio/audio/sources/pbReader"
@@ -27,8 +29,9 @@ type Trx struct {
 	servers              map[string]*proxy.AudioServer
 	rxAudioSub           broker.Subscriber
 	curServer            *proxy.AudioServer
-	pttEnabled           bool
-	voxEnabled           bool
+	pttActive            bool
+	voxActive            bool
+	vox                  *vox.Vox
 	notifyServerChangeCb func()
 }
 
@@ -40,6 +43,7 @@ type Options struct {
 	FromNetwork *pbReader.PbReader
 	ToNetwork   *pbWriter.PbWriter
 	Broker      broker.Broker
+	Vox         *vox.Vox
 }
 
 // NewTrx is the constructor method of a Trx object.
@@ -67,6 +71,7 @@ func NewTrx(opts Options) (*Trx, error) {
 		fromNetwork: opts.FromNetwork,
 		toNetwork:   opts.ToNetwork,
 		broker:      opts.Broker,
+		vox:         opts.Vox,
 		servers:     make(map[string]*proxy.AudioServer),
 	}
 
@@ -258,32 +263,83 @@ func (x *Trx) TxVolume() (float32, error) {
 	return toNetwork.Volume(), nil
 }
 
+// SetVOX sets the vox. This method should not be exposed through the
+// REST API.
 func (x *Trx) SetVOX(voxState bool) error {
 	x.Lock()
 	defer x.Unlock()
 
-	if x.voxEnabled == voxState {
+	if x.voxActive == voxState {
 		return nil
 	}
 
-	x.voxEnabled = voxState
+	x.voxActive = voxState
 
 	// already sending audio since PTT is active
-	if x.pttEnabled && x.voxEnabled {
+	if x.pttActive && x.voxActive {
 		return nil
 	}
 
-	if x.voxEnabled {
+	if x.voxActive {
 		return x.setTxState(true)
 	}
 
 	// don't disable the audio stream since PTT is still active
-	if x.pttEnabled && !x.voxEnabled {
+	if x.pttActive && !x.voxActive {
 		return nil
 	}
 
 	// !x.voxEnabled
 	return x.setTxState(false)
+}
+
+// VOX returns if the VOX is currently active
+func (x *Trx) VOX() bool {
+	x.Lock()
+	defer x.Unlock()
+	return x.voxActive
+}
+
+// VOXEnabled indicates if the vox is enabled
+func (x *Trx) VOXEnabled() bool {
+	x.Lock()
+	defer x.Unlock()
+	return x.vox.Enabled()
+}
+
+// SetVOXEnabled enables the vox in the tx chain
+func (x *Trx) SetVOXEnabled(enable bool) {
+	x.Lock()
+	defer x.Unlock()
+	x.vox.Enable(enable)
+}
+
+// VOXThreshold returns the vox threshold level
+func (x *Trx) VOXThreshold() float32 {
+	x.Lock()
+	defer x.Unlock()
+	return x.vox.Threshold()
+}
+
+// SetVOXThreshold sets the vox threshold level
+func (x *Trx) SetVOXThreshold(v float32) {
+	x.Lock()
+	defer x.Unlock()
+	x.vox.SetThreshold(v)
+}
+
+// VOXHoldTime returns the vox hold time
+func (x *Trx) VOXHoldTime() time.Duration {
+	x.Lock()
+	defer x.Unlock()
+	return x.vox.Holdtime()
+}
+
+//SetVOXHoldTime sets the vox hold time
+func (x *Trx) SetVOXHoldTime(t time.Duration) {
+	x.Lock()
+	defer x.Unlock()
+	x.vox.SetHoldTime(t)
 }
 
 // SetPTT (Push To Talk) turns on/off the audio stream sent to the remote
@@ -293,23 +349,23 @@ func (x *Trx) SetPTT(pttState bool) error {
 	x.Lock()
 	defer x.Unlock()
 
-	if x.pttEnabled == pttState {
+	if x.pttActive == pttState {
 		return nil
 	}
 
-	x.pttEnabled = pttState
+	x.pttActive = pttState
 
 	// already sending audio since VOX is active
-	if x.pttEnabled && x.voxEnabled {
+	if x.pttActive && x.voxActive {
 		return nil
 	}
 
-	if x.pttEnabled {
+	if x.pttActive {
 		return x.setTxState(true)
 	}
 
 	// don't disable the audio stream since VOX is still active
-	if !x.pttEnabled && x.voxEnabled {
+	if !x.pttActive && x.voxActive {
 		return nil
 	}
 

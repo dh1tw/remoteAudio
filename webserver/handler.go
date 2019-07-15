@@ -78,6 +78,55 @@ func (web *WebServer) txStateHdlr(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (web *WebServer) txVoxStateHdlr(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	switch req.Method {
+	case "GET":
+		voxEnabled := web.trx.VOXEnabled()
+		voxActive := web.trx.VOX()
+		voxThreshold := web.trx.VOXThreshold()
+		voxHoldtime := web.trx.VOXHoldTime()
+
+		voxCtlMsg := &AudioControlVox{
+			VoxActive:    &voxActive,
+			VoxEnabled:   &voxEnabled,
+			VoxThreshold: &voxThreshold,
+			VoxHoldtime:  &voxHoldtime,
+		}
+		if err := json.NewEncoder(w).Encode(voxCtlMsg); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - unable to encode AudioControlVox msg"))
+		}
+
+	case "PUT":
+		var voxCtlMsg AudioControlVox
+		dec := json.NewDecoder(req.Body)
+
+		if err := dec.Decode(&voxCtlMsg); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("400 - invalid JSON"))
+			return
+		}
+		fmt.Println(voxCtlMsg)
+		if voxCtlMsg.VoxEnabled != nil {
+			web.trx.SetVOXEnabled(*voxCtlMsg.VoxEnabled)
+			fmt.Println("enabling vox")
+		}
+		if voxCtlMsg.VoxHoldtime != nil {
+			web.trx.SetVOXHoldTime(*voxCtlMsg.VoxHoldtime)
+		}
+		if voxCtlMsg.VoxThreshold != nil {
+			web.trx.SetVOXThreshold(*voxCtlMsg.VoxThreshold)
+		}
+		web.updateWsClients()
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
 func (web *WebServer) rxVolumeHdlr(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")

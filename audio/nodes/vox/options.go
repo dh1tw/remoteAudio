@@ -5,6 +5,14 @@ import "time"
 // Option is the type for a function option
 type Option func(*Vox)
 
+// Enabled is a functional option to initialize the Vox object
+// with an enabled or disabled vox.
+func Enabled(enabled bool) Option {
+	return func(v *Vox) {
+		v.enabled = enabled
+	}
+}
+
 // StateChanged is a functional option to provide a callback which be
 // executed whenever the Vox is triggered or cut off.
 func StateChanged(f func(bool)) Option {
