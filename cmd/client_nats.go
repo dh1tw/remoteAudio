@@ -296,16 +296,6 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		exit(err)
 	}
 
-	rx.Sources.AddSource("fromNetwork", fromNetwork)
-	// set and enable speaker as default sink
-	rx.Sinks.AddSink("speaker", speaker, true)
-	// start streaming to the network immediately
-	rx.Sources.SetSource("fromNetwork")
-
-	tx.Sources.AddSource("mic", mic)
-	tx.Sinks.AddSink("toNetwork", toNetwork, false)
-	tx.Sources.SetSource("mic")
-
 	// init the client
 	if err := cl.Init(); err != nil {
 		exit(err)
@@ -329,6 +319,16 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	if err != nil {
 		exit(err)
 	}
+
+	rx.Sources.AddSource("fromNetwork", fromNetwork)
+	// set and enable speaker as default sink
+	rx.Sinks.AddSink("speaker", speaker, true)
+	// start streaming to the network immediately
+	rx.Sources.SetSource("fromNetwork")
+
+	tx.Sources.AddSource("mic", mic)
+	tx.Sinks.AddSink("toNetwork", toNetwork, false)
+	tx.Sources.SetSource("mic")
 
 	// if a radio name is specified, create immediately
 	// an audioServer object
