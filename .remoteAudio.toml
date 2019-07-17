@@ -35,6 +35,9 @@ frame-length = 480  #10ms @ 48kHz (should work for most cases)
 tx-volume = 70
 rx-volume = 70
 stream-on-startup = false
+vox = false
+vox-threshold = 0.1
+vox-holdtime = "500ms"
 
 [http]
 host = "localhost"
