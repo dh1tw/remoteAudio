@@ -9,7 +9,7 @@ import (
 
 // Chain holds a complete chain of audio elements from the Source,
 // through processing nodes ending in a sink. In a typically VoIP
-// architecture one would have one a receiving (rx) and transmitting
+// architecture one would have one receiving (rx) and transmitting
 // (tx) chain.
 type Chain struct {
 	Sources       audio.Selector //selector can hold one or more sources
