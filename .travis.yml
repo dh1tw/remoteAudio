@@ -40,11 +40,11 @@ deploy:
   provider: releases
   api_key:
     secure: B01qsm7GEhwST5p8CiEhJcFcO+lDSvu5fivSRvxiNtqrKDBkQ5YgNWSkbyLjGyi4RF+ME0LMLw06OYnJpPmuiVVMTV6SpWDlDcGsnP5XtV0JCQNv+bTtlFVvTfcNGyg7Da3uVqQXcUOs7Uct48WgmGSES2SEITwbs5gPfiQ9WI2i9tN8MUx3goHBZ9lAuaUFR41oP9reKUOUaSPtYhgyAsx05q2BW9kWOrZYsmXj0G0J6pwcooUy+1Qq2WENkPqro5lDDEKBFbKtagZM6ddpb75EqVg1XAvpBgSoAAfoorSrMHJSVW6v1fPprvzJNFyEHb7zPFuw/79EJYlR7Z9/Nz2zNCz6MOmgRHEUOcY7pyGTDMZScqynqHo3o3gqT4eE5GoCAfwmjyII5uUAsjXybI0T3/s+cO18Z98OuWuv8GrHdtJE/lPgrlrXypagAe9nhxnf45Bx3IPkGdtms08a/OheZE2LLgL0awwmKQc14I3Rjwk7Hw1xiEndLsl96M4XboYtujW8n11v1+Fo9Nz+St68s3dLp3PI94NfXz3QTZwZX/YHyIZOT+AMSTwBaf/UHAxzgeCwVTRnaWS7/lIWbJX5tuwGD/9hlgqih+X3h6/0AhzSuUn6yOIVcQuXANv9tX4pJ31j5eEi8j61AfZfjjPEhWCdLCWG92hozBAjriM=
-  file: remoteAudio-v$TRAVIS_TAG-$GIMME_OS-$GIMME_ARCH.tar.gz
+  file: remoteAudio-$TRAVIS_TAG-$GIMME_OS-$GIMME_ARCH.tar.gz
   skip_cleanup: true
   on:
     repo: dh1tw/remoteAudio
     tags:
       true
     draft: true
-    go: "1.12"
+    go: "1.13"
