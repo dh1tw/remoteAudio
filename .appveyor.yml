@@ -55,7 +55,7 @@ after_build:
   - cmd: dir
   - cmd: dir release
 artifacts:
-  - path: remoteAudio-v%APPVEYOR_REPO_TAG_NAME%-%GOOS%-%GOARCH%.zip
+  - path: remoteAudio-%APPVEYOR_REPO_TAG_NAME%-%GOOS%-%GOARCH%.zip
     name: remoteAudio-release
   - path: remoteAudio-commit-%APPVEYOR_REPO_COMMIT%-%GOOS%-%GOARCH%.zip
     name: remoteAudio-interim-build
@@ -63,7 +63,7 @@ deploy:
   description: ''
   provider: GitHub
   auth_token:
-    secure: j2rLmFvQb9PPmy5aj0OXu2JzSyLEsusZDPMaAnmkYk+wQMjJm+xW2atWuvGhvNZY
+    secure: EsmVZ0GPjzHm7XAQytCGvAwalh9Q/XuW7MSzE7UGYQuoY9h8gV5eA8tc9KniaSF+
   artifact: remoteAudio-release
   draft: false
   prerelease: false
