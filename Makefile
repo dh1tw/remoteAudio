@@ -1,3 +1,5 @@
+#!/bin/bash
+
 PKG := github.com/dh1tw/remoteAudio
 COMMITID := $(shell git describe --always --long --dirty)
 COMMIT := $(shell git rev-parse --short HEAD)
@@ -21,8 +23,13 @@ dist:
 	protoc --proto_path=./icd --micro_out=./sb_audio ./icd/audio.proto
 	cd webserver; \
 	rice embed-go
-	go build -v -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
+	go build -v -ldflags="-w -s -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
+	@if [ ${GOOS} = "windows" ]; \
+		then upx ./remoteAudio.exe; \
+	else \
+		upx ./remoteAudio; \
+	fi
 
 # test:
 # 	@go test -short ${PKG_LIST}
@@ -47,18 +54,11 @@ install-deps:
 	go get github.com/gogo/protobuf/protoc-gen-gofast
 	go get github.com/GeertJohan/go.rice/rice
 	go get github.com/micro/protoc-gen-micro
-	go get ./...
 
 # static: vet lint
 # 	go build -i -v -o ${OUT}-v${VERSION} -tags netgo -ldflags="-extldflags \"-static\" -w -s -X main.version=${VERSION}" ${PKG}
 
-client: build
-	./remoteAudio client mqtt
-
-server: build
-	./remoteAudio server mqtt
-
 clean:
 	-@rm remoteAudio remoteAudio-v*
 
-.PHONY: build client server install vet lint clean install-deps
+.PHONY: build install vet lint clean install-deps
