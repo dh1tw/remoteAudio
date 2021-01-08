@@ -23,7 +23,7 @@ behaviour is still **not stable** and subject to change.
 
 ## Supported Transportation Protocols
 
-- [NATS](10) with [Micro](11) on top
+- [NATS](10) with [go-micro](11) on top
 - extensible for P2P protocol (UDP/TCP/ZEROMQ)
 
 ## Supported Platforms
@@ -183,13 +183,13 @@ Feel free to [open an issue][12] if you encounter problems.
 
 
 [1]:https://golang.org
-[2]:http://opus-codec.org
-[3]:https://nats.io/download/nats-io/gnatsd/
+[2]:https://opus-codec.org
+[3]:https://nats.io/download/nats-io/nats-server
 [5]:https://golang.org/dl
 [6]:https://github.com/google/protobuf/releases
-[7]:https://github.com/GeertJohan/go.rice/rice
+[7]:https://github.com/GeertJohan/go.rice
 [8]:https://github.com/dh1tw/remoteAudio/releases
 [9]:https://github.com/dh1tw/remoteAudio/wiki
 [10]:https://nats.io
-[11]:https://micro.mu
+[11]:https://github.com/asim/go-micro
 [12]:https://github.com/dh1tw/remoteAudio/issues
