@@ -6,7 +6,7 @@
 
 remoteAudio is a cross plattform audio streaming application, built for Amateur
 Radio purposes. The most typical use case for this software is the remote
-operation of an amateur radio station. remoteAudio is written in [Go](1).
+operation of an amateur radio station. remoteAudio is written in [Go][1].
 
 remoteAudio supports multiple users and multiple audio sources (e.g. radios).
 This means that with a single click a user can switch between audio sources.
@@ -18,12 +18,12 @@ behaviour is still **not stable** and subject to change.
 
 ## Supported Codec
 
-- [OPUS](2)
+- [OPUS][2]
 - extensible for other codecs (e.g. PCM)
 
 ## Supported Transportation Protocols
 
-- [NATS](10) with [go-micro](11) on top
+- [NATS][10] with [go-micro][11] on top
 - extensible for P2P protocol (UDP/TCP/ZEROMQ)
 
 ## Supported Platforms
