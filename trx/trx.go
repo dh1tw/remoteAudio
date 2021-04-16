@@ -11,9 +11,9 @@ import (
 
 	"github.com/dh1tw/remoteAudio/audio/sources/pbReader"
 
+	"github.com/asim/go-micro/v3/broker"
 	"github.com/dh1tw/remoteAudio/audio/chain"
 	"github.com/dh1tw/remoteAudio/proxy"
-	"github.com/micro/go-micro/broker"
 )
 
 // Trx is a data structure which holds the components needed for a 2-way

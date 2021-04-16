@@ -13,3 +13,13 @@ ECHO "install-deps starting..."
 
 ECHO "deps cleanup..."
 %MSYS_PATH%\usr\bin\bash -lc "yes|pacman --noconfirm -Sc"
+
+pacman-cross -Sy make
+pacman-cross -Sy --noconfirm --needed make
+pacman-cross -Sy --noconfirm --needed mingw-w64-x86_64-gcc
+pacman-cross -Sy --noconfirm --needed mingw-w64-x86_64-pkg-config
+pacman-cross -Sy --noconfirm --needed mingw-w64-x86_64-libsamplerate
+pacman-cross -Sy --noconfirm --needed mingw-w64-x86_64-portaudio
+pacman-cross -Sy --noconfirm --needed mingw-w64-x86_64-opusfile
+pacman-cross -Sy --noconfirm --needed mingw-w64-x86_64-opus
+pacman-cross -Sy --noconfirm --needed mingw-w64-x86_64-protobuf

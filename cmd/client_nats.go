@@ -8,6 +8,14 @@ import (
 	"strings"
 	"time"
 
+	natsBroker "github.com/asim/go-micro/plugins/broker/nats/v3"
+	natsReg "github.com/asim/go-micro/plugins/registry/nats/v3"
+	natsTr "github.com/asim/go-micro/plugins/transport/nats/v3"
+
+	// _ "net/http/pprof"
+	"github.com/asim/go-micro/v3/client"
+	"github.com/asim/go-micro/v3/registry"
+	"github.com/asim/go-micro/v3/transport"
 	"github.com/dh1tw/remoteAudio/audio/chain"
 	"github.com/dh1tw/remoteAudio/audio/nodes/vox"
 	"github.com/dh1tw/remoteAudio/audio/sinks/pbWriter"
@@ -19,13 +27,6 @@ import (
 	"github.com/dh1tw/remoteAudio/trx"
 	"github.com/dh1tw/remoteAudio/webserver"
 	"github.com/gordonklaus/portaudio"
-	"github.com/micro/go-micro/client"
-	"github.com/micro/go-micro/client/selector/static"
-	"github.com/micro/go-micro/registry"
-	"github.com/micro/go-micro/transport"
-	natsBroker "github.com/micro/go-plugins/broker/nats"
-	natsReg "github.com/micro/go-plugins/registry/nats"
-	natsTr "github.com/micro/go-plugins/transport/nats" // _ "net/http/pprof"
 	"github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -203,7 +204,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		client.Registry(reg),
 		client.PoolSize(1),
 		client.PoolTTL(time.Hour*8760), // one year - don't TTL our connection
-		client.Selector(static.NewSelector()),
+		client.ContentType("application/proto-rpc"),
 	)
 
 	speaker, err := scWriter.NewScWriter(

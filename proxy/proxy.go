@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/asim/go-micro/v3/broker"
+	"github.com/asim/go-micro/v3/client"
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 	"github.com/gogo/protobuf/proto"
-	"github.com/micro/go-micro/broker"
-	"github.com/micro/go-micro/client"
 )
 
 // AudioServer is a local proxy object respresenting a remote Audio server. It can
@@ -25,7 +25,7 @@ type AudioServer struct {
 	client         client.Client
 	rpc            sbAudio.ServerService
 	stateSub       broker.Subscriber
-	rxAddress      string 
+	rxAddress      string
 	txAddress      string
 	stateAddress   string
 	rxOn           bool
