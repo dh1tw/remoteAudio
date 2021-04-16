@@ -1,3 +1,4 @@
+.DS_Store
 /old
 *.pprof
 launch.json
@@ -8,3 +9,4 @@ remoteAudio
 *.exe
 /webserver/rice-box.go
 *.sh
+*.dll
