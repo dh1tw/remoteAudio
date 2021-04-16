@@ -1,9 +1,9 @@
 module github.com/dh1tw/remoteAudio
 
-go 1.14
+go 1.16
 
 require (
-	github.com/GeertJohan/go.rice v1.0.0
+	github.com/GeertJohan/go.rice v1.0.2
 	github.com/asim/go-micro/plugins/broker/nats/v3 v3.0.0-20210408173139-0d57213d3f5c
 	github.com/asim/go-micro/plugins/registry/nats/v3 v3.0.0-20210408173139-0d57213d3f5c
 	github.com/asim/go-micro/plugins/transport/nats/v3 v3.0.0-20210408173139-0d57213d3f5c
@@ -13,18 +13,17 @@ require (
 	github.com/dh1tw/gosamplerate v0.1.2
 	github.com/go-audio/audio v1.0.0
 	github.com/go-audio/wav v1.0.0
-	github.com/gogo/protobuf v1.3.1
-	github.com/golang/protobuf v1.4.2
-	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
-	github.com/gordonklaus/portaudio v0.0.0-20180817120803-00e7307ccd93
-	github.com/gorilla/mux v1.7.4
+	github.com/gogo/protobuf v1.3.2
+	github.com/golang/protobuf v1.5.2
+	github.com/gopherjs/gopherjs v0.0.0-20210413103415-7d3cbed7d026 // indirect
+	github.com/gordonklaus/portaudio v0.0.0-20200911161147-bb74aa485641
+	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/nats-io/nats.go v1.10.0
-	github.com/spf13/afero v1.2.2 // indirect
-	github.com/spf13/cobra v1.0.0
-	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/spf13/viper v1.7.0
-	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
-	google.golang.org/protobuf v1.23.0
-	gopkg.in/hraban/opus.v2 v2.0.0-20200710132758-e28f8214483b
+	github.com/spf13/afero v1.6.0 // indirect
+	github.com/spf13/cobra v1.1.3
+	github.com/spf13/viper v1.7.1
+	golang.org/x/sys v0.0.0-20210415045647-66c3f260301c // indirect
+	google.golang.org/protobuf v1.26.0
+	gopkg.in/hraban/opus.v2 v2.0.0-20210415224706-ab1467d63813
 )
