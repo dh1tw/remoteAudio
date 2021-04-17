@@ -13,7 +13,6 @@ require (
 	github.com/dh1tw/gosamplerate v0.1.2
 	github.com/go-audio/audio v1.0.0
 	github.com/go-audio/wav v1.0.0
-	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/gopherjs/gopherjs v0.0.0-20210413103415-7d3cbed7d026 // indirect
 	github.com/gordonklaus/portaudio v0.0.0-20200911161147-bb74aa485641

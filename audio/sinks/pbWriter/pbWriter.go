@@ -9,7 +9,7 @@ import (
 	"github.com/dh1tw/gosamplerate"
 	"github.com/dh1tw/remoteAudio/audio"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 )

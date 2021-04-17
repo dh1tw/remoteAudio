@@ -26,7 +26,7 @@ import (
 	"github.com/dh1tw/remoteAudio/audio/sources/scReader"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/gordonklaus/portaudio"
 	"github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"

@@ -10,17 +10,14 @@ GO_FILES := $(shell find . -name '*.go' | grep -v /vendor/)
 all: build
 
 build:
-	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
-	protoc --proto_path=./icd --micro_out=./sb_audio ./icd/audio.proto
-	cd webserver; \
+	protoc --proto_path=./icd --micro_out=. --go_out=. audio.proto	cd webserver; \
 	rice embed-go
 	go build -v -ldflags="-X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 # strip off dwraf table - used for travis CI
 dist:
-	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
-	protoc --proto_path=./icd --micro_out=./sb_audio ./icd/audio.proto
+	protoc --proto_path=./icd --micro_out=. --go_out=. audio.proto
 	cd webserver; \
 	rice embed-go
 	go build -v -ldflags="-w -s -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
@@ -43,17 +40,16 @@ lint:
 	done
 
 install:
-	protoc --proto_path=./icd --gofast_out=./sb_audio ./icd/audio.proto
-	protoc --proto_path=./icd --micro_out=./sb_audio ./icd/audio.proto
+	protoc --proto_path=./icd --micro_out=. --go_out=. audio.proto
 	cd webserver; \
 	rice embed-go
 	go install -v -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 install-deps:
-	go get github.com/gogo/protobuf/protoc-gen-gofast
+	go get github.com/golang/protobuf/protoc-gen-go
 	go get github.com/GeertJohan/go.rice/rice
-	go get github.com/micro/protoc-gen-micro
+	go get github.com/asim/go-micro/cmd/protoc-gen-micro/v3
 
 # static: vet lint
 # 	go build -i -v -o ${OUT}-v${VERSION} -tags netgo -ldflags="-extldflags \"-static\" -w -s -X main.version=${VERSION}" ${PKG}

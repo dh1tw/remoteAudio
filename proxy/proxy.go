@@ -10,7 +10,7 @@ import (
 	"github.com/asim/go-micro/v3/broker"
 	"github.com/asim/go-micro/v3/client"
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 // AudioServer is a local proxy object respresenting a remote Audio server. It can
