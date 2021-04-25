@@ -1,19 +1,24 @@
 package webserver
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"regexp"
 	"sync"
 	"time"
 
-	rice "github.com/GeertJohan/go.rice"
+	nfs "github.com/dh1tw/nolistfs"
 	"github.com/dh1tw/remoteAudio/trx"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
+
+//go:embed html
+var htmlDirectory embed.FS
 
 // wsClient contains a Websocket client
 type wsClient struct {
@@ -122,9 +127,15 @@ func (web *WebServer) Start() {
 	// load the HTTP routes with their respective endpoints
 	web.routes()
 
-	box := rice.MustFindBox("../html")
+	webAssets, err := fs.Sub(htmlDirectory, "html")
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-	fileServer := http.FileServer(box.HTTPBox())
+	webAssetsFS := nfs.New(http.FS(webAssets))
+
+	fileServer := http.FileServer(webAssetsFS)
 	web.router.PathPrefix("/").Handler(fileServer)
 
 	serverURL := fmt.Sprintf("%s:%d", web.url, web.port)

@@ -7,25 +7,29 @@ VERSION := $(shell git describe --tags --always)
 
 PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
 GO_FILES := $(shell find . -name '*.go' | grep -v /vendor/)
+
+GOOS := $(shell go env GOOS)
+GOARCH := $(shell go env GOARCH)
+
 all: build
 
 build:
-	protoc --proto_path=./icd --micro_out=. --go_out=. audio.proto	cd webserver; \
-	rice embed-go
+	protoc --proto_path=./icd --micro_out=. --go_out=. audio.proto \
 	go build -v -ldflags="-X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 # strip off dwraf table - used for travis CI
 dist:
 	protoc --proto_path=./icd --micro_out=. --go_out=. audio.proto
-	cd webserver; \
-	rice embed-go
 	go build -v -ldflags="-w -s -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
-	@if [ ${GOOS} = "windows" ]; \
-		then upx ./remoteAudio.exe; \
+	if [ "${GOOS}" = "windows" ]; \
+		then upx remoteAudio.exe; \
 	else \
-		upx ./remoteAudio; \
+		if [ "${GOOS}" = "darwin" ] && [ "${GOARCH}" = "arm64" ]; \
+			then true; \
+		else upx remoteAudio; \
+		fi \
 	fi
 
 # test:
@@ -41,14 +45,11 @@ lint:
 
 install:
 	protoc --proto_path=./icd --micro_out=. --go_out=. audio.proto
-	cd webserver; \
-	rice embed-go
 	go install -v -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 install-deps:
 	go get github.com/golang/protobuf/protoc-gen-go
-	go get github.com/GeertJohan/go.rice/rice
 	go get github.com/asim/go-micro/cmd/protoc-gen-micro/v3
 
 # static: vet lint
