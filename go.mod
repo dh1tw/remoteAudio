@@ -13,6 +13,7 @@ require (
 	github.com/dh1tw/nolistfs v0.1.0
 	github.com/go-audio/audio v1.0.0
 	github.com/go-audio/wav v1.0.0
+	github.com/go-git/go-git/v5 v5.4.2 // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/gordonklaus/portaudio v0.0.0-20200911161147-bb74aa485641
 	github.com/gorilla/mux v1.8.0
