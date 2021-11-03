@@ -1,12 +1,8 @@
 #!/bin/bash
 
-PKG := github.com/dh1tw/remoteAudio
 COMMITID := $(shell git describe --always --long --dirty)
 COMMIT := $(shell git rev-parse --short HEAD)
 VERSION := $(shell git describe --tags --always)
-
-PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
-GO_FILES := $(shell find . -name '*.go' | grep -v /vendor/)
 
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
@@ -14,7 +10,7 @@ GOARCH := $(shell go env GOARCH)
 all: build
 
 build:
-	protoc --proto_path=./icd --micro_out=. --go_out=. audio.proto \
+	protoc --proto_path=./icd --micro_out=. --go_out=. audio.proto
 	go build -v -ldflags="-X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
@@ -32,28 +28,15 @@ dist:
 		fi \
 	fi
 
-# test:
-# 	@go test -short ${PKG_LIST}
-
-vet:
-	@go vet ${PKG_LIST}
-
-lint:
-	@for file in ${GO_FILES} ;  do \
-		golint $$file ; \
-	done
-
 install:
 	protoc --proto_path=./icd --micro_out=. --go_out=. audio.proto
 	go install -v -ldflags="-w -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 install-deps:
-	go get github.com/golang/protobuf/protoc-gen-go
-	go get github.com/asim/go-micro/cmd/protoc-gen-micro/v3
-
-# static: vet lint
-# 	go build -i -v -o ${OUT}-v${VERSION} -tags netgo -ldflags="-extldflags \"-static\" -w -s -X main.version=${VERSION}" ${PKG}
+	go mod download
+	go install github.com/golang/protobuf/protoc-gen-go
+	go install github.com/asim/go-micro/cmd/protoc-gen-micro/v3
 
 clean:
 	-@rm remoteAudio remoteAudio-v*
