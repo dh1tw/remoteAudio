@@ -11,7 +11,7 @@ require (
 	github.com/chewxy/math32 v1.0.6
 	github.com/dh1tw/golang-ring v0.0.0-20180327112950-d11a99b5aede
 	github.com/dh1tw/gosamplerate v0.1.2
-	github.com/dh1tw/nolistfs v0.1.0
+	github.com/dh1tw/nolistfs v0.1.1
 	github.com/go-audio/audio v1.0.0
 	github.com/go-audio/wav v1.0.0
 	github.com/golang/protobuf v1.5.2

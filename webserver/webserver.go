@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	nfs "github.com/dh1tw/nolistfs"
 	"github.com/dh1tw/remoteAudio/trx"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -132,9 +133,8 @@ func (web *WebServer) Start() {
 		return
 	}
 
-	// webAssetsFS := nfs.New(http.FS(webAssets))
-	// fileServer := http.FileServer(webAssetsFS)
-	fileServer := http.FileServer(http.FS(webAssets))
+	webAssetsFS := nfs.New(http.FS(webAssets))
+	fileServer := http.FileServer(webAssetsFS)
 	web.router.PathPrefix("/").Handler(fileServer)
 
 	serverURL := fmt.Sprintf("%s:%d", web.url, web.port)

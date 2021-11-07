@@ -171,6 +171,8 @@ github.com/dh1tw/gosamplerate v0.1.2 h1:oyqtZk67xB9B4l+vIZCZ3F0RYV/z66W58VOah11/
 github.com/dh1tw/gosamplerate v0.1.2/go.mod h1:zooTyHpoR7hE+FLfdE3yjLHb2QA2NpMusNfuaZqEACM=
 github.com/dh1tw/nolistfs v0.1.0 h1:Rd+LWlsSw+aWA+ujZ56973IYWkW6w5uA3Ta3n9werxM=
 github.com/dh1tw/nolistfs v0.1.0/go.mod h1:WeoQ1gxYRq4M7IjvuIKaR9HTVArbaPeynFsG6YVKpTQ=
+github.com/dh1tw/nolistfs v0.1.1 h1:lbdaXDig5cP5wsrZmrHhI02NVRxTdQRKKaUzdtXnvKk=
+github.com/dh1tw/nolistfs v0.1.1/go.mod h1:WeoQ1gxYRq4M7IjvuIKaR9HTVArbaPeynFsG6YVKpTQ=
 github.com/dimchansky/utfbom v1.1.0/go.mod h1:rO41eb7gLfo8SF1jd9F8HplJm1Fewwi4mQvIirEdv+8=
 github.com/dnaeon/go-vcr v0.0.0-20180814043457-aafff18a5cc2/go.mod h1:aBB1+wY4s93YsC3HHjMBMrwTj2R9FHDzUr9KyGc8n1E=
 github.com/dnaeon/go-vcr v1.0.1/go.mod h1:aBB1+wY4s93YsC3HHjMBMrwTj2R9FHDzUr9KyGc8n1E=
