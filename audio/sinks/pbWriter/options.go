@@ -13,7 +13,6 @@ type Options struct {
 	DeviceName      string
 	Encoder         audiocodec.Encoder
 	Channels        int
-	Samplerate      float64
 	FramesPerBuffer int
 	UserID          string
 	ToWireCb        func([]byte)
@@ -25,15 +24,6 @@ type Options struct {
 func Channels(chs int) Option {
 	return func(args *Options) {
 		args.Channels = chs
-	}
-}
-
-// Samplerate is a functional option to set the sampling rate of the
-// audio device. Make sure your audio device supports the specified sampling
-// rate.
-func Samplerate(s float64) Option {
-	return func(args *Options) {
-		args.Samplerate = s
 	}
 }
 

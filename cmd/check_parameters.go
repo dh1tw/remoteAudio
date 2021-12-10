@@ -55,8 +55,7 @@ func checkAudioParameterValues() error {
 		}
 	}
 
-	opusFrameLength := float64(viper.GetInt("audio.frame-length")) /
-		viper.GetFloat64("input-device.samplerate")
+	opusFrameLength := float64(viper.GetInt("audio.frame-length")) / 48000
 	if opusFrameLength != 0.0025 &&
 		opusFrameLength != 0.005 &&
 		opusFrameLength != 0.01 &&

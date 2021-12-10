@@ -243,7 +243,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		opus.Bitrate(opusBitrate),
 		opus.Complexity(opusComplexity),
 		opus.Channels(iChannels),
-		opus.Samplerate(iSamplerate),
+		opus.Samplerate(48000), // opus only works well with 48kHz
 		opus.Application(opusApplication),
 		opus.MaxBandwidth(opusMaxBandwidth),
 	)
@@ -253,7 +253,6 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 
 	toNetwork, err := pbWriter.NewPbWriter(
 		pbWriter.Encoder(opusEncoder),
-		pbWriter.Samplerate(iSamplerate),
 		pbWriter.Channels(iChannels),
 		pbWriter.FramesPerBuffer(audioFramesPerBuffer),
 		pbWriter.UserID(natsUsername),

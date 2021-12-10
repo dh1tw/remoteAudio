@@ -247,7 +247,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		opus.Bitrate(opusBitrate),
 		opus.Complexity(opusComplexity),
 		opus.Channels(iChannels),
-		opus.Samplerate(iSamplerate),
+		opus.Samplerate(48000),
 		opus.Application(opusApplication),
 		opus.MaxBandwidth(opusMaxBandwidth),
 	)
@@ -259,7 +259,6 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	// and send it on the wire
 	toNetwork, err := pbWriter.NewPbWriter(
 		pbWriter.Encoder(opusEncoder),
-		pbWriter.Samplerate(iSamplerate),
 		pbWriter.Channels(iChannels),
 		pbWriter.FramesPerBuffer(audioFramesPerBuffer),
 		pbWriter.ToWireCb(ns.toWireCb),

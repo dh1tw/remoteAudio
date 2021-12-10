@@ -42,9 +42,8 @@ func NewPbWriter(opts ...Option) (*PbWriter, error) {
 
 	pbw := &PbWriter{
 		options: Options{
-			DeviceName:      "ProtoBufReader",
+			DeviceName:      "ProtoBufWriter",
 			Channels:        1,
-			Samplerate:      48000,
 			FramesPerBuffer: 960,
 			UserID:          "myCallsign",
 		},
@@ -59,7 +58,7 @@ func NewPbWriter(opts ...Option) (*PbWriter, error) {
 	// if no encoder set, create the default encoder
 	if pbw.options.Encoder == nil {
 		encChannels := opus.Channels(pbw.options.Channels)
-		encSR := opus.Samplerate(pbw.options.Samplerate)
+		encSR := opus.Samplerate(48000)
 		enc, err := opus.NewEncoder(encChannels, encSR)
 		if err != nil {
 			return nil, err
@@ -75,7 +74,7 @@ func NewPbWriter(opts ...Option) (*PbWriter, error) {
 	}
 	pbw.src = src{
 		Src:        srConv,
-		samplerate: pbw.options.Samplerate,
+		samplerate: 48000,
 		ratio:      1,
 	}
 
@@ -161,11 +160,11 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg) error {
 			aData = audioMsg.Data
 		}
 
-		if audioMsg.Samplerate != pbw.options.Samplerate {
+		if audioMsg.Samplerate != 48000 {
 			if pbw.src.samplerate != audioMsg.Samplerate {
 				pbw.src.Reset()
 				pbw.src.samplerate = audioMsg.Samplerate
-				pbw.src.ratio = pbw.options.Samplerate / audioMsg.Samplerate
+				pbw.src.ratio = 48000 / audioMsg.Samplerate
 			}
 			aData, err = pbw.src.Process(aData, pbw.src.ratio, false)
 			if err != nil {
@@ -241,7 +240,7 @@ func (pbw *PbWriter) Write(audioMsg audio.Msg) error {
 				BitDepth:     16,
 				Codec:        sbAudio.Codec_opus,
 				FrameLength:  int32(pbw.options.FramesPerBuffer),
-				SamplingRate: int32(pbw.options.Samplerate),
+				SamplingRate: 48000,
 				UserId:       pbw.options.UserID,
 			}
 
