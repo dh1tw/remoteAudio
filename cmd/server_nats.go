@@ -105,12 +105,14 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	audioFramesPerBuffer := viper.GetInt("audio.frame-length")
 
 	oDeviceName := viper.GetString("output-device.device-name")
+	oHostAPI := viper.GetString("output-device.hostapi")
 	oSamplerate := viper.GetFloat64("output-device.samplerate")
 	oLatency := viper.GetDuration("output-device.latency")
 	oChannels := viper.GetInt("output-device.channels")
 	oRingBufferSize := viper.GetInt("audio.rx-buffer-length")
 
 	iDeviceName := viper.GetString("input-device.device-name")
+	iHostAPI := viper.GetString("input-device.hostapi")
 	iSamplerate := viper.GetFloat64("input-device.samplerate")
 	iLatency := viper.GetDuration("input-device.latency")
 	iChannels := viper.GetInt("input-device.channels")
@@ -211,6 +213,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	// create an sound card writer (typically feeding audio into the
 	// microphone of the transceiver)
 	mic, err := scWriter.NewScWriter(
+		scWriter.HostAPI(oHostAPI),
 		scWriter.DeviceName(oDeviceName),
 		scWriter.Channels(oChannels),
 		scWriter.Samplerate(oSamplerate),
@@ -225,6 +228,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	// create a soundcard reader (typically connected to the speaker
 	// of the transceiver)
 	radioAudio, err := scReader.NewScReader(
+		scReader.HostAPI(iHostAPI),
 		scReader.DeviceName(iDeviceName),
 		scReader.Channels(iChannels),
 		scReader.Samplerate(iSamplerate),
