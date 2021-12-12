@@ -130,7 +130,10 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	natsBrokerPort := viper.GetInt("nats.broker-port")
 	natsAddr := fmt.Sprintf("nats://%s:%v", natsBrokerURL, natsBrokerPort)
 
-	portaudio.Initialize()
+	if err := portaudio.Initialize(); err != nil {
+		exit(err)
+	}
+
 	defer portaudio.Terminate()
 
 	// start from default nats config and add the common options
@@ -301,10 +304,17 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 
 	// add audio sinks & sources to the tx audio chain
 	tx.Sources.AddSource("fromNetwork", fromNetwork)
-	tx.Sinks.AddSink("mic", mic, false)
+	// stream immediately audio from the network to the radio
+	if err := tx.Sources.SetSource("fromNetwork"); err != nil {
+		exit(err)
+	}
+	tx.Sinks.AddSink("mic", mic, true)
 
 	// add audio sinks & sources to the rx audio chain
 	rx.Sources.AddSource("radioAudio", radioAudio)
+	if err := rx.Sources.SetSource("radioAudio"); err != nil {
+		exit(err)
+	}
 	rx.Sinks.AddSink("toNetwork", toNetwork, false)
 
 	// assign the rx and tx audio chain to our natsServer
@@ -342,16 +352,8 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 	}
 	ns.txAudioSub = sub
 
-	// register our Rotator RPC handler
+	// register our RPC handler
 	sbAudio.RegisterServerHandler(rs.Server(), ns)
-
-	rx.Sources.SetSource("radioAudio")
-
-	// stream immediately audio from the network to the radio
-	tx.Sources.SetSource("fromNetwork")
-	if err := tx.Enable(true); err != nil {
-		exit(err)
-	}
 
 	// when no ping is received, turn of the audio stream
 	go ns.checkTimeout()

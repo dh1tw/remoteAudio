@@ -158,7 +158,9 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	natsBrokerPort := viper.GetInt("nats.broker-port")
 	serverName := viper.GetString("server.name")
 
-	portaudio.Initialize()
+	if err := portaudio.Initialize(); err != nil {
+		exit(err)
+	}
 	defer portaudio.Terminate()
 
 	if len(serverName) > 0 && strings.ContainsAny(serverName, " _\n\r") {
@@ -323,7 +325,7 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 	rx.Sources.AddSource("fromNetwork", fromNetwork)
 	// set and enable speaker as default sink
 	rx.Sinks.AddSink("speaker", speaker, true)
-	// start streaming to the network immediately
+	// start streaming from the network immediately
 	rx.Sources.SetSource("fromNetwork")
 
 	tx.Sources.AddSource("mic", mic)

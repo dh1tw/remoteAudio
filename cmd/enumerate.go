@@ -47,7 +47,10 @@ Available audio devices and supported Host APIs:
 
 // enumerate lists all available Audio devices on the system
 func enumerate() {
-	portaudio.Initialize()
+	if err := portaudio.Initialize(); err != nil {
+		exit(err)
+	}
+
 	defer portaudio.Terminate()
 
 	hs, err := portaudio.HostApis()

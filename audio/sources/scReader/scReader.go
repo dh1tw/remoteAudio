@@ -26,10 +26,6 @@ type ScReader struct {
 // asynchronously from an a local audio device (e.g. a microphone).
 func NewScReader(opts ...Option) (*ScReader, error) {
 
-	if err := pa.Initialize(); err != nil {
-		return nil, err
-	}
-
 	r := &ScReader{
 		options: Options{
 			HostAPI:         "default",

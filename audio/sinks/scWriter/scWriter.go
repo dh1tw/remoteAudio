@@ -39,10 +39,6 @@ type src struct {
 // device. This is typically a speaker or a pair of headphones.
 func NewScWriter(opts ...Option) (*ScWriter, error) {
 
-	if err := pa.Initialize(); err != nil {
-		return nil, err
-	}
-
 	w := &ScWriter{
 		options: Options{
 			DeviceName:      "default",
