@@ -82,12 +82,12 @@ func (d *Doorman) Write(msg audio.Msg) error {
 	txUser := ""
 
 	// make sure the interface{} can be casted to a string
-	switch userID.(type) {
+	switch uID := userID.(type) {
 	default:
 		log.Println("doorman: can not cast userID to string")
 		return nil
 	case string:
-		txUser = userID.(string)
+		txUser = uID
 	}
 
 	d.Lock()
