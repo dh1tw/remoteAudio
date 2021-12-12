@@ -259,6 +259,9 @@ func (p *ScWriter) Write(msg audio.Msg) error {
 	var aData []float32
 	var err error
 
+	p.Lock()
+	defer p.Unlock()
+
 	// if necessary adjust the amount of audio channels
 	if msg.Channels != p.options.Channels {
 		aData = audio.AdjustChannels(msg.Channels, p.options.Channels, msg.Data)
