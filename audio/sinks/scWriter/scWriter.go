@@ -311,9 +311,7 @@ func (p *ScWriter) Write(msg audio.Msg) error {
 	// if the aData contains multiples of the expected buffer size,
 	// then we chop it into (several) buffers
 	if len(aData) >= expBufferSize {
-		p.Lock()
 		vol := p.volume
-		p.Unlock()
 
 		for len(aData) >= expBufferSize {
 			if vol != 1 {
@@ -336,8 +334,6 @@ func (p *ScWriter) Write(msg audio.Msg) error {
 }
 
 func (p *ScWriter) enqueue(bData [][]float32, EOF bool) {
-	p.Lock()
-	defer p.Unlock()
 	for _, frame := range bData {
 		p.ring.Enqueue(frame)
 	}
