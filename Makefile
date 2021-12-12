@@ -35,8 +35,8 @@ install:
 
 install-deps:
 	go mod download
-	go install github.com/golang/protobuf/protoc-gen-go
-	go install github.com/asim/go-micro/cmd/protoc-gen-micro/v3
+	go install github.com/golang/protobuf/protoc-gen-go@v1.5.2
+	go install github.com/asim/go-micro/cmd/protoc-gen-micro/v3@v3.7.0
 
 clean:
 	-@rm remoteAudio remoteAudio-v*
