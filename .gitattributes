@@ -1,4 +1,4 @@
-webserver/html/* linguist-vendored
+webserver/html/** linguist-vendored
 webserver/html/index.html linguist-vendored=false
 webserver/html/static/js/components/* linguist-vendored=false
 webserver/html/static/js/components/app.js linguist-vendored=false
