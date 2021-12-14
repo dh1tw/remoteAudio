@@ -89,6 +89,8 @@ func (s *DefaultSelector) SetSource(name string) error {
 // SetOnDataCb sets the callback function will will be executed when new audio
 // msgs are available from the selected source.
 func (s *DefaultSelector) SetOnDataCb(cb OnDataCb) {
+	s.Lock()
+	defer s.Unlock()
 	s.onDataCb = cb
 }
 
