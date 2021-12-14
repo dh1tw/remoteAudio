@@ -288,13 +288,6 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		exit(err)
 	}
 
-	// create the receiving audio chain (from speaker to network)
-	rx, err := chain.NewChain(chain.DefaultSource("radioAudio"),
-		chain.DefaultSink("toNetwork"))
-	if err != nil {
-		exit(err)
-	}
-
 	// create the sending chain (from network to microphone)
 	tx, err := chain.NewChain(chain.DefaultSource("fromNetwork"),
 		chain.DefaultSink("mic"), chain.Node(dm))
@@ -309,6 +302,13 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		exit(err)
 	}
 	tx.Sinks.AddSink("mic", mic, true)
+
+	// create the receiving audio chain (from speaker to network)
+	rx, err := chain.NewChain(chain.DefaultSource("radioAudio"),
+		chain.DefaultSink("toNetwork"))
+	if err != nil {
+		exit(err)
+	}
 
 	// add audio sinks & sources to the rx audio chain
 	rx.Sources.AddSource("radioAudio", radioAudio)
