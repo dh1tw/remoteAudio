@@ -60,28 +60,24 @@ func NewChain(opts ...Option) (*Chain, error) {
 	nodesCount := len(nc.Nodes)
 
 	// Wire up the chain, connect the source->nodes->sink with each other
-
-	// if no nodes are available, we connect the source with the sink
+	// if no nodes are available, we connect the source directly with the sink
 	if nodesCount == 0 {
 		nc.Sources.SetOnDataCb(nc.defaultSourceToSinkCb)
 		return nc, nil
-	}
-
-	// connect the source with the first node
-	if nodesCount >= 1 {
+	} else { // connect the source with the first node
 		nc.Sources.SetOnDataCb(func(msg audio.Msg) {
 			nc.Nodes[0].Write(msg)
 		})
 	}
 
 	// connect the remaining nodes with each other
-	for i, nextSource := range nc.Nodes {
+	for i, node := range nc.Nodes {
 		if i == 0 {
-			continue
+			continue // first node is already connected
 		}
-		lastSrc := nc.Nodes[i-1]
-		lastSrc.SetCb(func(msg audio.Msg) {
-			nextSource.Write(msg)
+		previousNode := nc.Nodes[i-1]
+		previousNode.SetCb(func(msg audio.Msg) {
+			node.Write(msg)
 		})
 	}
 
