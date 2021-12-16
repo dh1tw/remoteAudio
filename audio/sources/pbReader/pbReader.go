@@ -1,13 +1,12 @@
 package pbReader
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/dh1tw/remoteAudio/audio"
+	"github.com/dh1tw/remoteAudio/audiocodec"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
 	"github.com/golang/protobuf/proto"
@@ -18,37 +17,21 @@ import (
 // received from the network.
 type PbReader struct {
 	sync.RWMutex
-	options    Options
-	enabled    bool
-	lastPacket time.Time
+	enabled  bool
+	name     string
+	codecs   map[string]audiocodec.Decoder
+	decoder  audiocodec.Decoder
+	callback audio.OnDataCb
+	lastUser string
 }
 
 // NewPbReader is the constructor for a PbReader object.
-func NewPbReader(opts ...Option) (*PbReader, error) {
+func NewPbReader() (*PbReader, error) {
 
 	pbr := &PbReader{
-		options: Options{
-			DeviceName: "ProtoBufReader",
-			Channels:   2,
-			Samplerate: 48000,
-		},
-	}
-
-	for _, option := range opts {
-		option(&pbr.options)
-	}
-
-	// if no decoder was passed in as a function we create
-	// our default opus decoder
-	if pbr.options.Decoder == nil {
-		decChannels := opus.Channels(pbr.options.Channels)
-		decSR := opus.Samplerate(pbr.options.Samplerate)
-
-		dec, err := opus.NewOpusDecoder(decChannels, decSR)
-		if err != nil {
-			return nil, err
-		}
-		pbr.options.Decoder = dec
+		name:     "ProtoBufReader",
+		codecs:   make(map[string]audiocodec.Decoder),
+		lastUser: "",
 	}
 
 	return pbr, nil
@@ -80,7 +63,7 @@ func (pbr *PbReader) Close() error {
 func (pbr *PbReader) SetCb(cb audio.OnDataCb) {
 	pbr.Lock()
 	defer pbr.Unlock()
-	pbr.options.Callback = cb
+	pbr.callback = cb
 }
 
 // Enqueue is the entry point for the PbReader. Incoming Protobufs
@@ -89,16 +72,12 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 	pbr.Lock()
 	defer pbr.Unlock()
 
-	if pbr.options.Callback == nil {
-		return nil
-	}
-
 	if !pbr.enabled {
 		return nil
 	}
 
-	if pbr.options.Decoder == nil {
-		return errors.New("no decoder set")
+	if pbr.callback == nil {
+		return nil
 	}
 
 	if len(data) == 0 {
@@ -112,18 +91,57 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 		return err
 	}
 
+	channels := 0
+	switch msg.GetChannels() {
+	case sbAudio.Channels_mono:
+		channels = 1
+	case sbAudio.Channels_stereo:
+		channels = 2
+	}
+
 	if len(msg.Data) == 0 {
-		log.Println("protobuf audio frame empty")
+		log.Println("incoming protobuf audio frame empty")
 		return nil
 	}
 
-	if msg.Codec.String() != pbr.options.Decoder.Name() {
+	codecName := msg.GetCodec().String()
+
+	switch codecName {
+	case "opus":
+	// case "pcm":
+	default:
 		return fmt.Errorf("unknown codec %v", msg.Codec.String())
 	}
 
-	buf := make([]float32, msg.FrameLength*2, 5000)
+	buf := make([]float32, int(msg.GetFrameLength())*channels)
 
-	num, err := pbr.options.Decoder.Decode(msg.Data, buf)
+	txUser := msg.GetUserId()
+
+	// we can not use the same opus decoder when packets of multiple
+	// users arrive at the same time. This ends up in a very distorted
+	// audio. Therefore we create a new decoder on demand for each txUser
+	if pbr.lastUser != txUser {
+		codec, ok := pbr.codecs[txUser]
+		if !ok {
+			switch codecName {
+			case "opus":
+				newCodec, err := newOpusDecoder(channels)
+				if err != nil {
+					return (err)
+				}
+				pbr.codecs[txUser] = newCodec
+				pbr.decoder = newCodec
+			case "pcm":
+				// in case of PCM we might have to resample the audio
+				// to match the internally prefered 48Khz
+			}
+		} else {
+			pbr.decoder = codec // codec already exists for txUser
+		}
+		pbr.lastUser = txUser
+	}
+
+	num, err := pbr.decoder.Decode(msg.Data, buf)
 	if err != nil {
 		return err
 	}
@@ -131,15 +149,23 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 	// pack the data into an audio.Msg which is used for further internal
 	// processing
 	audioMsg := audio.Msg{
-		Channels:   pbr.options.Channels,
+		Channels:   channels,
 		Data:       buf,
 		EOF:        false,
 		Frames:     num,
-		Samplerate: pbr.options.Samplerate, // we want 48kHz for internal processing
+		Samplerate: float64(msg.GetSamplingRate()), // we want 48kHz for internal processing
 		Metadata:   map[string]interface{}{"userID": msg.GetUserId()},
 	}
 
-	pbr.options.Callback(audioMsg)
+	pbr.callback(audioMsg)
 
 	return nil
+}
+
+func newOpusDecoder(channels int) (*opus.OpusDecoder, error) {
+	decChannels := opus.Channels(channels)
+	decSR := opus.Samplerate(48000) // opus only likes 48kHz
+	dec, err := opus.NewOpusDecoder(decChannels, decSR)
+
+	return dec, err
 }
