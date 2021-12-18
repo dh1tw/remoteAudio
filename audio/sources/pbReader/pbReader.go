@@ -19,7 +19,7 @@ type PbReader struct {
 	sync.RWMutex
 	enabled  bool
 	name     string
-	codecs   map[string]audiocodec.Decoder
+	decoders map[string]audiocodec.Decoder
 	decoder  audiocodec.Decoder
 	callback audio.OnDataCb
 	lastUser string
@@ -30,7 +30,7 @@ func NewPbReader() (*PbReader, error) {
 
 	pbr := &PbReader{
 		name:     "ProtoBufReader",
-		codecs:   make(map[string]audiocodec.Decoder),
+		decoders: make(map[string]audiocodec.Decoder),
 		lastUser: "",
 	}
 
@@ -121,7 +121,7 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 	// users arrive at the same time. This ends up in a very distorted
 	// audio. Therefore we create a new decoder on demand for each txUser
 	if pbr.lastUser != txUser {
-		codec, ok := pbr.codecs[txUser]
+		codec, ok := pbr.decoders[txUser]
 		if !ok {
 			switch codecName {
 			case "opus":
@@ -129,7 +129,7 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 				if err != nil {
 					return (err)
 				}
-				pbr.codecs[txUser] = newCodec
+				pbr.decoders[txUser] = newCodec
 				pbr.decoder = newCodec
 			case "pcm":
 				// in case of PCM we might have to resample the audio
@@ -143,6 +143,11 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 
 	num, err := pbr.decoder.Decode(msg.Data, buf)
 	if err != nil {
+		// in case the txUser has switched from stereo to mono
+		// the samples won't fit into buf anymore. Therefore we
+		// simple ignore the sample and delete the decoder for that user
+		delete(pbr.decoders, txUser)
+		pbr.lastUser = ""
 		return err
 	}
 
