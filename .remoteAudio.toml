@@ -1,44 +1,71 @@
+# The parameters are applicable both for remoteAudio client and server instances
+# if not otherwise noted. In principle, the default parameters should get your 
+# started. Propably you want to fine tune them to your local circumstances.
+
+# parameters for connecting to your NATS server 
 [nats]
 broker-url = "localhost"
 broker-port = 4222
 username = ""
 password = ""
 
-[server]
-name = "ft950"
-index = 1
+# parameters to configure remoteAudio server instances
+[server] 
+name = "ft950" # server: name of this remoteAudio server 
+               # client: the name of the remoteAudio server from which the 
+               #         audio should be streamed on startup if the parameter
+               #         'audio.stream-on-startup' = true
+index = 1 # in case you have several remoteAudio servers, this value lets you set the
+          # position in which the servers will be displayed in the WebUI of the 
+          # clients
 
-[input-device]
+# parameters for the capturing audio device (typically a microphone)
+# check `./remoteAudio enumerate` for available devices and hostAPIs on your system
+# copy the exact parameters of the desired device
+[input-device] 
 device-name = "default"
 samplerate = 48000
 latency = "5ms"
 channels = 1
 hostapi = "default"
 
-[output-device]
+# parameters for the playback audio device (typically a headset / speaker)
+# check `./remoteAudio enumerate` for available devices and hostAPIs on your system
+# copy the exact parameters of the desired device
+[output-device] 
 device-name = "default"
 samplerate = 48000
 latency = "5ms"
 channels = 2
 hostapi = "default"
 
-[opus]
-application = "restricted_lowdelay"
-bitrate = 24000
-complexity = 5
-max-bandwidth = "wideband"
+# parameters for the OPUS audio codec. 
+# check https://pkg.go.dev/gopkg.in/hraban/opus.v2 and https://opus-codec.org/docs/
+# for more detailed expanation of the parameters
+[opus] 
+application = "restricted_lowdelay" # 'voip', 'audio' or 'restricted_lowdelay'
+bitrate = 24000 # 6000...510000 bits/s
+complexity = 5 # 0...10 
+max-bandwidth = "wideband" # 'narrowband', 'mediumband', 'wideband', 'superwideband' or 'fullband'
 
+
+# audio related parameters
 [audio]
 rx-buffer-length = 10 # 10x10ms (@framesize=480 & samplerate=48kHz)
-# opus does not accept arbitrary frame length! Check OPUS documentation
-frame-length = 480  #10ms @ 48kHz (should work for most cases)
+# opus only accepts frames with a length of 2.5ms, 5ms, 10ms, 20ms, 40ms or 60ms! 
+frame-length = 960  #20ms @ 48kHz (should work for most cases)
 tx-volume = 70
 rx-volume = 70
-stream-on-startup = false
-vox = false
-vox-threshold = 0.1
-vox-holdtime = "500ms"
+stream-on-startup = false # client: start the audio stream (rx) from the remoteAudio server specified
+                          #         in 'server.name'. This parameter will also start streaming
+                          #         audio (tx) from this client to the server. If the server is
+                          #         is not available, remoteAudio will exit. 
+vox = false             # client: enable / disable vox
+vox-threshold = 0.1     # client: vox threshold level (float from 0....1)
+vox-holdtime = "500ms"  # client: vox holdtime before turning TX off
 
+# embedded web server on the remoteAudio for accessing the WebUI
 [http]
-host = "localhost"
+host = "localhost" # use '0.0.0.0' to access the webUI also from other computers on your 
+                   # local network.
 port = 9090
