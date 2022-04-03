@@ -11,7 +11,7 @@ all: build
 
 build:
 	protoc --proto_path=./icd --micro_out=. --go_out=. ./icd/audio.proto
-	go build -v -ldflags="-X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
+	go build -v -ldflags="-w -s -X github.com/dh1tw/remoteAudio/cmd.commitHash=${COMMIT} \
 		-X github.com/dh1tw/remoteAudio/cmd.version=${VERSION}"
 
 # strip off dwraf table - used for travis CI
