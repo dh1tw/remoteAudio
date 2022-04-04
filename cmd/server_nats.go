@@ -269,6 +269,7 @@ func natsAudioServer(cmd *cobra.Command, args []string) {
 		pbWriter.Channels(iChannels),
 		pbWriter.FramesPerBuffer(audioFramesPerBuffer),
 		pbWriter.ToWireCb(ns.toWireCb),
+		pbWriter.UserID(serverName),
 	)
 	if err != nil {
 		exit(err)
