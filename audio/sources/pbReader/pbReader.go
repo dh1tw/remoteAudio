@@ -17,12 +17,13 @@ import (
 // received from the network.
 type PbReader struct {
 	sync.RWMutex
-	enabled  bool
-	name     string
-	decoders map[string]audiocodec.Decoder
-	decoder  audiocodec.Decoder
-	callback audio.OnDataCb
-	lastUser string
+	enabled            bool
+	name               string
+	decoders           map[string]audiocodec.Decoder
+	decoder            audiocodec.Decoder
+	callback           audio.OnDataCb
+	lastUser           string
+	emptyUserIDWarning sync.Once
 }
 
 // NewPbReader is the constructor for a PbReader object.
@@ -104,6 +105,14 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 		return nil
 	}
 
+	if len(msg.GetUserId()) == 0 {
+		msg.UserId = "unknown-client"
+		pbr.emptyUserIDWarning.Do(func() {
+			log.Println("incoming audio frames from unknown user; consider setting the username on the client")
+			log.Println("simultaneous audio frames from multiple anonymous users will result in distorted audio")
+		})
+	}
+
 	codecName := msg.GetCodec().String()
 
 	switch codecName {
@@ -139,6 +148,10 @@ func (pbr *PbReader) Enqueue(data []byte) error {
 			pbr.decoder = codec // codec already exists for txUser
 		}
 		pbr.lastUser = txUser
+	}
+
+	if pbr.decoder == nil {
+		return fmt.Errorf("no decoder set for audio frames from user: '%s'", txUser)
 	}
 
 	num, err := pbr.decoder.Decode(msg.Data, buf)
