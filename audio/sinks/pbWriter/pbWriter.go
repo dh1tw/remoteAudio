@@ -9,6 +9,7 @@ import (
 	"github.com/dh1tw/gosamplerate"
 	"github.com/dh1tw/remoteAudio/audio"
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
+	"github.com/dh1tw/remoteAudio/utils"
 	"github.com/golang/protobuf/proto"
 
 	sbAudio "github.com/dh1tw/remoteAudio/sb_audio"
@@ -45,7 +46,7 @@ func NewPbWriter(opts ...Option) (*PbWriter, error) {
 			DeviceName:      "ProtoBufWriter",
 			Channels:        1,
 			FramesPerBuffer: 960,
-			UserID:          "myCallsign",
+			UserID:          fmt.Sprintf("user-%s", utils.RandStringRunes(5)),
 		},
 		buffer: make([]byte, 10000),
 		volume: 0.7,
