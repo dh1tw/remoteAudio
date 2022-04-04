@@ -25,6 +25,7 @@ import (
 	"github.com/dh1tw/remoteAudio/audiocodec/opus"
 	"github.com/dh1tw/remoteAudio/proxy"
 	"github.com/dh1tw/remoteAudio/trx"
+	"github.com/dh1tw/remoteAudio/utils"
 	"github.com/dh1tw/remoteAudio/webserver"
 	"github.com/gordonklaus/portaudio"
 	"github.com/nats-io/nats.go"
@@ -253,11 +254,17 @@ func natsAudioClient(cmd *cobra.Command, args []string) {
 		exit(err)
 	}
 
+	userName := natsUsername
+	if len(userName) == 0 {
+		userName = fmt.Sprintf("client-%s", utils.RandStringRunes(5))
+		log.Printf("username not set; auto generated unique username '%s'\n", userName)
+	}
+
 	toNetwork, err := pbWriter.NewPbWriter(
 		pbWriter.Encoder(opusEncoder),
 		pbWriter.Channels(iChannels),
 		pbWriter.FramesPerBuffer(audioFramesPerBuffer),
-		pbWriter.UserID(natsUsername),
+		pbWriter.UserID(userName),
 	)
 	if err != nil {
 		exit(err)

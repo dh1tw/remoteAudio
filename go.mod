@@ -14,12 +14,16 @@ require (
 	github.com/go-audio/audio v1.0.0
 	github.com/go-audio/wav v1.0.0
 	github.com/golang/protobuf v1.5.2
-	github.com/gordonklaus/portaudio v0.0.0-20200911161147-bb74aa485641
+	github.com/gordonklaus/portaudio v0.0.0-20220320131553-cc649ad523c1
 	github.com/gorilla/mux v1.8.0
-	github.com/gorilla/websocket v1.4.2
+	github.com/gorilla/websocket v1.5.0
+	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/nats-io/nats.go v1.13.0
-	github.com/spf13/cobra v1.2.1
-	github.com/spf13/viper v1.10.0
-	google.golang.org/protobuf v1.27.1
-	gopkg.in/hraban/opus.v2 v2.0.0-20211030232353-1a9beeaf0764
+	github.com/spf13/afero v1.8.2 // indirect
+	github.com/spf13/cobra v1.4.0
+	github.com/spf13/viper v1.10.1
+	golang.org/x/sys v0.0.0-20220403205710-6acee93ad0eb // indirect
+	google.golang.org/protobuf v1.28.0
+	gopkg.in/hraban/opus.v2 v2.0.0-20220302220929-eeacdbcb92d0
+	gopkg.in/ini.v1 v1.66.4 // indirect
 )
