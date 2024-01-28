@@ -28,6 +28,7 @@ func init() {
 
 func printRemoteAudioVersion() {
 	buildDate := time.Now().Format(time.RFC3339)
+	fmt.Printf("copyright Tobias Wellnitz, DH1TW (%d)\n", time.Now().Year())
 	fmt.Printf("remoteAudio Version: %s, %s/%s, BuildDate: %s, Commit: %s\n",
 		version, runtime.GOOS, runtime.GOARCH, buildDate, commitHash)
 }
