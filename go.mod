@@ -22,7 +22,7 @@ require (
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.10.1
-	golang.org/x/sys v0.0.0-20220403205710-6acee93ad0eb // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	google.golang.org/protobuf v1.28.0
 	gopkg.in/hraban/opus.v2 v2.0.0-20220302220929-eeacdbcb92d0
 	gopkg.in/ini.v1 v1.66.4 // indirect
