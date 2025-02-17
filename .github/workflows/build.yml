@@ -24,14 +24,15 @@ jobs:
             OS: linux
             ARCH: amd64
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
       with:
         submodules: true
+        set-safe-directory: '/usr/src/myapp'
     - name: Set up Go 1.24
       uses: actions/setup-go@v5
       id: go
       with:
-        go-version: 1.24
+        go-version: '1.24'
     - name: Build binary for ${{ matrix.version }}
       run: |
         docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'make dist'
@@ -63,10 +64,11 @@ jobs:
       uses: actions/setup-go@v5
       id: go
       with:
-        go-version: 1.24
-    - uses: actions/checkout@v1
+        go-version: '1.24'
+    - uses: actions/checkout@v4
       with:
         submodules: true
+        set-safe-directory: '/usr/src/myapp'
     - name: Install dependencies
       run: |
         brew install pkg-config
@@ -108,14 +110,15 @@ jobs:
             OS: windows
             ARCH: '386'
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
       with:
         submodules: true
+        set-safe-directory: '/usr/src/myapp'
     - name: Set up Go 1.24
       uses: actions/setup-go@v5
       id: go
       with:
-        go-version: 1.24  
+        go-version: '1.24'  
     - name: Build binary for ${{ matrix.version }}
       run: |
         docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'make dist && /scripts/getlibs.sh .'
