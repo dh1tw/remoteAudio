@@ -27,7 +27,6 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-        set-safe-directory: '/usr/src/myapp'
     - name: Set up Go 1.24
       uses: actions/setup-go@v5
       id: go
@@ -35,6 +34,7 @@ jobs:
         go-version: '1.24'
     - name: Build binary for ${{ matrix.version }}
       run: |
+        git config --global --add safe.directory /usr/src/myapp
         docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'make dist'
     - name: Prepare build artifact for stashing
       run: |
@@ -113,7 +113,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-        set-safe-directory: '/usr/src/myapp'
+        set-safe-directory: true
     - name: Set up Go 1.24
       uses: actions/setup-go@v5
       id: go
@@ -121,6 +121,7 @@ jobs:
         go-version: '1.24'  
     - name: Build binary for ${{ matrix.version }}
       run: |
+        git config --global --add safe.directory /usr/src/myapp
         docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'make dist && /scripts/getlibs.sh .'
     - name: Prepare build artifacts for stashing
       run: |
