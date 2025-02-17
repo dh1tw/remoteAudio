@@ -34,8 +34,7 @@ jobs:
         go-version: '1.24'
     - name: Build binary for ${{ matrix.version }}
       run: |
-        git config --global --add safe.directory /usr/src/myapp
-        docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'make dist'
+        docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'git config --global --add safe.directory /usr/src/myapp && make dist'
     - name: Prepare build artifact for stashing
       run: |
         mkdir release
@@ -120,7 +119,7 @@ jobs:
     - name: Build binary for ${{ matrix.version }}
       run: |
         git config --global --add safe.directory /usr/src/myapp
-        docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'make dist && /scripts/getlibs.sh .'
+        docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'git config --global --add safe.directory /usr/src/myapp && make dist && /scripts/getlibs.sh .'
     - name: Prepare build artifacts for stashing
       run: |
         mkdir release
