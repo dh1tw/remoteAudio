@@ -36,7 +36,7 @@ jobs:
         mv ./remoteAudio ./release
     # The build artifact can be identified by the trailing sha of the git commit
     - name: Stash the build artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}
         path: ./release
@@ -83,7 +83,7 @@ jobs:
         mv ./remoteAudio ./release
     # The build artifact can be identified by the trailing sha of the git commit
     - name: Stash the build artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}
         path: ./release
@@ -116,7 +116,7 @@ jobs:
         mv ./*.dll ./release
     # The build artifact can be identified by the trailing sha of the git commit
     - name: Stash the build artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}
         path: ./release
@@ -145,7 +145,7 @@ jobs:
         mkdir release
         printf "%s" "${{ steps.create_release.outputs.upload_url }}" > release/url.txt
     - name: Stash file containing the release URL as an artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: release-url
         path: ./release
