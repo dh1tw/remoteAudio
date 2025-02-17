@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build_linux:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         version: ['linux-armhf', 'linux-arm64', 'linux-i386', 'linux-amd64']
@@ -24,19 +24,24 @@ jobs:
             OS: linux
             ARCH: amd64
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
       with:
         submodules: true
+    - name: Set up Go 1.24
+      uses: actions/setup-go@v5
+      id: go
+      with:
+        go-version: '1.24'
     - name: Build binary for ${{ matrix.version }}
       run: |
-        docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'make dist'
+        docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'git config --global --add safe.directory /usr/src/myapp && make dist'
     - name: Prepare build artifact for stashing
       run: |
         mkdir release
         mv ./remoteAudio ./release
     # The build artifact can be identified by the trailing sha of the git commit
     - name: Stash the build artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}
         path: ./release
@@ -54,12 +59,12 @@ jobs:
             OS: darwin
             ARCH: arm64
     steps:
-    - name: Set up Go 1.18
-      uses: actions/setup-go@v1
+    - name: Set up Go 1.24
+      uses: actions/setup-go@v5
       id: go
       with:
-        go-version: 1.18
-    - uses: actions/checkout@v1
+        go-version: '1.24'
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Install dependencies
@@ -83,13 +88,13 @@ jobs:
         mv ./remoteAudio ./release
     # The build artifact can be identified by the trailing sha of the git commit
     - name: Stash the build artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}
         path: ./release
 
   build_windows:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         version: ['windows-amd64', 'windows-i386']
@@ -103,12 +108,18 @@ jobs:
             OS: windows
             ARCH: '386'
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
       with:
         submodules: true
+    - name: Set up Go 1.24
+      uses: actions/setup-go@v5
+      id: go
+      with:
+        go-version: '1.24'  
     - name: Build binary for ${{ matrix.version }}
       run: |
-        docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'make dist && /scripts/getlibs.sh .'
+        git config --global --add safe.directory /usr/src/myapp
+        docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'git config --global --add safe.directory /usr/src/myapp && make dist && /scripts/getlibs.sh .'
     - name: Prepare build artifacts for stashing
       run: |
         mkdir release
@@ -116,7 +127,7 @@ jobs:
         mv ./*.dll ./release
     # The build artifact can be identified by the trailing sha of the git commit
     - name: Stash the build artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}
         path: ./release
@@ -124,7 +135,7 @@ jobs:
   # A Github release is created whenever the git reference contains a tag, starting with 'v*' (e.g. v0.4.2)
   # And the previous build jobs have been successful
   create_release:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: [build_linux, build_macos, build_windows]
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
@@ -145,14 +156,14 @@ jobs:
         mkdir release
         printf "%s" "${{ steps.create_release.outputs.upload_url }}" > release/url.txt
     - name: Stash file containing the release URL as an artifact
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: release-url
         path: ./release
 
   # In this job we upload the release artifacts to the corresponding release
   upload:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: create_release # release must be created before this job can start
     strategy:
       matrix:
