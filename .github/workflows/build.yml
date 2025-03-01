@@ -205,7 +205,7 @@ jobs:
         echo ${GITHUB_REF/refs\/tags\//}
         echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
     - name: Retrieve stashed intermediary build artifact
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v4
       with:
         name: remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}
     # rename the retrieved intermediary artifact and prepare zip file
@@ -218,7 +218,7 @@ jobs:
         zip -j remoteAudio-$VERSION-${{ matrix.OS }}-${{ matrix.ARCH }}.zip ./*
     # Download the previously uploaded artifact which contains the release URL
     - name: Retrieve stashed release URL
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v4
       with:
         name: release-url
     # Write content of downloaded file (a string which contains the release URL) into a step.outputs variable
