@@ -216,14 +216,10 @@ jobs:
     - name: Display structure of downloaded files
       run: ls -R
 
-    - name: Display structure of downloaded files
-      run: ls -R /remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}/
-
     - name: Prepare release artifact
       env:
         VERSION: ${{ steps.get_version.outputs.VERSION }}
       run: |
-        mv ./remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}/* .
         test -f ./remoteAudio && chmod +x ./remoteAudio #only on linux & darwin needed
         zip -j remoteAudio-$VERSION-${{ matrix.OS }}-${{ matrix.ARCH }}.zip ./*
     # Download the previously uploaded artifact which contains the release URL
