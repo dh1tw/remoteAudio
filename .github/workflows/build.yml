@@ -209,6 +209,16 @@ jobs:
       with:
         name: remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}
     # rename the retrieved intermediary artifact and prepare zip file
+
+    - name: Display current directory
+      run: pwd
+
+    - name: Display structure of downloaded files
+      run: ls -R
+
+    - name: Display structure of downloaded files
+      run: ls -R /remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}/
+
     - name: Prepare release artifact
       env:
         VERSION: ${{ steps.get_version.outputs.VERSION }}
