@@ -2,6 +2,9 @@ name: Cross Platform build
 
 on: [push, pull_request]
 
+env:
+  GOVERSION: '1.24'
+
 jobs:
   build_linux:
     runs-on: ubuntu-24.04
@@ -27,11 +30,11 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Set up Go 1.24
+    - name: Set up Go $GOVERSION
       uses: actions/setup-go@v5
       id: go
       with:
-        go-version: '1.24'
+        go-version: ${{ env.GOVERSION }}
     - name: Build binary for ${{ matrix.version }}
       run: |
         docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp dh1tw/remoteaudio-xcompile:${{ matrix.version }} /bin/sh -c 'git config --global --add safe.directory /usr/src/myapp && make dist'
@@ -59,11 +62,11 @@ jobs:
             OS: darwin
             ARCH: arm64
     steps:
-    - name: Set up Go 1.24
+    - name: Set up Go $GOVERSION
       uses: actions/setup-go@v5
       id: go
       with:
-        go-version: '1.24'
+        go-version: ${{ env.GOVERSION }}
     - uses: actions/checkout@v4
       with:
         submodules: true
@@ -111,11 +114,11 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Set up Go 1.24
+    - name: Set up Go $GOVERSION
       uses: actions/setup-go@v5
       id: go
       with:
-        go-version: '1.24'  
+        go-version: ${{ env.GOVERSION }}
     - name: Build binary for ${{ matrix.version }}
       run: |
         git config --global --add safe.directory /usr/src/myapp
@@ -132,39 +135,11 @@ jobs:
         name: remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}
         path: ./release
 
-  # A Github release is created whenever the git reference contains a tag, starting with 'v*' (e.g. v0.4.2)
-  # And the previous build jobs have been successful
-  create_release:
+  # In this job we upload the release artifacts to the corresponding release
+  create_release_and_upload:
     runs-on: ubuntu-24.04
     needs: [build_linux, build_macos, build_windows]
     if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1.0.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: true
-        prerelease: false
-    # since jobs can not share any variables we have to copy the URL of the created Github release
-    # into a file and stash it as an artifact
-    - name: Copy release URL into file
-      run: |
-        mkdir release
-        printf "%s" "${{ steps.create_release.outputs.upload_url }}" > release/url.txt
-    - name: Stash file containing the release URL as an artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-url
-        path: ./release
-
-  # In this job we upload the release artifacts to the corresponding release
-  upload:
-    runs-on: ubuntu-24.04
-    needs: create_release # release must be created before this job can start
     strategy:
       matrix:
         version: ['linux-armhf', 'linux-arm64', 'linux-i386', 'linux-amd64', 'darwin-amd64', 'darwin-arm64', 'windows-amd64', 'windows-i386']
@@ -203,44 +178,31 @@ jobs:
       id: get_version
       run: |
         echo ${GITHUB_REF/refs\/tags\//}
-        echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+        echo "VERSION_TAG=${GITHUB_REF/refs\/tags\//}" >> "$GITHUB_ENV"
     - name: Retrieve stashed intermediary build artifact
       uses: actions/download-artifact@v4
       with:
         name: remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}
     # rename the retrieved intermediary artifact and prepare zip file
+
+    - name: Display current directory
+      run: pwd
+
+    - name: Display structure of downloaded files
+      run: ls -R
+
     - name: Prepare release artifact
-      env:
-        VERSION: ${{ steps.get_version.outputs.VERSION }}
       run: |
-        mv ./remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}/* .
         test -f ./remoteAudio && chmod +x ./remoteAudio #only on linux & darwin needed
-        zip -j remoteAudio-$VERSION-${{ matrix.OS }}-${{ matrix.ARCH }}.zip ./*
-    # Download the previously uploaded artifact which contains the release URL
-    - name: Retrieve stashed release URL
-      uses: actions/download-artifact@v4
-      with:
-        name: release-url
-    # Write content of downloaded file (a string which contains the release URL) into a step.outputs variable
-    - name: Read release URL
-      id: get_release_url
-      run: echo ::set-output name=URL::$(cat release-url/url.txt)
-    # This step is only needed because the upload-release-asset currently doesn't support
-    # environment variables. Therefore they must be written and referenced through step.outputs
-    - name: Prepare artifact metadata
-      id: prepare_artifact_metadata
-      env:
-        VERSION: ${{ steps.get_version.outputs.VERSION }}
-      run: |
-        echo ::set-output name=ARTIFACT_PATH::./remoteAudio-$VERSION-${{ matrix.OS }}-${{ matrix.ARCH }}.zip
-        echo ::set-output name=ARTIFACT_NAME::remoteAudio-$VERSION-${{ matrix.OS }}-${{ matrix.ARCH }}.zip
+        zip -j remoteAudio-${{ env.VERSION_TAG }}-${{ matrix.OS }}-${{ matrix.ARCH }}.zip ./*
+
     # Finally upload the artifact to the corresponding release
-    - name: Upload Release Artifact ${{ matrix.version }}
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v2
       with:
-        upload_url: ${{ steps.get_release_url.outputs.URL }}
-        asset_path: ${{ steps.prepare_artifact_metadata.outputs.ARTIFACT_PATH }}
-        asset_name: ${{ steps.prepare_artifact_metadata.outputs.ARTIFACT_NAME }}
-        asset_content_type: application/gzip
+        name: Release ${{ env.VERSION_TAG }}
+        draft: true
+        prerelease: false
+        files: |
+          ./remoteAudio-${{ env.VERSION_TAG }}-${{ matrix.OS }}-${{ matrix.ARCH }}.zip
