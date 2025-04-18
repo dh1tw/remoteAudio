@@ -196,9 +196,9 @@ jobs:
         test -f ./remoteAudio && chmod +x ./remoteAudio #only on linux & darwin needed
         zip -j remoteAudio-${{ env.VERSION_TAG }}-${{ matrix.OS }}-${{ matrix.ARCH }}.zip ./*
 
-    - name: Sleep to avoid multiple releases with the same tag
+    - name: Sleep a few seconds to avoid multiple releases with the same tag
       run: |
-          RANDOM_DELAY=$(( ( RANDOM % 60 )  + 1 ))
+          RANDOM_DELAY=$(( ( RANDOM % 120 )  + 1 ))
           sleep $RANDOM_DELAY
 
     # Finally upload the artifact to the corresponding release

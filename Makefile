@@ -22,7 +22,7 @@ dist:
 	if [ "${GOOS}" = "windows" ]; \
 		then upx remoteAudio.exe; \
 	else \
-		if [ "${GOOS}" = "darwin" ] && [ "${GOARCH}" = "arm64" ]; \
+		if [ "${GOOS}" = "darwin" ]; \
 			then true; \
 		else upx remoteAudio; \
 		fi \
