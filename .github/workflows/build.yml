@@ -49,18 +49,8 @@ jobs:
         name: remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}
         path: ./release
 
-  build_macos:
+  build_macos_arm64:
     runs-on: macos-latest
-    strategy:
-      matrix:
-        version: ['darwin-amd64', 'darwin-arm64']
-        include:
-          - version: darwin-amd64
-            OS: darwin
-            ARCH: amd64
-          - version: darwin-arm64
-            OS: darwin
-            ARCH: arm64
     steps:
     - name: Set up Go $GOVERSION
       uses: actions/setup-go@v5
@@ -93,7 +83,44 @@ jobs:
     - name: Stash the build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: remoteAudio-${{ matrix.OS }}-${{ matrix.ARCH }}-${{ github.sha }}
+        name: remoteAudio-darwin-arm64-${{ github.sha }}
+        path: ./release
+
+  build_macos_amd64:
+    runs-on: macos-latest-large
+    steps:
+    - name: Set up Go $GOVERSION
+      uses: actions/setup-go@v5
+      id: go
+      with:
+        go-version: ${{ env.GOVERSION }}
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Install dependencies
+      run: |
+        brew install pkg-config
+        brew install opus
+        brew install opusfile
+        brew install portaudio
+        brew install protobuf
+        brew install libsamplerate
+        brew install upx
+    - name: Install code generators
+      run: make install-deps
+    - name: Build binary for macOS
+      run: |
+        export PATH=/System/Volumes/Data/Users/runner/go/bin:$PATH
+        make dist
+    - name: Prepare build artifact for stashing
+      run: |
+        mkdir release
+        mv ./remoteAudio ./release
+    # The build artifact can be identified by the trailing sha of the git commit
+    - name: Stash the build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: remoteAudio-darwin-amd64-${{ github.sha }}
         path: ./release
 
   build_windows:
@@ -138,7 +165,7 @@ jobs:
   # In this job we upload the release artifacts to the corresponding release
   create_release_and_upload:
     runs-on: ubuntu-24.04
-    needs: [build_linux, build_macos, build_windows]
+    needs: [build_linux, build_macos_arm64, build_macos_amd64, build_windows]
     if: startsWith(github.ref, 'refs/tags/v')
     strategy:
       matrix:
